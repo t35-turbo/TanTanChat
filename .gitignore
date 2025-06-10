@@ -1,4 +1,5 @@
 # deps
 node_modules/
 drizzle/
+client/node_modules/
 .env
