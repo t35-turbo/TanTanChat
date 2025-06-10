@@ -8,7 +8,7 @@ console.log("Auth started with mode: " + process.env.NODE_ENV);
 
 export const auth = betterAuth({
   trustedOrigins: isDev
-    ? ["http://localhost:3001"]
+    ? ["http://localhost:3000"]
     : ["https://prodection-domain"],
   emailAndPassword: {
     enabled: true,

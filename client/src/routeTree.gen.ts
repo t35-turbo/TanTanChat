@@ -11,7 +11,9 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as SignupImport } from './routes/signup'
 import { Route as OrauthImport } from './routes/or_auth'
+import { Route as LoginImport } from './routes/login'
 import { Route as ChatImport } from './routes/chat'
 import { Route as IndexImport } from './routes/index'
 import { Route as ChatIndexImport } from './routes/chat/index'
@@ -19,9 +21,21 @@ import { Route as ChatChatIdImport } from './routes/chat/$chatId'
 
 // Create/Update Routes
 
+const SignupRoute = SignupImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const OrauthRoute = OrauthImport.update({
   id: '/or_auth',
   path: '/or_auth',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const LoginRoute = LoginImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -67,11 +81,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatImport
       parentRoute: typeof rootRoute
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginImport
+      parentRoute: typeof rootRoute
+    }
     '/or_auth': {
       id: '/or_auth'
       path: '/or_auth'
       fullPath: '/or_auth'
       preLoaderRoute: typeof OrauthImport
+      parentRoute: typeof rootRoute
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupImport
       parentRoute: typeof rootRoute
     }
     '/chat/$chatId': {
@@ -108,14 +136,18 @@ const ChatRouteWithChildren = ChatRoute._addFileChildren(ChatRouteChildren)
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteWithChildren
+  '/login': typeof LoginRoute
   '/or_auth': typeof OrauthRoute
+  '/signup': typeof SignupRoute
   '/chat/$chatId': typeof ChatChatIdRoute
   '/chat/': typeof ChatIndexRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/or_auth': typeof OrauthRoute
+  '/signup': typeof SignupRoute
   '/chat/$chatId': typeof ChatChatIdRoute
   '/chat': typeof ChatIndexRoute
 }
@@ -124,30 +156,51 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteWithChildren
+  '/login': typeof LoginRoute
   '/or_auth': typeof OrauthRoute
+  '/signup': typeof SignupRoute
   '/chat/$chatId': typeof ChatChatIdRoute
   '/chat/': typeof ChatIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/chat' | '/or_auth' | '/chat/$chatId' | '/chat/'
+  fullPaths:
+    | '/'
+    | '/chat'
+    | '/login'
+    | '/or_auth'
+    | '/signup'
+    | '/chat/$chatId'
+    | '/chat/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/or_auth' | '/chat/$chatId' | '/chat'
-  id: '__root__' | '/' | '/chat' | '/or_auth' | '/chat/$chatId' | '/chat/'
+  to: '/' | '/login' | '/or_auth' | '/signup' | '/chat/$chatId' | '/chat'
+  id:
+    | '__root__'
+    | '/'
+    | '/chat'
+    | '/login'
+    | '/or_auth'
+    | '/signup'
+    | '/chat/$chatId'
+    | '/chat/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChatRoute: typeof ChatRouteWithChildren
+  LoginRoute: typeof LoginRoute
   OrauthRoute: typeof OrauthRoute
+  SignupRoute: typeof SignupRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChatRoute: ChatRouteWithChildren,
+  LoginRoute: LoginRoute,
   OrauthRoute: OrauthRoute,
+  SignupRoute: SignupRoute,
 }
 
 export const routeTree = rootRoute
@@ -162,7 +215,9 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/chat",
-        "/or_auth"
+        "/login",
+        "/or_auth",
+        "/signup"
       ]
     },
     "/": {
@@ -175,8 +230,14 @@ export const routeTree = rootRoute
         "/chat/"
       ]
     },
+    "/login": {
+      "filePath": "login.tsx"
+    },
     "/or_auth": {
       "filePath": "or_auth.tsx"
+    },
+    "/signup": {
+      "filePath": "signup.tsx"
     },
     "/chat/$chatId": {
       "filePath": "chat/$chatId.tsx",

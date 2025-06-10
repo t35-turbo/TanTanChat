@@ -38,6 +38,8 @@ function RouteComponent() {
   function sendQuery() {
     setSentMessage(message);
     setMessage("");
+
+    // TODO: make the request
   }
 
   return (
@@ -64,10 +66,6 @@ function RouteComponent() {
           animate={{
             width: sentMessage ? "100%" : "50%",
           }}
-          // transition={{
-          //   duration: 0.3,
-          //   ease: "easeInOut"
-          // }}
         >
           <Textarea
             placeholder={sentMessage ? loadingFlavorText : blankFlavorText}

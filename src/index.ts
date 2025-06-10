@@ -9,6 +9,7 @@ app.get("/", (c) => {
 });
 
 app.on(["POST", "GET"], "/api/auth/**", (c) => auth.handler(c.req.raw));
+app.get("/api/heartbeat", (c) => c.text("OK"));
 
 export default {
   port: PORT,

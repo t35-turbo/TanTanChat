@@ -136,6 +136,10 @@ code {
     body {
         @apply bg-background text-foreground;
     }
+
+    body, html, #app {
+        @apply w-full h-full;
+    }
 }
 
 @layer components {
