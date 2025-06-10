@@ -22,12 +22,19 @@ function RouteComponent() {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
 
   async function login() {
     setError("");
+
+    if (password !== password2) {
+      setError("Passwords do not match");
+      return;
+    }
+
     const { data, error } = await authClient.signUp.email({
       email,
       password,
@@ -61,7 +68,7 @@ function RouteComponent() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-6">
-            <div className="grid gap-2">
+            <div className="grid">
               <Label htmlFor="username">Name/Username</Label>
               <Input
                 id="username"
@@ -72,7 +79,7 @@ function RouteComponent() {
                 required
               />
             </div>
-            <div className="grid gap-2">
+            <div className="grid">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -83,7 +90,7 @@ function RouteComponent() {
                 required
               />
             </div>
-            <div className="grid gap-2">
+            <div className="grid">
               <div className="flex items-center">
                 <Label htmlFor="password">Password</Label>
               </div>
@@ -92,6 +99,19 @@ function RouteComponent() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+              />
+            </div>
+            <div className="grid">
+              <div className="flex items-center">
+                <Label htmlFor="password">Retype Password</Label>
+              </div>
+              <Input
+                id="password"
+                type="password"
+                value={password2}
+                onChange={(e) => setPassword2(e.target.value)}
                 required
                 placeholder="••••••••"
               />

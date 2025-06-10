@@ -61,7 +61,7 @@ export default function ChatSidebar() {
       let tDelta = timeDelta(component.item.lastUpdated);
       renderOutput.splice(pos, 0, {
         component: (
-          <div className="text-accent-foreground" key={tDelta}>
+          <div className="text-accent-foreground font-bold border-b border-primary/25" key={tDelta}>
             {tDelta}
           </div>
         ),
@@ -82,7 +82,7 @@ export default function ChatSidebar() {
             <Link to="/chat">New Chat</Link>
           </Button>
 
-          <div className="flex items-center border-b border-primary/80 mx-2">
+          <div className="flex items-center border-b border-primary/65 mx-2">
             <SearchIcon size={16} />
             <Input
               type="text"
