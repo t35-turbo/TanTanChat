@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 
 export const Route = createFileRoute("/login")({
   component: RouteComponent,
@@ -21,12 +22,22 @@ export const Route = createFileRoute("/login")({
 function RouteComponent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   async function login() {
+    setError("");
     const { data, error } = await authClient.signIn.email({
       email,
       password,
     });
+
+    console.log(data, error);
+    if (data) {
+      navigate({ to: "/chat" });
+    } else if (error) {
+      setError(error.message ?? error.statusText);
+    }
   }
 
   return (
@@ -39,6 +50,11 @@ function RouteComponent() {
     >
       <Card className="w-full max-w-sm">
         <CardHeader className="flex items-center">
+          {error ? (
+            <Alert variant="error" className="mb-2">
+              <AlertTitle>{error}</AlertTitle>
+            </Alert>
+          ) : null}
           <CardTitle>Log In</CardTitle>
         </CardHeader>
         <CardContent>
