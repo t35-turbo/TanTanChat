@@ -46,9 +46,7 @@ export default function ChatSidebar() {
       await ky.delete(`/api/chats/${id}`);
     },
 
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["chats"] });
-    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["chats"] }),
   });
 
   const filtered = fuzzysort

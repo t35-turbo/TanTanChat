@@ -3,6 +3,7 @@ import { auth } from "./lib/auth";
 import { db } from "./db";
 import { chats, chatMessages } from "./db/schema";
 import { eq, desc, lt, and, asc, gt } from "drizzle-orm";
+import * as sync from "./sync";
 
 const app = new Hono<{
   Variables: {
@@ -114,10 +115,8 @@ app.get("/api/chats/:id", async (c) => {
   const chatId = c.req.param("id");
 
   // Get query parameters from URL
-  const rangeStart = c.req.query("rangeStart");
-  const rangeEnd = c.req.query("rangeEnd");
-  const timestampStart = c.req.query("timestampStart");
-  const timestampEnd = c.req.query("timestampEnd");
+  const CHUNK_RANGE = 100;
+  const cursor = parseInt(c.req.query("cursor") ?? "0");
   const descending = c.req.query("descending") === "true";
 
   if (!session || !user) {
@@ -133,32 +132,21 @@ app.get("/api/chats/:id", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  // Validate that either range or timestamp queries were provided
-  if (!( (rangeStart && rangeEnd) || (timestampStart && timestampEnd) )) {
-    return c.json({ error: "Invalid range" }, 400);
+  if (isNaN(cursor)) {
+    return c.json({ error: "Invalid Cursor" }, 400);
   }
 
   let messages;
-  if (rangeStart && rangeEnd) {
-    const offsetValue = Number(rangeStart);
-    const limitValue = Number(rangeEnd) - offsetValue;
+  const offsetValue = cursor * CHUNK_RANGE;
+  const limitValue = (cursor + 1) * CHUNK_RANGE - offsetValue;
 
-    messages = await db.select().from(chatMessages)
-      .where(eq(chatMessages.chatId, chatId))
-      .orderBy(descending ? desc(chatMessages.createdAt) : asc(chatMessages.createdAt))
-      .offset(offsetValue)
-      .limit(limitValue);
-  } else {
-    messages = await db.select().from(chatMessages)
-      .where(
-        and(
-          eq(chatMessages.chatId, chatId),
-          lt(chatMessages.createdAt, new Date(timestampEnd as string)),
-          gt(chatMessages.createdAt, new Date(timestampStart as string))
-        )
-      )
-      .orderBy(descending ? desc(chatMessages.createdAt) : asc(chatMessages.createdAt));
-  }
+  messages = await db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.chatId, chatId))
+    .orderBy(descending ? desc(chatMessages.createdAt) : asc(chatMessages.createdAt))
+    .offset(offsetValue)
+    .limit(limitValue);
 
   if (!messages.length) {
     return c.json({ messages: [] });
@@ -168,11 +156,12 @@ app.get("/api/chats/:id", async (c) => {
     id: msg.id,
     chatId: msg.chatId,
     senderId: msg.senderId,
+    message: msg.message,
     role: msg.role,
     createdAt: msg.createdAt,
   }));
 
-  return c.json({ messages }, 200);
+  return c.json({ messages, cursor }, 200);
 });
 
 app.post("/api/chats/:id/new", async (c) => {
@@ -184,18 +173,15 @@ app.post("/api/chats/:id/new", async (c) => {
   if (!session || !user) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-
-  if (!chatId || typeof chatId !== "string") {
+  if (!chatId) {
     return c.json({ error: "Invalid chat ID" }, 400);
   }
-
-  if (!message || typeof message !== "string" || message.trim() === "") {
+  if (!message || message.trim() === "") {
     return c.json({ error: "Invalid message" }, 400);
   }
-
-  const chat = (await db.select().from(chats).where(eq(chats.id, chatId)))?.[0];
-  if (!chat || chat.userId !== user.id) {
-    return c.json({ error: "Unauthorized" }, 401);
+  const chat = (await db.select().from(chats).where(and(eq(chats.id, chatId), eq(chats.userId, user.id))))?.[0];
+  if (!chat) {
+    return c.json({ error: "Not Found" }, 404);
   }
 
   const newMessage: {
@@ -215,7 +201,9 @@ app.post("/api/chats/:id/new", async (c) => {
   };
 
   await db.insert(chatMessages).values(newMessage);
-  return c.json({ ok: true }, 201);
+  let messages: sync.Messages = await db.select().from(chatMessages).where(eq(chatMessages.chatId, chatId));
+
+  return c.json({ msgId: await sync.newMessage(messages) }, 201);
 });
 
 export default {

@@ -6,7 +6,7 @@ import { ArrowUpIcon, LoaderCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import React from "react";
 import { authClient } from "@/lib/auth-client";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/routes/__root";
 import { z } from "zod/v4-mini";
 import ky, { HTTPError } from "ky";
@@ -29,6 +29,7 @@ export const Route = createFileRoute("/chat/$chatId")({
 //   );
 // }
 
+// TODO: when the new chat is created, the input ui loses focus
 // pure scuff
 export function ChatUI() {
   const blankFlavorText = React.useMemo(() => {
@@ -57,15 +58,16 @@ export function ChatUI() {
   }) ?? { chatId: undefined };
 
   const [input, setInput] = React.useState("");
-  const messages = useQuery({
+  // TODO: implement scroll
+  const messagePages = useInfiniteQuery({
     queryKey: ["messages", chatId],
-    queryFn: async () => {
+    queryFn: async ({ pageParam: cursor }) => {
       if (chatId) {
         // TODO: get messages
         if (user_sess.data) {
           let messageResponse;
           try {
-            messageResponse = await ky.get(`/api/chats/${chatId}`);
+            messageResponse = await ky.get(`/api/chats/${chatId}?cursor=${cursor}`);
           } catch (err: any) {
             if (err instanceof HTTPError && err.response.status === 404) {
               toast.error("Chat not found");
@@ -78,38 +80,58 @@ export function ChatUI() {
             throw new Error("Failed to fetch messages");
           }
           let messages = await messageResponse.json();
-          return z.object({ messages: z.array(Message) }).parse(messages).messages;
+          return z.object({ messages: z.array(Message), cursor: z.number() }).parse(messages);
         } else {
-          return z.array(Message).parse(await db.chats.get(chatId));
+          let chat = await db.chats.get(chatId);
+          if (!chat) {
+            toast.error("Chat not found");
+            navigate({ to: "/chat" });
+          }
+          return { messages: z.array(Message).parse(chat), cursor: cursor };
         }
       } else {
-        return [];
+        return { messages: [], cursor: 0 };
       }
     },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.cursor + 1,
+    enabled: !user_sess.isPending,
   });
+
   const sendMessage = useMutation({
     // mutationKey: ["addMessages", chatId],
     mutationFn: async (message: string) => {
       // TODO: add add message mutation
       let id = chatId;
       if (!chatId) {
-        id = z.object({ uuid: z.uuidv4() }).parse(
-          await ky
-            .post("/api/chats/new", {
-              body: JSON.stringify({ message: message }),
-            })
-            .json(),
-        ).uuid;
+        if (user_sess.data) {
+          id = z.object({ uuid: z.uuidv4() }).parse(
+            await ky
+              .post("/api/chats/new", {
+                body: JSON.stringify({ message: message }),
+              })
+              .json(),
+          ).uuid;
 
-        navigate({ to: "/chat/$chatId", params: { chatId: id } });
+        } else {
+          id = crypto.randomUUID();
+          await db.chats.add({
+            id,
+            title: "New Chat",
+            lastUpdated: new Date(),
+            messages: [],
+          });
+        }
+
+        queryClient.invalidateQueries({ queryKey: ["chats"] });
       }
 
       await ky.post(`/api/chats/${id}/new`, { body: JSON.stringify({ message: message }) }).json();
-    },
+      await queryClient.invalidateQueries({ queryKey: ["messages"] });
 
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["messages", chatId] });
-      queryClient.invalidateQueries({ queryKey: ["chats"] });
+      if (!chatId && id) {
+        navigate({ to: "/chat/$chatId", params: { chatId: id } });
+      }
     },
   });
 
@@ -118,39 +140,56 @@ export function ChatUI() {
     setInput("");
   }
 
+  let messages = messagePages.data ? messagePages.data.pages.flatMap((page) => page.messages) : [];
+  if (sendMessage.isPending) {
+    console.log("pend");
+    messages.push({
+      id: "pending",
+      role: "user",
+      senderId: "pending",
+      chatId: chatId || "",
+      message: sendMessage.variables,
+      createdAt: new Date(),
+    });
+  }
+
   return (
     <div className={`flex flex-col grow items-center w-full h-screen justify-center p-2`}>
-      <motion.div animate={{ height: chatId ? "100%" : "auto" }} className="flex flex-col w-full items-center">
-        {messages.isSuccess
-          ? messages.data.map((message) => {
-              return (
-                <div className={`w-full flex ${message.role === "user" ? "justify-end" : "justify-start"}`} key={message.content}>
-                  <div className="p-2 bg-background border rounded-lg mb-1">{message.content}</div>
-                </div>
-              );
-            })
-          : null}
+      <motion.div
+        animate={{ height: chatId ? "100%" : "auto" }}
+        transition={{ duration: 0.2 }}
+        className="flex flex-col w-full items-center"
+      >
+        {messages.map((message) => {
+          // im so done with this bro
+          return (
+            <div
+              className={`w-full flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              key={message.id} // as long as message is the smae it doesnt matter
+            >
+              <div className="p-2 bg-background border rounded-lg mb-1 max-w-1/2">{message.message}</div>
+            </div>
+          );
+        })}
         {sendMessage.isPending ? (
           <div className={`w-full ${chatId ? "flex" : "hidden"} flex-col items-end`} key={sendMessage.variables}>
-            <div className="p-2 bg-background border rounded-lg mb-1">{sendMessage.variables}</div>
             <LoaderCircle size={14} className="animate-spin" />
           </div>
         ) : null}
         <div className="mb-auto"></div>
-        {messages.isPending ? (
+        {messagePages.isPending ? (
           <div className="flex space-x-2 p-10">
-            <div className="bg-border rounded-full h-4 w-4 motion-safe:animate-bounce"></div>
-            <div className="bg-border rounded-full h-4 w-4 motion-safe:animate-bounce"></div>
-            <div className="bg-border rounded-full h-4 w-4 motion-safe:animate-bounce"></div>
+            <div className="bg-border rounded-full h-8 w-8 motion-safe:animate-pulse"></div>
           </div>
         ) : null}
-        {messages.isError ? <div>Failed to load message history</div> : null}
+        {messagePages.isError ? <div>Failed to load message history</div> : null}
         <h1 className={`font-bold text-2xl md:text-4xl ${chatId ? "opacity-0" : "opacity-100"}`}>CLONE CLONE CLONE</h1>
         <motion.div
           className={`w-full ${chatId ? "" : "md:w-1/2"}`}
           animate={{
             width: chatId ? "100%" : undefined,
           }}
+          transition={{ duration: 0.2 }}
         >
           <Textarea
             placeholder={chatId ? loadingFlavorText : blankFlavorText}

@@ -12,7 +12,9 @@ export type Chat = z.infer<typeof Chat>;
 export const Message = z.object({
   id: z.uuidv4(),
   role: z.enum(["system", "user", "assistant"]),
-  content: z.string(),
+  senderId: z.string(),
+  chatId: z.string(),
+  message: z.string(),
   createdAt: z.coerce.date(),
 });
 export type Message = z.infer<typeof Message>;
