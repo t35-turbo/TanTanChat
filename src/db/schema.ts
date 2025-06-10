@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, index, integer } from "drizzle-orm/pg-core";
+import { desc } from "drizzle-orm";
 
 export const user = pgTable("user", {
     id: text('id').primaryKey(),
@@ -52,3 +53,16 @@ export const chats = pgTable("chats", {
     title: text('title').notNull(),
     lastUpdated: timestamp('last_updated').$defaultFn(() => /* @__PURE__ */ new Date()).notNull(),
 });
+
+export const chatMessages = pgTable("chat_messages", {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    chatId: text('chat_id').notNull().references(() => chats.id, { onDelete: 'cascade' }),
+    senderId: text('sender_id').notNull(),
+    message: text('content').notNull(),
+    createdAt: timestamp('created_at').$defaultFn(() => /* @__PURE__ */ new Date()).notNull()
+}, (table) => {
+    return {
+    chatIdCreatedAtIndex: index('idx_messages_chat_id_created_at').on(table.chatId, desc(table.createdAt)),
+    };
+});
+    
