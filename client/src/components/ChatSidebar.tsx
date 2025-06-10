@@ -31,10 +31,9 @@ export default function ChatSidebar() {
       }
     },
   });
-  const filtered = fuzzysort.go(searchQuery, chats.data ?? [], { key: "title", all: true }).map((item) => item.obj);
-
   const deleteChat = useMutation({
     mutationFn: async (id: string) => {
+      // TODO: add a confirmation
       await ky.delete(`/api/chats/${id}`);
     },
 
@@ -42,6 +41,11 @@ export default function ChatSidebar() {
       queryClient.invalidateQueries({ queryKey: ["chats"] });
     },
   });
+
+  const filtered = fuzzysort
+    .go(searchQuery, chats.data ?? [], { key: "title", all: true })
+    .map((item) => item.obj)
+    .filter((item) => item.id !== deleteChat.variables);
 
   let renderOutput: {
     component: React.ReactElement;
