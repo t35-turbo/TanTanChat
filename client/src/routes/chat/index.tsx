@@ -24,11 +24,12 @@ function RouteComponent() {
     return options[Math.floor(Math.random() * options.length)];
   }, []);
 
-  const [sentMessage, setSentMessage] = React.useState(false);
+  const [sentMessage, setSentMessage] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState("");
 
   function sendQuery() {
-    setSentMessage(true);
+    setSentMessage(message);
+    setMessage("");
   }
 
   return (
@@ -41,7 +42,7 @@ function RouteComponent() {
       >
         <div className={`mb-auto w-full ${sentMessage ? "flex" : "hidden"} flex-col items-end`}>
           <div className="p-2 bg-background border rounded-lg mb-1">
-            {sentMessage ? message : null}
+            {sentMessage ? sentMessage : null}
           </div>
           <LoaderCircle size={12} className="animate-spin" />
         </div>
