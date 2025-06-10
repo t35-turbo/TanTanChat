@@ -1,9 +1,9 @@
 import ModelSelector from "@/components/ModelSelector";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowUpIcon } from "lucide-react";
+import { ArrowUpIcon, LoaderCircle } from "lucide-react";
+import { motion } from "framer-motion";
 import React from "react";
 
 export const Route = createFileRoute("/chat/")({
@@ -24,18 +24,61 @@ function RouteComponent() {
     return options[Math.floor(Math.random() * options.length)];
   }, []);
 
+  const [sentMessage, setSentMessage] = React.useState(false);
+  const [message, setMessage] = React.useState("");
+
+  function sendQuery() {
+    setSentMessage(true);
+  }
+
   return (
-    <div className="flex flex-col grow justify-center items-center p-2">
-      <h1 className="font-bold text-2xl md:text-4xl">CLONE CLONE CLONE</h1>
-      <div className="md:w-1/2 w-full">
-        <Textarea placeholder={flavorText} />
-        <div className="flex mt-2">
-          <ModelSelector />
-          <Button className="ml-auto p-0 cursor-pointer">
-            <ArrowUpIcon />
-          </Button>
+    <div
+      className={`flex flex-col grow items-center w-full h-screen justify-center p-2`}
+    >
+      <motion.div
+        animate={{ height: sentMessage ? "100%" : "auto" }}
+        className="flex flex-col w-full items-center"
+      >
+        <div className={`mb-auto w-full ${sentMessage ? "flex" : "hidden"} flex-col items-end`}>
+          <div className="p-2 bg-background border rounded-lg mb-1">
+            {sentMessage ? message : null}
+          </div>
+          <LoaderCircle size={12} className="animate-spin" />
         </div>
-      </div>
+        <h1
+          className={`font-bold text-2xl md:text-4xl ${sentMessage ? "opacity-0" : "opacity-100"}`}
+        >
+          CLONE CLONE CLONE
+        </h1>
+        <motion.div
+          className="w-full"
+          animate={{
+            width: sentMessage ? "100%" : "50%",
+          }}
+          // transition={{
+          //   duration: 0.3,
+          //   ease: "easeInOut"
+          // }}
+        >
+          <Textarea
+            placeholder={flavorText}
+            onKeyDown={(evt) => {
+              if (evt.code === "Enter" && !evt.shiftKey) {
+                evt.preventDefault();
+                sendQuery();
+              }
+            }}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+          />
+          <div className="flex mt-2">
+            <ModelSelector />
+            <Button className="ml-auto p-0 cursor-pointer" onClick={sendQuery}>
+              <ArrowUpIcon />
+            </Button>
+          </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }
