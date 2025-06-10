@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowUpIcon, LoaderCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import React from "react";
+import { authClient } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
@@ -47,6 +48,8 @@ export function ChatUI() {
 
   const [sentMessage, setSentMessage] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState("");
+
+  const user_sess = authClient.useSession();
 
   function sendQuery() {
     setSentMessage(message);
@@ -99,7 +102,7 @@ export function ChatUI() {
               <ArrowUpIcon />
             </Button>
           </div>
-          <div className="text-sm text-center">
+          {user_sess.data ? null : <div className="text-sm text-center">
             Wanna save your chats???{" "}
             <Link to="/login" className="underline">
               Log in
@@ -108,7 +111,7 @@ export function ChatUI() {
             <Link to="/signup" className="underline">
               Sign up
             </Link>
-          </div>
+          </div>}
         </motion.div>
       </motion.div>
     </div>
