@@ -10,7 +10,7 @@ export const Route = createRootRoute({
       <KeyInputModal />
       <Toaster position="top-center" />
       <Outlet />
-      <TanStackRouterDevtools />
+      {/* <TanStackRouterDevtools /> */}
     </ThemeProvider>
   ),
 });

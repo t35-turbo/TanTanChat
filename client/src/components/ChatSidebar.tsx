@@ -6,15 +6,18 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { PanelLeftIcon, SearchIcon } from "lucide-react";
+import { LogIn, PanelLeftIcon, SearchIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import React from "react";
 import { Link } from "@tanstack/react-router";
 import fuzzysort from "fuzzysort";
 import { Input } from "./ui/input";
+import { authClient } from "@/lib/auth-client";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 export default function ChatSidebar() {
   const [searchQuery, setSearchQuery] = React.useState("");
+  const user_sess = authClient.useSession();
 
   // CHROME PLEASE FINISH TEMPORAL ALREADY
   const data = fuzzysort
@@ -61,7 +64,10 @@ export default function ChatSidebar() {
       let tDelta = timeDelta(component.item.lastUpdated);
       renderOutput.splice(pos, 0, {
         component: (
-          <div className="text-accent-foreground font-bold border-b border-primary/25" key={tDelta}>
+          <div
+            className="text-accent-foreground font-bold border-b border-primary/25"
+            key={tDelta}
+          >
             {tDelta}
           </div>
         ),
@@ -96,7 +102,25 @@ export default function ChatSidebar() {
         <SidebarContent className="flex flex-col p-2 text-left">
           {renderOutput.map((item) => item.component)}
         </SidebarContent>
-        <SidebarFooter />
+        <SidebarFooter className="flex flex-row items-center mb-4">
+          {/* TODO: USER PAGE */}
+          {user_sess.data ? (
+            <Button variant="ghost" className="grow text-left justify-start items-center p-4 text-md">
+              <Avatar>
+                {user_sess.data.user.image ? (
+                  <AvatarImage src={user_sess.data.user.image} />
+                ) : null}
+                <AvatarFallback>{user_sess.data.user.name[0]}</AvatarFallback>
+              </Avatar>
+              <div>{user_sess.data.user.name}</div>
+            </Button>
+          ) : (
+            <Button variant={"ghost"} className="grow text-left justify-start items-center p-4 text-md">
+              <LogIn />
+              <div>Log In</div>
+            </Button>
+          )}
+        </SidebarFooter>
       </Sidebar>
 
       <BetterTrigger />
