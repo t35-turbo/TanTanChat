@@ -70,7 +70,7 @@ function RouteComponent() {
           // }}
         >
           <Textarea
-            placeholder={blankFlavorText}
+            placeholder={sentMessage ? loadingFlavorText : blankFlavorText}
             onKeyDown={(evt) => {
               if (evt.code === "Enter" && !evt.shiftKey) {
                 evt.preventDefault();
