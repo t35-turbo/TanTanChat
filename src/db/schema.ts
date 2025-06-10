@@ -45,3 +45,10 @@ export const verification = pgTable("verification", {
     createdAt: timestamp('created_at').$defaultFn(() => /* @__PURE__ */ new Date()),
     updatedAt: timestamp('updated_at').$defaultFn(() => /* @__PURE__ */ new Date())
 });
+
+export const chats = pgTable("chats", {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    lastUpdated: timestamp('last_updated').$defaultFn(() => /* @__PURE__ */ new Date()).notNull(),
+});
