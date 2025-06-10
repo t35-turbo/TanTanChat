@@ -1,15 +1,16 @@
-import { Hono } from 'hono'
-import { cors } from 'hono/cors'
-import { auth } from './lib/auth';
-import { betterAuth } from 'better-auth'
+import { Hono } from "hono";
+import { auth } from "./lib/auth";
 
-const app = new Hono()
+const app = new Hono();
+const PORT = process.env.PORT || 3001;
 
-
-app.get('/', (c) => {
-  return c.text('nyanya')
-})
+app.get("/", (c) => {
+  return c.text("nyanya");
+});
 
 app.on(["POST", "GET"], "/api/auth/**", (c) => auth.handler(c.req.raw));
 
-export default app
+export default {
+  port: PORT,
+  fetch: app.fetch,
+};
