@@ -1,12 +1,6 @@
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { LogIn, PanelLeftIcon, SearchIcon } from "lucide-react";
+import { LogIn, PanelLeftIcon, SearchIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import React from "react";
 import { Link } from "@tanstack/react-router";
@@ -14,38 +8,63 @@ import fuzzysort from "fuzzysort";
 import { Input } from "./ui/input";
 import { authClient } from "@/lib/auth-client";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Chats, db } from "@/lib/db";
+import { z } from "zod/v4-mini";
+import ky from "ky";
+import { queryClient } from "@/routes/__root";
 
 export default function ChatSidebar() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const user_sess = authClient.useSession();
 
   // CHROME PLEASE FINISH TEMPORAL ALREADY
-  const data = fuzzysort
-    .go(
-      searchQuery,
-      [
-        { title: "Test Chat", id: "asdf", lastUpdated: new Date() },
-        { title: "Test Chat2", id: "asdf2", lastUpdated: new Date() },
-        { title: "REALLY OLD CHAT", id: "reallyold", lastUpdated: new Date(0) },
-      ],
-      { key: "title", all: true },
-    )
-    .map((item) => item.obj);
+  const chats = useQuery({
+    queryKey: ["chats", user_sess.data?.user.id],
+    queryFn: async () => {
+      const userId = user_sess.data?.user.id;
+      if (userId) {
+        return z.object({ chats: Chats }).parse(await ky.get("/api/chats").json()).chats;
+      } else {
+        // we are not logged in, use idb
+        return Chats.parse(await db.chats.toCollection().keys());
+      }
+    },
+  });
+  const filtered = fuzzysort.go(searchQuery, chats.data ?? [], { key: "title", all: true }).map((item) => item.obj);
+
+  const deleteChat = useMutation({
+    mutationFn: async (id: string) => {
+      await ky.delete(`/api/chats/${id}`);
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+    },
+  });
 
   let renderOutput: {
     component: React.ReactElement;
     item: { title: string; id: string; lastUpdated: Date } | null;
-  }[] = data.map((item) => {
+  }[] = filtered.map((item) => {
     return {
       component: (
-        <div key={item.id + item.lastUpdated.getTime()}>
-          <Button
-            asChild
-            variant={"ghost"}
-            className="w-full justify-start px-2"
-          >
+        <div key={item.id + item.lastUpdated.getTime()} className={`group/chat`}>
+          <Button asChild variant={"ghost"} className="w-full justify-start px-2">
             <Link to="/chat/$chatId" params={{ chatId: item.id }}>
               {item.title}
+              <div className={`hidden group-hover/chat:block ml-auto`}>
+                {/* holy noncompliant html */}
+                <Button
+                  variant="ghost"
+                  onClick={(e) => {
+                    deleteChat.mutate(item.id);
+                    e.preventDefault();
+                  }}
+                >
+                  <XIcon />
+                </Button>
+              </div>
             </Link>
           </Button>
         </div>
@@ -57,17 +76,11 @@ export default function ChatSidebar() {
   let lastUpdateValue = "";
   let pos = 0;
   for (let component of renderOutput) {
-    if (
-      component.item &&
-      timeDelta(component.item.lastUpdated) != lastUpdateValue
-    ) {
+    if (component.item && timeDelta(component.item.lastUpdated) != lastUpdateValue) {
       let tDelta = timeDelta(component.item.lastUpdated);
       renderOutput.splice(pos, 0, {
         component: (
-          <div
-            className="text-accent-foreground font-bold border-b border-primary/25"
-            key={tDelta}
-          >
+          <div className="text-accent-foreground font-bold border-b border-primary/25" key={tDelta}>
             {tDelta}
           </div>
         ),
@@ -107,9 +120,7 @@ export default function ChatSidebar() {
           {user_sess.data ? (
             <Button variant="ghost" className="grow text-left justify-start items-center p-4 text-md">
               <Avatar>
-                {user_sess.data.user.image ? (
-                  <AvatarImage src={user_sess.data.user.image} />
-                ) : null}
+                {user_sess.data.user.image ? <AvatarImage src={user_sess.data.user.image} /> : null}
                 <AvatarFallback>{user_sess.data.user.name[0]}</AvatarFallback>
               </Avatar>
               <div>{user_sess.data.user.name}</div>
@@ -138,18 +149,12 @@ function BetterTrigger() {
       data-slot="sidebar-trigger"
       variant="ghost"
       size="icon"
-      className={cn(
-        "size-12 fixed top-2 left-2 bg-background border z-10 group",
-      )}
+      className={cn("size-12 fixed top-2 left-2 bg-background border z-10 group")}
       onClick={toggleSidebar}
     >
       <PanelLeftIcon className="transition-opacity duration-200 group-hover:opacity-0" />
       <span className="absolute font-mono transform translate-x-8 opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100">
-        {/Mac/i.test(navigator.userAgent) ? (
-          "⌘+B"
-        ) : (
-          <span className="text-xs">CTRL+B</span>
-        )}
+        {/Mac/i.test(navigator.userAgent) ? "⌘+B" : <span className="text-xs">CTRL+B</span>}
       </span>
       <span className="sr-only">CTRL-B</span>
     </Button>
