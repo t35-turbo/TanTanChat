@@ -2,8 +2,7 @@ import { Hono } from 'hono'
 import { auth } from './lib/auth';
 import { db } from './db';
 import { chats } from './db/schema';
-import { eq } from 'drizzle-orm';
-import { betterAuth } from 'better-auth'
+import { eq, and } from 'drizzle-orm';
 
 const app = new Hono<{
   Variables: {
@@ -60,7 +59,7 @@ app.post("/api/chats/new", async (c) => {
   const session = c.get("session");
   const user = c.get("user");
   const { message } = await c.req.json();
-  
+
   if (!session || !user) {
     return c.json({ error: "Unauthorized" }, 401);
   }
@@ -78,7 +77,36 @@ app.post("/api/chats/new", async (c) => {
 
   await db.insert(chats).values(newChat);
   return c.json({uuid: newChat.id}, 201)
+});
 
+app.delete("/api/chats/:id", async (c) => {
+  const session = c.get("session");
+  const user = c.get("user");
+  const chatId = c.req.param("id");
+
+  if (!session || !user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  if (!chatId) {
+    return c.json({ error: "Chat ID is required" }, 400);
+  }
+
+  // Check if the chat exists and belongs to the user
+  const existingChat = await db.select().from(chats).where(
+    and(eq(chats.id, chatId), eq(chats.userId, user.id))
+  );
+
+  if (existingChat.length === 0) {
+    return c.json({ error: "Chat not found" }, 404);
+  }
+
+  // Delete the chat
+  await db.delete(chats).where(
+    and(eq(chats.id, chatId), eq(chats.userId, user.id))
+  );
+
+  return c.json({ message: "Chat deleted successfully" }, 200);
 });
 
 export default {
