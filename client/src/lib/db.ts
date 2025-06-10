@@ -9,16 +9,17 @@ export const Chat = z.object({
 });
 export const Chats = z.array(Chat);
 export type Chat = z.infer<typeof Chat>;
+export const Message = z.object({
+  id: z.uuidv4(),
+  role: z.enum(["system", "user", "assistant"]),
+  content: z.string(),
+  createdAt: z.coerce.date(),
+});
+export type Message = z.infer<typeof Message>;
 export const IDBChat = z.intersection(
   Chat,
   z.object({
-    messages: z.array(
-      z.object({
-        id: z.uuidv4(),
-        role: z.enum(["user", "assistant"]),
-        content: z.string(),
-      }),
-    ),
+    messages: z.array(Message),
   }),
 );
 export type IDBChat = z.infer<typeof IDBChat>;

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { LogIn, PanelLeftIcon, SearchIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import React from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import fuzzysort from "fuzzysort";
 import { Input } from "./ui/input";
 import { authClient } from "@/lib/auth-client";
@@ -17,6 +17,12 @@ import { queryClient } from "@/routes/__root";
 export default function ChatSidebar() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const user_sess = authClient.useSession();
+
+  const { chatId } = useParams({
+    from: "/chat/$chatId",
+    shouldThrow: false,
+  }) ?? { chatId: undefined };
+  const navigate = useNavigate();
 
   // CHROME PLEASE FINISH TEMPORAL ALREADY
   const chats = useQuery({
@@ -34,6 +40,9 @@ export default function ChatSidebar() {
   const deleteChat = useMutation({
     mutationFn: async (id: string) => {
       // TODO: add a confirmation
+      if (chatId === id) {
+        navigate({ to: "/chat" });
+      }
       await ky.delete(`/api/chats/${id}`);
     },
 
@@ -186,7 +195,7 @@ function renderChatOutput(chats: Chat[], deleteChat: UseMutationResult<void, Err
 
   if (renderOutput.length === 0) {
     renderOutput.push({
-      component: <div>You have no chats.</div>,
+      component: <div key="emptyChats">You have no chats.</div>,
       item: null,
     });
   }

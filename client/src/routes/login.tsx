@@ -49,7 +49,7 @@ function RouteComponent() {
       }}
     >
       <Card className="w-full max-w-sm">
-        <CardHeader className="flex items-center">
+        <CardHeader className="flex flex-col items-center">
           {error ? (
             <Alert variant="error" className="mb-2">
               <AlertTitle>{error}</AlertTitle>

@@ -1,9 +1,4 @@
-import {
-  createFileRoute,
-  Link,
-  useNavigate,
-  useParams,
-} from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
 import ModelSelector from "@/components/ModelSelector";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +9,9 @@ import { authClient } from "@/lib/auth-client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/routes/__root";
 import { z } from "zod/v4-mini";
-import ky from "ky";
+import ky, { HTTPError } from "ky";
+import { db, Message } from "@/lib/db";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
@@ -47,11 +44,7 @@ export function ChatUI() {
     return options[Math.floor(Math.random() * options.length)];
   }, []);
   const loadingFlavorText = React.useMemo(() => {
-    const options = [
-      "imagine not having fiber",
-      "I'M THINKING FASTER THAN YOU, MEATBAG",
-      "good human",
-    ];
+    const options = ["imagine not having fiber", "I'M THINKING FASTER THAN YOU, MEATBAG", "good human"];
     return options[Math.floor(Math.random() * options.length)];
   }, []);
 
@@ -66,26 +59,41 @@ export function ChatUI() {
   const [input, setInput] = React.useState("");
   const messages = useQuery({
     queryKey: ["messages", chatId],
-    queryFn: () => {
+    queryFn: async () => {
       if (chatId) {
         // TODO: get messages
         if (user_sess.data) {
-
+          let messageResponse;
+          try {
+            messageResponse = await ky.get(`/api/chats/${chatId}`);
+          } catch (err: any) {
+            if (err instanceof HTTPError && err.response.status === 404) {
+              toast.error("Chat not found");
+              navigate({ to: "/chat" });
+            } else {
+              throw err;
+            }
+          }
+          if (!messageResponse) {
+            throw new Error("Failed to fetch messages");
+          }
+          let messages = await messageResponse.json();
+          return z.object({ messages: z.array(Message) }).parse(messages).messages;
+        } else {
+          return z.array(Message).parse(await db.chats.get(chatId));
         }
-        return [];
       } else {
         return [];
       }
     },
   });
-  const sentMessage = messages.data && messages.data?.length !== 0;
-  const addMessage = useMutation({
+  const sendMessage = useMutation({
     // mutationKey: ["addMessages", chatId],
     mutationFn: async (message: string) => {
       // TODO: add add message mutation
-      if (sentMessage && chatId) {
-      } else {
-        let chatId = z.object({ uuid: z.uuidv4() }).parse(
+      let id = chatId;
+      if (!chatId) {
+        id = z.object({ uuid: z.uuidv4() }).parse(
           await ky
             .post("/api/chats/new", {
               body: JSON.stringify({ message: message }),
@@ -93,10 +101,10 @@ export function ChatUI() {
             .json(),
         ).uuid;
 
-        navigate({ to: "/chat/$chatId", params: { chatId: chatId } });
+        navigate({ to: "/chat/$chatId", params: { chatId: id } });
       }
 
-      return null;
+      await ky.post(`/api/chats/${id}/new`, { body: JSON.stringify({ message: message }) }).json();
     },
 
     onSettled: () => {
@@ -106,43 +114,46 @@ export function ChatUI() {
   });
 
   function sendQuery() {
-    addMessage.mutate(input);
+    sendMessage.mutate(input);
     setInput("");
   }
 
   return (
-    <div
-      className={`flex flex-col grow items-center w-full h-screen justify-center p-2`}
-    >
-      <motion.div
-        animate={{ height: sentMessage ? "100%" : "auto" }}
-        className="flex flex-col w-full items-center"
-      >
-        <div
-          className={`mb-auto w-full ${sentMessage ? "flex" : "hidden"} flex-col items-end`}
-        >
-          {addMessage.isPending ? (
-            <div className="p-2 bg-background border rounded-lg mb-1">
-              {addMessage.variables}
-            </div>
-          ) : null}
-          {addMessage.isPending ? (
+    <div className={`flex flex-col grow items-center w-full h-screen justify-center p-2`}>
+      <motion.div animate={{ height: chatId ? "100%" : "auto" }} className="flex flex-col w-full items-center">
+        {messages.isSuccess
+          ? messages.data.map((message) => {
+              return (
+                <div className={`w-full flex ${message.role === "user" ? "justify-end" : "justify-start"}`} key={message.content}>
+                  <div className="p-2 bg-background border rounded-lg mb-1">{message.content}</div>
+                </div>
+              );
+            })
+          : null}
+        {sendMessage.isPending ? (
+          <div className={`w-full ${chatId ? "flex" : "hidden"} flex-col items-end`} key={sendMessage.variables}>
+            <div className="p-2 bg-background border rounded-lg mb-1">{sendMessage.variables}</div>
             <LoaderCircle size={14} className="animate-spin" />
-          ) : null}
-        </div>
-        <h1
-          className={`font-bold text-2xl md:text-4xl ${sentMessage ? "opacity-0" : "opacity-100"}`}
-        >
-          CLONE CLONE CLONE
-        </h1>
+          </div>
+        ) : null}
+        <div className="mb-auto"></div>
+        {messages.isPending ? (
+          <div className="flex space-x-2 p-10">
+            <div className="bg-border rounded-full h-4 w-4 motion-safe:animate-bounce"></div>
+            <div className="bg-border rounded-full h-4 w-4 motion-safe:animate-bounce"></div>
+            <div className="bg-border rounded-full h-4 w-4 motion-safe:animate-bounce"></div>
+          </div>
+        ) : null}
+        {messages.isError ? <div>Failed to load message history</div> : null}
+        <h1 className={`font-bold text-2xl md:text-4xl ${chatId ? "opacity-0" : "opacity-100"}`}>CLONE CLONE CLONE</h1>
         <motion.div
-          className={`w-full ${sentMessage ? "" : "md:w-1/2"}`}
+          className={`w-full ${chatId ? "" : "md:w-1/2"}`}
           animate={{
-            width: sentMessage ? "100%" : undefined,
+            width: chatId ? "100%" : undefined,
           }}
         >
           <Textarea
-            placeholder={sentMessage ? loadingFlavorText : blankFlavorText}
+            placeholder={chatId ? loadingFlavorText : blankFlavorText}
             onKeyDown={(evt) => {
               if (evt.code === "Enter" && !evt.shiftKey) {
                 evt.preventDefault();

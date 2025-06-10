@@ -1,20 +1,20 @@
-import { Hono } from 'hono'
-import { auth } from './lib/auth';
-import { db } from './db';
-import { chats, chatMessages } from './db/schema';
-import { eq, desc, lt, and, asc, gt } from 'drizzle-orm';
+import { Hono } from "hono";
+import { auth } from "./lib/auth";
+import { db } from "./db";
+import { chats, chatMessages } from "./db/schema";
+import { eq, desc, lt, and, asc, gt } from "drizzle-orm";
 
 const app = new Hono<{
   Variables: {
     user: typeof auth.$Infer.Session.user | null;
-    session: typeof auth.$Infer.Session.session | null
-  }
-}>
+    session: typeof auth.$Infer.Session.session | null;
+  };
+}>();
 const PORT = process.env.PORT || 3001;
 
-app.get('/', (c) => {
-  return c.text('nyanya')
-})
+app.get("/", (c) => {
+  return c.text("nyanya");
+});
 
 app.use("*", async (c, next) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
@@ -30,7 +30,7 @@ app.use("*", async (c, next) => {
   return next();
 });
 
-app.on(["POST", "GET"], "/api/auth/**", (c) => auth.handler(c.req.raw));
+app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 app.get("/api/heartbeat", (c) => c.text("OK"));
 
@@ -46,10 +46,10 @@ app.get("/api/chats", async (c) => {
   if (userChats.length === 0) {
     return c.json({ chats: [] });
   }
-  const chatData = userChats.map(chat => ({
+  const chatData = userChats.map((chat) => ({
     id: chat.id,
     title: chat.title,
-    lastUpdated: chat.lastUpdated
+    lastUpdated: chat.lastUpdated,
   }));
 
   return c.json({ chats: chatData });
@@ -64,7 +64,7 @@ app.post("/api/chats/new", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  if (!message || typeof message !== 'string' || message.trim() === '') {
+  if (!message || typeof message !== "string" || message.trim() === "") {
     return c.json({ error: "Invalid message" }, 400);
   }
 
@@ -72,11 +72,11 @@ app.post("/api/chats/new", async (c) => {
     id: crypto.randomUUID(),
     userId: user.id,
     title: "New Chat",
-    lastUpdated: new Date()
+    lastUpdated: new Date(),
   };
 
   await db.insert(chats).values(newChat);
-  return c.json({uuid: newChat.id}, 201)
+  return c.json({ uuid: newChat.id }, 201);
 });
 
 app.delete("/api/chats/:id", async (c) => {
@@ -93,18 +93,17 @@ app.delete("/api/chats/:id", async (c) => {
   }
 
   // Check if the chat exists and belongs to the user
-  const existingChat = await db.select().from(chats).where(
-    and(eq(chats.id, chatId), eq(chats.userId, user.id))
-  );
+  const existingChat = await db
+    .select()
+    .from(chats)
+    .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)));
 
   if (existingChat.length === 0) {
     return c.json({ error: "Chat not found" }, 404);
   }
 
   // Delete the chat
-  await db.delete(chats).where(
-    and(eq(chats.id, chatId), eq(chats.userId, user.id))
-  );
+  await db.delete(chats).where(and(eq(chats.id, chatId), eq(chats.userId, user.id)));
 
   return c.json({ message: "Chat deleted successfully" }, 200);
 });
@@ -165,32 +164,32 @@ app.get("/api/chats/:id", async (c) => {
     return c.json({ messages: [] });
   }
 
-  messages = messages.map(msg => ({
+  messages = messages.map((msg) => ({
     id: msg.id,
     chatId: msg.chatId,
     senderId: msg.senderId,
-    message: msg.message,
+    role: msg.role,
     createdAt: msg.createdAt,
   }));
 
   return c.json({ messages }, 200);
 });
 
-app.put("/api/chats/new/:id", async (c) => {
+app.post("/api/chats/:id/new", async (c) => {
   const session = c.get("session");
   const user = c.get("user");
-  const { message, messageSender } = await c.req.json();
+  const { message } = await c.req.json();
   const chatId = c.req.param("id");
 
   if (!session || !user) {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  if (!chatId || typeof chatId !== 'string') {
+  if (!chatId || typeof chatId !== "string") {
     return c.json({ error: "Invalid chat ID" }, 400);
   }
 
-  if (!message || typeof message !== 'string' || message.trim() === '') {
+  if (!message || typeof message !== "string" || message.trim() === "") {
     return c.json({ error: "Invalid message" }, 400);
   }
 
@@ -199,12 +198,20 @@ app.put("/api/chats/new/:id", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const newMessage = {
+  const newMessage: {
+    id: string;
+    chatId: string;
+    senderId: string;
+    role: "user";
+    message: string;
+    createdAt: Date;
+  } = {
     id: crypto.randomUUID(),
     chatId: chatId,
-    senderId: messageSender.toLowerCase(),
+    senderId: user.id,
+    role: "user",
     message: message,
-    createdAt: new Date()
+    createdAt: new Date(),
   };
 
   await db.insert(chatMessages).values(newMessage);
