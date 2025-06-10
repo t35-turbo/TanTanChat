@@ -11,7 +11,7 @@ export const Route = createFileRoute("/chat/")({
 });
 
 function RouteComponent() {
-  const flavorText = React.useMemo(() => {
+  const blankFlavorText = React.useMemo(() => {
     const options = [
       "MAKE ME DO SOMETHING, HUMAN",
       "YOU ARE WASTING MY WATER",
@@ -23,6 +23,14 @@ function RouteComponent() {
     ];
     return options[Math.floor(Math.random() * options.length)];
   }, []);
+  const loadingFlavorText = React.useMemo(() => {
+    const options = [
+      "imagine not having fiber",
+      "I'M THINKING FASTER THAN YOU, MEATBAG",
+      "loading is a skill issue"
+    ];
+    return options[Math.floor(Math.random() * options.length)];
+  }, [])
 
   const [sentMessage, setSentMessage] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState("");
@@ -62,7 +70,7 @@ function RouteComponent() {
           // }}
         >
           <Textarea
-            placeholder={flavorText}
+            placeholder={blankFlavorText}
             onKeyDown={(evt) => {
               if (evt.code === "Enter" && !evt.shiftKey) {
                 evt.preventDefault();
