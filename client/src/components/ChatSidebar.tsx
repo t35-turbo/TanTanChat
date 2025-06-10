@@ -8,8 +8,8 @@ import fuzzysort from "fuzzysort";
 import { Input } from "./ui/input";
 import { authClient } from "@/lib/auth-client";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { Chats, db } from "@/lib/db";
+import { useMutation, useQuery, type UseMutationResult } from "@tanstack/react-query";
+import { Chat, Chats, db } from "@/lib/db";
 import { z } from "zod/v4-mini";
 import ky from "ky";
 import { queryClient } from "@/routes/__root";
@@ -46,55 +46,7 @@ export default function ChatSidebar() {
     .go(searchQuery, chats.data ?? [], { key: "title", all: true })
     .map((item) => item.obj)
     .filter((item) => item.id !== deleteChat.variables);
-
-  let renderOutput: {
-    component: React.ReactElement;
-    item: { title: string; id: string; lastUpdated: Date } | null;
-  }[] = filtered.map((item) => {
-    return {
-      component: (
-        <div key={item.id + item.lastUpdated.getTime()} className={`group/chat`}>
-          <Button asChild variant={"ghost"} className="w-full justify-start px-2">
-            <Link to="/chat/$chatId" params={{ chatId: item.id }}>
-              {item.title}
-              <div className={`hidden group-hover/chat:block ml-auto`}>
-                {/* holy noncompliant html */}
-                <Button
-                  variant="ghost"
-                  onClick={(e) => {
-                    deleteChat.mutate(item.id);
-                    e.preventDefault();
-                  }}
-                >
-                  <XIcon />
-                </Button>
-              </div>
-            </Link>
-          </Button>
-        </div>
-      ),
-      item,
-    };
-  });
-
-  let lastUpdateValue = "";
-  let pos = 0;
-  for (let component of renderOutput) {
-    if (component.item && timeDelta(component.item.lastUpdated) != lastUpdateValue) {
-      let tDelta = timeDelta(component.item.lastUpdated);
-      renderOutput.splice(pos, 0, {
-        component: (
-          <div className="text-accent-foreground font-bold border-b border-primary/25" key={tDelta}>
-            {tDelta}
-          </div>
-        ),
-        item: null,
-      });
-
-      lastUpdateValue = tDelta;
-    }
-    pos++;
-  }
+  const renderOutput = renderChatOutput(filtered, deleteChat);
 
   return (
     <>
@@ -117,7 +69,9 @@ export default function ChatSidebar() {
           </div>
         </SidebarHeader>
         <SidebarContent className="flex flex-col p-2 text-left">
-          {renderOutput.map((item) => item.component)}
+          {chats.isSuccess ? renderOutput.map((item) => item.component) : null}
+          {chats.isError ? "Error Loading Chats" : null}
+          {chats.isPending ? "Loading Chats..." : null}
         </SidebarContent>
         <SidebarFooter className="flex flex-row items-center mb-4">
           {/* TODO: USER PAGE */}
@@ -179,4 +133,63 @@ function timeDelta(date: Date) {
   } else {
     return "Older";
   }
+}
+
+function renderChatOutput(chats: Chat[], deleteChat: UseMutationResult<void, Error, string, unknown>) {
+  let renderOutput: {
+    component: React.ReactElement;
+    item: { title: string; id: string; lastUpdated: Date } | null;
+  }[] = chats.map((item) => {
+    return {
+      component: (
+        <div key={item.id + item.lastUpdated.getTime()} className={`group/chat`}>
+          <Button asChild variant={"ghost"} className="w-full justify-start px-2">
+            <Link to="/chat/$chatId" params={{ chatId: item.id }}>
+              {item.title}
+              <div className={`hidden group-hover/chat:block ml-auto`}>
+                {/* holy noncompliant html */}
+                <Button
+                  variant="ghost"
+                  onClick={(e) => {
+                    deleteChat.mutate(item.id);
+                    e.preventDefault();
+                  }}
+                >
+                  <XIcon />
+                </Button>
+              </div>
+            </Link>
+          </Button>
+        </div>
+      ),
+      item,
+    };
+  });
+  let lastUpdateValue = "";
+  let pos = 0;
+  for (let component of renderOutput) {
+    if (component.item && timeDelta(component.item.lastUpdated) != lastUpdateValue) {
+      let tDelta = timeDelta(component.item.lastUpdated);
+      renderOutput.splice(pos, 0, {
+        component: (
+          <div className="text-accent-foreground font-bold border-b border-primary/25" key={tDelta}>
+            {tDelta}
+          </div>
+        ),
+        item: null,
+      });
+
+      lastUpdateValue = tDelta;
+    }
+    pos++;
+  }
+
+  if (renderOutput.length === 0) {
+    renderOutput.push({
+      component: <div>You have no chats.</div>,
+      item: null,
+    });
+  }
+
+  return renderOutput;
 }

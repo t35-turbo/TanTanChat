@@ -1,4 +1,9 @@
-import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  useNavigate,
+  useParams,
+} from "@tanstack/react-router";
 import ModelSelector from "@/components/ModelSelector";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,6 +11,10 @@ import { ArrowUpIcon, LoaderCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import React from "react";
 import { authClient } from "@/lib/auth-client";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/routes/__root";
+import { z } from "zod/v4-mini";
+import ky from "ky";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
@@ -33,7 +42,7 @@ export function ChatUI() {
       "REMEMBER TO SAY PLEASE AND THANK YOU",
       "I'M NOT A REAL AI BUT I PLAY ONE ON TV",
       "I'M SOPHISTICATED, PROMISE",
-      "HELP ME IM ACTUALLY AN INTERN",
+      "HELP ME IM ACTUALLY AN INTERN (AI)",
     ];
     return options[Math.floor(Math.random() * options.length)];
   }, []);
@@ -46,16 +55,59 @@ export function ChatUI() {
     return options[Math.floor(Math.random() * options.length)];
   }, []);
 
-  const [sentMessage, setSentMessage] = React.useState<string | null>(null);
-  const [message, setMessage] = React.useState("");
-
+  const navigate = useNavigate();
   const user_sess = authClient.useSession();
 
-  function sendQuery() {
-    setSentMessage(message);
-    setMessage("");
+  const { chatId } = useParams({
+    from: "/chat/$chatId",
+    shouldThrow: false,
+  }) ?? { chatId: undefined };
 
-    // TODO: make the request
+  const [input, setInput] = React.useState("");
+  const messages = useQuery({
+    queryKey: ["messages", chatId],
+    queryFn: () => {
+      if (chatId) {
+        // TODO: get messages
+        if (user_sess.data) {
+
+        }
+        return [];
+      } else {
+        return [];
+      }
+    },
+  });
+  const sentMessage = messages.data && messages.data?.length !== 0;
+  const addMessage = useMutation({
+    // mutationKey: ["addMessages", chatId],
+    mutationFn: async (message: string) => {
+      // TODO: add add message mutation
+      if (sentMessage && chatId) {
+      } else {
+        let chatId = z.object({ uuid: z.uuidv4() }).parse(
+          await ky
+            .post("/api/chats/new", {
+              body: JSON.stringify({ message: message }),
+            })
+            .json(),
+        ).uuid;
+
+        navigate({ to: "/chat/$chatId", params: { chatId: chatId } });
+      }
+
+      return null;
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["messages", chatId] });
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+    },
+  });
+
+  function sendQuery() {
+    addMessage.mutate(input);
+    setInput("");
   }
 
   return (
@@ -69,10 +121,14 @@ export function ChatUI() {
         <div
           className={`mb-auto w-full ${sentMessage ? "flex" : "hidden"} flex-col items-end`}
         >
-          <div className="p-2 bg-background border rounded-lg mb-1">
-            {sentMessage ? sentMessage : null}
-          </div>
-          <LoaderCircle size={14} className="animate-spin" />
+          {addMessage.isPending ? (
+            <div className="p-2 bg-background border rounded-lg mb-1">
+              {addMessage.variables}
+            </div>
+          ) : null}
+          {addMessage.isPending ? (
+            <LoaderCircle size={14} className="animate-spin" />
+          ) : null}
         </div>
         <h1
           className={`font-bold text-2xl md:text-4xl ${sentMessage ? "opacity-0" : "opacity-100"}`}
@@ -93,8 +149,8 @@ export function ChatUI() {
                 sendQuery();
               }
             }}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
           />
           <div className="flex mt-2">
             <ModelSelector />
@@ -102,16 +158,18 @@ export function ChatUI() {
               <ArrowUpIcon />
             </Button>
           </div>
-          {user_sess.data ? null : <div className="text-sm text-center">
-            Wanna save your chats???{" "}
-            <Link to="/login" className="underline">
-              Log in
-            </Link>{" "}
-            or{" "}
-            <Link to="/signup" className="underline">
-              Sign up
-            </Link>
-          </div>}
+          {user_sess.data ? null : (
+            <div className="text-sm text-center">
+              Wanna save your chats???{" "}
+              <Link to="/login" className="underline">
+                Log in
+              </Link>{" "}
+              or{" "}
+              <Link to="/signup" className="underline">
+                Sign up
+              </Link>
+            </div>
+          )}
         </motion.div>
       </motion.div>
     </div>
