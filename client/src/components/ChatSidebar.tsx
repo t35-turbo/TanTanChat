@@ -59,7 +59,7 @@ export default function ChatSidebar() {
     <>
       <Sidebar className="select-none">
         <SidebarHeader className="flex items-center content-center mt-2">
-          <h1 className="text-2xl font-bold h-12">T3Clone</h1>
+          <h1 className="text-2xl font-bold h-12 font-comic flex items-center"><div>Tan</div><span className="inline-block rotate-180 self-end">T</span><div>an</div></h1>
           <Button variant={"default"} className="w-full cursor-pointer" asChild>
             <Link to="/chat">New Chat</Link>
           </Button>
