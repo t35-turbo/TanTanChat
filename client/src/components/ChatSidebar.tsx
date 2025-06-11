@@ -52,7 +52,7 @@ export default function ChatSidebar() {
   const filtered = fuzzysort
     .go(searchQuery, chats.data ?? [], { key: "title", all: true })
     .map((item) => item.obj)
-    .filter((item) => item.id !== deleteChat.variables);
+    .filter((item) => item.id !== deleteChat.variables).sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
   const renderOutput = renderChatOutput(filtered, deleteChat);
 
   return (

@@ -5,8 +5,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowUpIcon, LoaderCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import React from "react";
+import { asyncSSE } from "asyncsse";
 import { authClient } from "@/lib/auth-client";
-import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
+import {
+  experimental_streamedQuery,
+  queryOptions,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+} from "@tanstack/react-query";
 import { queryClient } from "@/routes/__root";
 import { z } from "zod/v4-mini";
 import ky, { HTTPError } from "ky";
@@ -47,6 +54,8 @@ export function ChatUI() {
     from: "/chat/$chatId",
     shouldThrow: false,
   }) ?? { chatId: undefined };
+
+  const [activeMessage, setActiveMessage] = React.useState("");
 
   const [input, setInput] = React.useState("");
   // TODO: implement scroll
@@ -101,6 +110,10 @@ export function ChatUI() {
               .post("/api/chats/new", {
                 body: JSON.stringify({
                   message: message,
+                  opts: {
+                    apiKey: or_key,
+                    model: "openai/gpt-4.1-nano",
+                  },
                 }),
               })
               .json(),
@@ -118,18 +131,22 @@ export function ChatUI() {
         queryClient.invalidateQueries({ queryKey: ["chats"] });
       }
 
-      await ky
-        .post(`/api/chats/${id}/new`, {
-          body: JSON.stringify({
-            message: message,
-            opts: {
-              apiKey: or_key,
-              model: "openai/gpt-4.1-nano",
-              system_prompt: "You are an AI Assistant named GPT 4.1.",
-            },
-          }),
-        })
-        .json();
+      let res = z.object({ msgId: z.string() }).parse(
+        await ky
+          .post(`/api/chats/${id}/new`, {
+            body: JSON.stringify({
+              message: message,
+              opts: {
+                apiKey: or_key,
+                model: "openai/gpt-4.1-nano",
+                system_prompt: "You are an AI Assistant named GPT 4.1.",
+              },
+            }),
+          })
+          .json(),
+      ).msgId;
+      setActiveMessage(res);
+
       await queryClient.invalidateQueries({ queryKey: ["messages"] });
 
       if (!chatId && id) {
@@ -138,6 +155,53 @@ export function ChatUI() {
     },
   });
 
+  const queryActiveMessage = useQuery(
+    queryOptions({
+      queryKey: ["activeMessage", activeMessage],
+      queryFn: experimental_streamedQuery({
+        queryFn: async function* () {
+          if (!activeMessage) return;
+
+          yield "";
+
+          for await (const { data, error } of asyncSSE(`/api/msg/${activeMessage}`)) {
+            if (error) throw new Error(error);
+
+            yield data + " ";
+          }
+
+          await queryClient.invalidateQueries({ queryKey: ["messages"] });
+          setActiveMessage("");
+        },
+      }),
+      enabled: activeMessage !== "",
+    }),
+  );
+
+  // websocketless event notifier
+  React.useEffect(() => {
+    let es: EventSource | null = null;
+    if (chatId) {
+      es = new EventSource(`/api/chats/${chatId}/events`);
+
+      es.addEventListener("invalidate", (evt) => {
+        console.log(evt.data);
+        queryClient.invalidateQueries({queryKey: [evt.data]})
+      });
+
+      es.addEventListener("activeMessage", evt => {
+        console.log(evt.data)
+        setActiveMessage(evt.data);
+      })
+    }
+
+    return () => {
+      if (es) {
+        es.close();
+      }
+    };
+  }, [chatId]);
+
   function sendQuery() {
     sendMessage.mutate(input);
     setInput("");
@@ -145,13 +209,23 @@ export function ChatUI() {
 
   let messages = messagePages.data ? messagePages.data.pages.flatMap((page) => page.messages) : [];
   if (sendMessage.isPending) {
-    console.log("pend");
     messages.push({
       id: "pending",
       role: "user",
       senderId: "pending",
       chatId: chatId || "",
       message: sendMessage.variables,
+      createdAt: new Date(),
+    });
+  }
+
+  if (queryActiveMessage.data) {
+    messages.push({
+      id: "assistant_pending",
+      role: "assistant",
+      senderId: "assistant_pending",
+      chatId: chatId || "",
+      message: queryActiveMessage.data.reduce((prev, cur) => prev + cur, ""),
       createdAt: new Date(),
     });
   }
@@ -174,8 +248,11 @@ export function ChatUI() {
             </div>
           );
         })}
-        {sendMessage.isPending ? (
-          <div className={`w-full ${chatId ? "flex" : "hidden"} flex-col items-end`} key={sendMessage.variables}>
+        {sendMessage.isPending || activeMessage ? (
+          <div
+            className={`w-full ${chatId ? "flex" : "hidden"} flex-col ${sendMessage.isPending ? "items-end" : "items-start"}`}
+            key={sendMessage.variables}
+          >
             <LoaderCircle size={14} className="animate-spin" />
           </div>
         ) : null}

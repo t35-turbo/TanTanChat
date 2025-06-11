@@ -1,10 +1,15 @@
 import { Hono } from "hono";
-import { stream, streamSSE } from "hono/streaming";
+import { streamSSE } from "hono/streaming";
 import { auth } from "./lib/auth";
 import { db } from "./db";
 import { chats, chatMessages } from "./db/schema";
-import { eq, desc, lt, and, asc, gt } from "drizzle-orm";
+import { eq, desc, and, asc } from "drizzle-orm";
 import * as sync from "./sync";
+import z from "zod";
+import { createBunWebSocket } from "hono/bun";
+import type { ServerWebSocket } from "bun";
+
+const PORT = process.env.PORT || 3001;
 
 const app = new Hono<{
   Variables: {
@@ -12,7 +17,6 @@ const app = new Hono<{
     session: typeof auth.$Infer.Session.session | null;
   };
 }>();
-const PORT = process.env.PORT || 3001;
 
 app.get("/", (c) => {
   return c.text("nyanya");
@@ -57,18 +61,26 @@ app.get("/api/chats", async (c) => {
   return c.json({ chats: chatData });
 });
 
+const NewChatBody = z.object({
+  message: z.string(),
+  opts: z.object({
+    apiKey: z.string(),
+    model: z.string(),
+  }),
+});
 app.post("/api/chats/new", async (c) => {
   const session = c.get("session");
   const user = c.get("user");
-  const { message } = await c.req.json();
+  const body = await NewChatBody.safeParseAsync(await c.req.json());
 
+  // TODO: allow unauth
   if (!session || !user) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-
-  if (!message || typeof message !== "string" || message.trim() === "") {
+  if (body.error) {
     return c.json({ error: "Invalid message" }, 400);
   }
+  const { message, opts } = body.data;
 
   const newChat = {
     id: crypto.randomUUID(),
@@ -76,6 +88,8 @@ app.post("/api/chats/new", async (c) => {
     title: "New Chat",
     lastUpdated: new Date(),
   };
+
+  sync.titleGenerator(newChat.id, message, opts);
 
   await db.insert(chats).values(newChat);
   return c.json({ uuid: newChat.id }, 201);
@@ -128,9 +142,14 @@ app.get("/api/chats/:id", async (c) => {
     return c.json({ error: "Invalid chat ID" }, 400);
   }
 
-  const chat = (await db.select().from(chats).where(eq(chats.id, chatId)))?.[0];
-  if (!chat || chat.userId !== user.id) {
-    return c.json({ error: "Unauthorized" }, 401);
+  const chat = (
+    await db
+      .select()
+      .from(chats)
+      .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)))
+  )?.[0];
+  if (!chat) {
+    return c.json({ error: "Not Found" }, 404);
   }
 
   if (isNaN(cursor)) {
@@ -149,10 +168,6 @@ app.get("/api/chats/:id", async (c) => {
     .offset(offsetValue)
     .limit(limitValue);
 
-  if (!messages.length) {
-    return c.json({ messages: [] });
-  }
-
   messages = messages.map((msg) => ({
     id: msg.id,
     chatId: msg.chatId,
@@ -162,7 +177,84 @@ app.get("/api/chats/:id", async (c) => {
     createdAt: msg.createdAt,
   }));
 
-  return c.json({ messages, cursor }, 200);
+  return c.json({ messages, cursor: cursor }, 200);
+});
+
+app.get("/api/chats/:id/events", async (c) => {
+  const session = c.get("session");
+  const user = c.get("user");
+  const chatId = c.req.param("id");
+
+  if (!session || !user) {
+    // unauth mode
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  if (!chatId) {
+    return c.json({ error: "Invalid chat ID" }, 400);
+  }
+
+  const chat = (
+    await db
+      .select()
+      .from(chats)
+      .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)))
+  )?.[0];
+  if (!chat) {
+    return c.json({ error: "Not Found" }, 404);
+  }
+
+  return streamSSE(c, async (stream) => {
+    // Send a blank message every second
+    const heartbeatInterval = setInterval(() => {
+      stream.writeSSE({
+        data: "",
+        event: "heartbeat",
+      });
+    }, 2500);
+
+    try {
+      for await (const operation of sync.createChatEventSubscriber(chatId)) {
+        let split = (operation + "").indexOf(" ");
+        let [event, data] = [operation.slice(0, split), operation.slice(split + 1)];
+        if (operation) {
+          stream.writeSSE({
+            data,
+            event,
+          });
+        }
+      }
+    } finally {
+      clearInterval(heartbeatInterval);
+    }
+  });
+});
+
+app.get("/api/chats/:id/activeMessage", async (c) => {
+  const session = c.get("session");
+  const user = c.get("user");
+  const chatId = c.req.param("id");
+
+  if (!session || !user) {
+    // unauth mode
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  if (!chatId) {
+    return c.json({ error: "Invalid chat ID" }, 400);
+  }
+
+  const chat = (
+    await db
+      .select()
+      .from(chats)
+      .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)))
+  )?.[0];
+  if (!chat) {
+    return c.json({ error: "Not Found" }, 404);
+  }
+
+  return c.json({ id: (await sync.getActiveMessage(chatId)) ?? "" });
 });
 
 app.post("/api/chats/:id/new", async (c) => {
@@ -178,11 +270,20 @@ app.post("/api/chats/:id/new", async (c) => {
     return c.json({ error: "Invalid chat ID" }, 400);
   }
   if (!message || message.trim() === "") {
-    return c.json({ error: "Invalid message" }, 400);
+    return c.json({ error: "Invalid message", message: message }, 400);
   }
-  const chat = (await db.select().from(chats).where(and(eq(chats.id, chatId), eq(chats.userId, user.id))))?.[0];
+  const chat = (
+    await db
+      .select()
+      .from(chats)
+      .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)))
+  )?.[0];
   if (!chat) {
     return c.json({ error: "Not Found" }, 404);
+  }
+
+  if (await sync.getActiveMessage(chatId)) {
+    return c.json({ error: "Chat is Busy" }, 409);
   }
 
   const newMessage: {
@@ -203,14 +304,15 @@ app.post("/api/chats/:id/new", async (c) => {
 
   await db.insert(chatMessages).values(newMessage);
   let messages: sync.Messages = await db.select().from(chatMessages).where(eq(chatMessages.chatId, chatId));
+  sync.broadcastNewMessage(chatId);
 
   return c.json({ msgId: await sync.newMessage(chatId, user.id, messages, opts) }, 201);
 });
 
-app.get("/api/chats/:id/recvstream", async (c) => {
+app.get("/api/msg/:id", async (c) => {
   const session = c.get("session");
   const user = c.get("user");
-  console.log("route is working up tot his point");
+  const msgId = c.req.param("id");
 
   if (!session || !user) {
     return c.json({ error: "Unauthorized, you must log in to use this feature" }, 401);
@@ -222,21 +324,18 @@ app.get("/api/chats/:id/recvstream", async (c) => {
   }
 
   return streamSSE(c, async (stream) => {
-    const msgStream = await sync.subscribe(chatId);
-    for (let sub = await msgStream.next(); sub/* TODO: check for actual stop here */; sub = await msgStream.next()) {
-      console.log("Sending message to client...");
-      let chunkId = 0
+    const msgStream = await sync.msgSubscribe(msgId);
+    let finish = false;
+    for (let sub = await msgStream.next(); !finish; sub = await msgStream.next()) {
+      let chunkId = 0;
       const message = sub;
-      console.log(message)
       await stream.writeSSE({
         id: String(chunkId++),
-        data: message,
-        event: "newMessage",
-      },
-      );
-      await stream.sleep(1000); // Test delay
+        data: message.reduce((prev, cur) => prev + cur.content, ""),
+        event: "message",
+      });
+      finish = sub.reduce((prev, cur) => prev || cur.finish_reason !== "", false);
     }
-
   });
 });
 
