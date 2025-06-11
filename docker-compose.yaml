@@ -20,7 +20,7 @@ services:
       retries: 3
 
   redis:
-    image: redis:7-alpine
+    image: valkey/valkey:7-alpine
     container_name: redis_cache
     restart: unless-stopped
     environment:

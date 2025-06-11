@@ -4,18 +4,21 @@
     "dev": "bun run --hot src/index.ts"
   },
   "dependencies": {
-    "better-auth": "^1.2.8",
+    "better-auth": "^1.2.9",
     "dotenv": "^16.5.0",
     "drizzle-orm": "^0.44.2",
     "hono": "^4.7.11",
     "openai": "^5.3.0",
-    "pg": "^8.16.0"
+    "pg": "^8.16.0",
+    "redis": "^5.5.6",
+    "zod": "^3.25.58"
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "@types/node": "^24.0.0",
     "@types/pg": "^8.15.4",
     "drizzle-kit": "^0.31.1",
-    "tsx": "^4.19.4"
+    "tsx": "^4.20.0"
   },
   "packageManager": "pnpm@10.11.0+sha512.6540583f41cc5f628eb3d9773ecee802f4f9ef9923cc45b69890fb47991d4b092964694ec3a4f738a420c918a333062c8b925d312f42e4f0c263eb603551f977"
 }

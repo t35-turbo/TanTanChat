@@ -12,22 +12,12 @@ import { z } from "zod/v4-mini";
 import ky, { HTTPError } from "ky";
 import { db, Message } from "@/lib/db";
 import { toast } from "sonner";
+import { useORKey } from "@/hooks/use-or-key";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
   // TODO: Add the loader
 });
-
-// function RouteComponent() {
-//   const { chatId } = useParams({ from: "/chat/$chatId" });
-
-//   return (
-//     <div>
-//       <h3>Chat Room: {chatId}</h3>
-//       <p>You are now in chat "{chatId}"</p>
-//     </div>
-//   );
-// }
 
 // TODO: when the new chat is created, the input ui loses focus
 // pure scuff
@@ -51,6 +41,7 @@ export function ChatUI() {
 
   const navigate = useNavigate();
   const user_sess = authClient.useSession();
+  const or_key = useORKey((state) => state.key);
 
   const { chatId } = useParams({
     from: "/chat/$chatId",
@@ -108,11 +99,12 @@ export function ChatUI() {
           id = z.object({ uuid: z.uuidv4() }).parse(
             await ky
               .post("/api/chats/new", {
-                body: JSON.stringify({ message: message }),
+                body: JSON.stringify({
+                  message: message,
+                }),
               })
               .json(),
           ).uuid;
-
         } else {
           id = crypto.randomUUID();
           await db.chats.add({
@@ -126,7 +118,18 @@ export function ChatUI() {
         queryClient.invalidateQueries({ queryKey: ["chats"] });
       }
 
-      await ky.post(`/api/chats/${id}/new`, { body: JSON.stringify({ message: message }) }).json();
+      await ky
+        .post(`/api/chats/${id}/new`, {
+          body: JSON.stringify({
+            message: message,
+            opts: {
+              apiKey: or_key,
+              model: "openai/gpt-4.1-nano",
+              system_prompt: "You are an AI Assistant named GPT 4.1.",
+            },
+          }),
+        })
+        .json();
       await queryClient.invalidateQueries({ queryKey: ["messages"] });
 
       if (!chatId && id) {

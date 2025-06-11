@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { stream, streamSSE } from "hono/streaming";
 import { auth } from "./lib/auth";
 import { db } from "./db";
 import { chats, chatMessages } from "./db/schema";
@@ -167,7 +168,7 @@ app.get("/api/chats/:id", async (c) => {
 app.post("/api/chats/:id/new", async (c) => {
   const session = c.get("session");
   const user = c.get("user");
-  const { message } = await c.req.json();
+  const { message, opts } = await c.req.json();
   const chatId = c.req.param("id");
 
   if (!session || !user) {
@@ -203,7 +204,40 @@ app.post("/api/chats/:id/new", async (c) => {
   await db.insert(chatMessages).values(newMessage);
   let messages: sync.Messages = await db.select().from(chatMessages).where(eq(chatMessages.chatId, chatId));
 
-  return c.json({ msgId: await sync.newMessage(messages) }, 201);
+  return c.json({ msgId: await sync.newMessage(chatId, user.id, messages, opts) }, 201);
+});
+
+app.get("/api/chats/:id/recvstream", async (c) => {
+  const session = c.get("session");
+  const user = c.get("user");
+  console.log("route is working up tot his point");
+
+  if (!session || !user) {
+    return c.json({ error: "Unauthorized, you must log in to use this feature" }, 401);
+  }
+
+  const chatId = c.req.param("id");
+  if (!chatId || typeof chatId !== "string") {
+    return c.json({ error: "Invalid chat ID" }, 400);
+  }
+
+  return streamSSE(c, async (stream) => {
+    const msgStream = await sync.subscribe(chatId);
+    for (let sub = await msgStream.next(); sub/* TODO: check for actual stop here */; sub = await msgStream.next()) {
+      console.log("Sending message to client...");
+      let chunkId = 0
+      const message = sub;
+      console.log(message)
+      await stream.writeSSE({
+        id: String(chunkId++),
+        data: message,
+        event: "newMessage",
+      },
+      );
+      await stream.sleep(1000); // Test delay
+    }
+
+  });
 });
 
 export default {
