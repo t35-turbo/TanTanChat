@@ -259,6 +259,7 @@ export function ChatUI() {
       senderId: "assistant_pending",
       chatId: chatId || "",
       message: activeMessage.reduce((prev, cur) => prev + cur.content, ""),
+      reasoning: activeMessage.reduce((prev, cur) => prev + cur.reasoning, ""),
       finish_reason: activeMessage.reduce((prev: string | null, cur) => (prev ? prev : cur.finish_reason), null),
       createdAt: new Date(),
     });
@@ -275,7 +276,7 @@ export function ChatUI() {
         {messages.map((message) => {
           return (
             <div
-              className={`w-full flex flex-col ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              className={`w-full flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
               key={message.id}
             >
               <div className="p-2 bg-background border rounded-lg mb-1 max-w-1/2 prose">
