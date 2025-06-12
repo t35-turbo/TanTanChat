@@ -11,6 +11,9 @@ import type { ServerWebSocket } from "bun";
 
 const PORT = process.env.PORT || 3001;
 
+const { upgradeWebSocket, websocket } =
+  createBunWebSocket<ServerWebSocket>()
+
 const app = new Hono<{
   Variables: {
     user: typeof auth.$Infer.Session.user | null;
@@ -339,7 +342,85 @@ app.get("/api/msg/:id", async (c) => {
   });
 });
 
+app.get("/api/chats/:id/ws", 
+  upgradeWebSocket((c) => {
+    const session = c.get("session");
+    const user = c.get("user");
+    const chatId = c.req.param("id");
+
+
+    // If session or user is not available, throw an error for now. TODO: use proper middleware  (e.g. the route you see intercepting requests bound to *)
+    if (!session || !user) {
+      throw new Error("Unauthorized, you must log in to use this feature");
+    }
+    if (!chatId || typeof chatId !== "string") {
+      throw new Error("Invalid chat ID");
+    }
+
+    return {
+      onMessage(event, ws) {
+        // When a message from the client is received, start the event subscription.
+        // WebSocket is bidirectional so you can also handle client messages here.
+        (async () => {
+          // Send a heartbeat every 2500 ms (as in the events route)
+          const heartbeatInterval = setInterval(() => {
+            ws.send(JSON.stringify({
+              event: "heartbeat",
+              data: "",
+            }));
+          }, 2500);
+
+          console.log("WebSocket connection established for chat:", chatId);
+
+          try {
+            // Subscribe to chat events via sync.createChatEventSubscriber
+            for await (const operation of sync.createChatEventSubscriber(chatId)) {
+              // Split the operation into event and data, similar to the SSE logic.
+              const splitIndex = operation.indexOf(" ");
+              const eventName = operation.slice(0, splitIndex);
+              const data = operation.slice(splitIndex + 1);
+              // console.log(`WebSocket event: ${eventName}, data: ${data}`);
+              if (operation) {
+                ws.send(JSON.stringify({
+                  event: eventName,
+                  data: data,
+                }));
+              }
+              console.log(`Received event: ${eventName} with data: ${data}`);
+              if (eventName === "activeMessage") {
+                // If the event is activeMessage, send the message stream like in the /msg/:id route
+                const msgStream = await sync.msgSubscribe(data);
+                let finish = false;
+                let chunkId = 0;
+                for (let sub = await msgStream.next(); !finish; sub = await msgStream.next()) {
+                  const message = sub;
+                  ws.send(JSON.stringify({
+                    id: String(chunkId++),
+                    data: message.reduce((prev, cur) => prev + cur.content, ""),
+                    event: "newMessage",
+                  }));
+                  finish = sub.reduce((prev, cur) => prev || cur.finish_reason !== "", false);
+                }
+                console.log(`Finished message stream for chat: ${chatId}`);
+              }
+            }
+          } finally {
+            clearInterval(heartbeatInterval);
+          }
+        })().catch(err => {
+          console.error("Error in event stream:", err);
+          ws.send(JSON.stringify({ event: "error", data: "Stream error occurred" }));
+        });
+      },
+      onClose(ws) {
+        console.log("WebSocket connection closed for chat:", chatId);
+      }
+    };
+  })
+);
+
 export default {
   port: PORT,
   fetch: app.fetch,
+  websocket
 };
