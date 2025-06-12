@@ -32,6 +32,7 @@ const RedisMessageResponse = z.object({
         finish_reason: z.string(),
         content: z.string(),
         refusal: z.string(),
+        reasoning: z.string(),
         tool_calls: z.any(),
       }),
     })
@@ -75,6 +76,9 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
       ],
       reasoning_effort: opts.reasoning_effort,
       stream: true,
+      stream_options: {
+        include_usage: true,
+      },
     });
 
     for await (const chunk of stream) {
@@ -85,6 +89,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
 
       await vk_client.xAdd(`msg:${id}`, "*", {
         finish_reason: choice.finish_reason || "",
+        reasoning: (choice.delta as any).reasoning || "",
         content: choice.delta?.content || "",
         refusal: choice.delta?.refusal || "",
         tool_calls: JSON.stringify(choice.delta?.tool_calls || null),
@@ -174,9 +179,11 @@ async function pgSubscriber(id: string, chatId: string, senderId: string) {
 
   try {
     let message = "";
+    let reasoning = "";
     let finish_reason = "";
     for await (const chunk of msgSubscribe(id)) {
       message += chunk.content;
+      reasoning += chunk.reasoning;
       finish_reason = chunk.finish_reason;
     }
 
@@ -186,6 +193,7 @@ async function pgSubscriber(id: string, chatId: string, senderId: string) {
       senderId,
       role: "assistant",
       message,
+      reasoning,
       finish_reason,
       createdAt: new Date(),
     });

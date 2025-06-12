@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-r
 import ModelSelector from "@/components/ModelSelector";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowUpIcon, LoaderCircle } from "lucide-react";
+import { ArrowUpIcon, ChevronsUpDown, LoaderCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import React from "react";
 import { authClient } from "@/lib/auth-client";
@@ -14,17 +14,28 @@ import ky, { HTTPError } from "ky";
 import { db, Message } from "@/lib/db";
 import { toast } from "sonner";
 import { useORKey } from "@/hooks/use-or-key";
-import { useModel, type Model } from "@/hooks/use-model";
+import { useModel } from "@/hooks/use-model";
 import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
   // TODO: Add the loader
 });
 
+const WSModelStreamResponse = z.object({
+  finish_reason: z.nullable(z.string()),
+  reasoning: z.string(),
+  content: z.string(),
+  refusal: z.string(),
+  tool_calls: z.nullable(z.any()),
+});
+type WSModelStreamResponse = z.infer<typeof WSModelStreamResponse>;
+
 // TODO: when the new chat is created, the input ui loses focus
 // pure scuff
 export function ChatUI() {
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const blankFlavorText = React.useMemo(() => {
     const options = [
       "MAKE ME DO SOMETHING, HUMAN",
@@ -51,14 +62,7 @@ export function ChatUI() {
     shouldThrow: false,
   }) ?? { chatId: undefined };
 
-  const [activeMessage, setActiveMessage] = React.useState<
-    {
-      finish_reason: string;
-      content: string;
-      refusal: string;
-      tool_calls: any;
-    }[]
-  >([]);
+  const [activeMessage, setActiveMessage] = React.useState<WSModelStreamResponse[]>([]);
   const [activeMessageId, setActiveMessageId] = React.useState<string | null>(null);
   const model = useModel((state) => state.model);
   const [input, setInput] = React.useState("");
@@ -86,13 +90,15 @@ export function ChatUI() {
           }
           let messages = await messageResponse.json();
           return z.object({ messages: z.array(Message), cursor: z.number() }).parse(messages);
-        } else {
+        } else if (!user_sess.error && !user_sess.isPending) {
           let chat = await db.chats.get(chatId);
           if (!chat) {
             toast.error("Chat not found");
             navigate({ to: "/chat" });
           }
           return { messages: z.array(Message).parse(chat), cursor: cursor };
+        } else {
+          throw new Error("User Session is erroring");
         }
       } else {
         return { messages: [], cursor: 0 };
@@ -197,7 +203,12 @@ export function ChatUI() {
               }
               break;
             case "chunk":
-              setActiveMessage((prev) => [...prev, payload.params]);
+              const data = WSModelStreamResponse.safeParse(payload.params);
+              if (data.success) {
+                setActiveMessage((prev) => [...prev, data.data]);
+              } else {
+                console.error(data.error);
+              }
               break;
             default:
               console.log(`Received event: ${payload.method} with data: ${payload.params}`);
@@ -220,6 +231,9 @@ export function ChatUI() {
     if (model.id) {
       sendMessage.mutate(input);
       setInput("");
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      }
     } else {
       toast.error("Please select a model");
     }
@@ -253,20 +267,34 @@ export function ChatUI() {
   return (
     <div className={`flex flex-col grow items-center w-full h-screen justify-center p-2 relative`}>
       <motion.div
+        ref={scrollContainerRef}
         animate={{ height: chatId ? "100%" : "auto" }}
         transition={{ duration: 0.2 }}
-        className="flex flex-col w-full items-center"
+        className="flex flex-col w-full items-center overflow-y-auto"
       >
         {messages.map((message) => {
           return (
             <div
-              className={`w-full flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              className={`w-full flex flex-col ${message.role === "user" ? "justify-end" : "justify-start"}`}
               key={message.id}
             >
               <div className="p-2 bg-background border rounded-lg mb-1 max-w-1/2 prose">
+                {message.reasoning ? (
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center">
+                      Show Thinking <ChevronsUpDown size={14} />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <ReactMarkdown>{message.reasoning ?? ""}</ReactMarkdown>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ) : null}
+
                 <ReactMarkdown>{message.message}</ReactMarkdown>
                 {message.finish_reason && message.finish_reason !== "stop" ? (
-                  <Alert variant="destructive"><AlertTitle>{message.finish_reason}</AlertTitle></Alert>
+                  <Alert variant="destructive">
+                    <AlertTitle>{message.finish_reason}</AlertTitle>
+                  </Alert>
                 ) : null}
               </div>
             </div>

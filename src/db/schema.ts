@@ -81,6 +81,7 @@ export const chatMessages = pgTable(
       .references(() => chats.id, { onDelete: "cascade" }),
     senderId: text("sender_id").notNull(),
     message: text("content").notNull(),
+    reasoning: text("reasoning"),
     finish_reason: text("finish_reason"),
     createdAt: timestamp("created_at")
       .$defaultFn(() => /* @__PURE__ */ new Date())

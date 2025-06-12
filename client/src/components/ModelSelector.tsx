@@ -31,6 +31,18 @@ export const defaultModels: Models = {
   },
   "openai/gpt-4.1": { name: "GPT-4.1", id: "openai/gpt-4.1", thinking: false },
   "openai/o4-mini": { name: "o4 Mini", id: "openai/o4-mini", thinking: true, thinkingEffort: "medium" },
+  "anthropic/claude-sonnet-4": {
+    name: "Claude Sonnet 4",
+    id: "anthropic/claude-sonnet-4",
+    thinking: true,
+    thinkingEffort: "low",
+  },
+  "deepseek/deepseek-r1-0528": {
+    name: "Deepseek R1",
+    id: "deepseek/deepseek-r1-0528",
+    thinking: true,
+    thinkingEffort: "medium",
+  },
 };
 
 export default function ModelSelector() {
@@ -102,7 +114,11 @@ export default function ModelSelector() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant={"outline"} className="w-32 justify-between ml-2" role="combobox" aria-expanded={open}>
-              <span className="truncate">{model.thinkingEffort ? model.thinkingEffort.slice(0,1).toUpperCase() + model.thinkingEffort.slice(1) : "Medium"}</span>
+              <span className="truncate">
+                {model.thinkingEffort
+                  ? model.thinkingEffort.slice(0, 1).toUpperCase() + model.thinkingEffort.slice(1)
+                  : "Medium"}
+              </span>
 
               <ChevronDownIcon className="ml-2 shrink-0 opacity-50" />
             </Button>
