@@ -5,14 +5,13 @@ import { db } from "./db";
 import { chats, chatMessages } from "./db/schema";
 import { eq, desc, and, asc } from "drizzle-orm";
 import * as sync from "./sync";
-import z from "zod";
+import { z } from "zod";
 import { createBunWebSocket } from "hono/bun";
 import type { ServerWebSocket } from "bun";
 
 const PORT = process.env.PORT || 3001;
 
-const { upgradeWebSocket, websocket } =
-  createBunWebSocket<ServerWebSocket>()
+const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
 
 const app = new Hono<{
   Variables: {
@@ -92,7 +91,7 @@ app.post("/api/chats/new", async (c) => {
     lastUpdated: new Date(),
   };
 
-  sync.titleGenerator(newChat.id, message, opts);
+  sync.titleGenerator(newChat.id, message, [user.id], opts);
 
   await db.insert(chats).values(newChat);
   return c.json({ uuid: newChat.id }, 201);
@@ -183,55 +182,55 @@ app.get("/api/chats/:id", async (c) => {
   return c.json({ messages, cursor: cursor }, 200);
 });
 
-app.get("/api/chats/:id/events", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const chatId = c.req.param("id");
+// app.get("/api/chats/:id/events", async (c) => {
+//   const session = c.get("session");
+//   const user = c.get("user");
+//   const chatId = c.req.param("id");
 
-  if (!session || !user) {
-    // unauth mode
-    return c.json({ error: "Unauthorized" }, 401);
-  }
+//   if (!session || !user) {
+//     // unauth mode
+//     return c.json({ error: "Unauthorized" }, 401);
+//   }
 
-  if (!chatId) {
-    return c.json({ error: "Invalid chat ID" }, 400);
-  }
+//   if (!chatId) {
+//     return c.json({ error: "Invalid chat ID" }, 400);
+//   }
 
-  const chat = (
-    await db
-      .select()
-      .from(chats)
-      .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)))
-  )?.[0];
-  if (!chat) {
-    return c.json({ error: "Not Found" }, 404);
-  }
+//   const chat = (
+//     await db
+//       .select()
+//       .from(chats)
+//       .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)))
+//   )?.[0];
+//   if (!chat) {
+//     return c.json({ error: "Not Found" }, 404);
+//   }
 
-  return streamSSE(c, async (stream) => {
-    // Send a blank message every second
-    const heartbeatInterval = setInterval(() => {
-      stream.writeSSE({
-        data: "",
-        event: "heartbeat",
-      });
-    }, 2500);
+//   return streamSSE(c, async (stream) => {
+//     // Send a blank message every second
+//     const heartbeatInterval = setInterval(() => {
+//       stream.writeSSE({
+//         data: "",
+//         event: "heartbeat",
+//       });
+//     }, 2500);
 
-    try {
-      for await (const operation of sync.createChatEventSubscriber(chatId)) {
-        let split = (operation + "").indexOf(" ");
-        let [event, data] = [operation.slice(0, split), operation.slice(split + 1)];
-        if (operation) {
-          stream.writeSSE({
-            data,
-            event,
-          });
-        }
-      }
-    } finally {
-      clearInterval(heartbeatInterval);
-    }
-  });
-});
+//     try {
+//       for await (const operation of sync.createChatEventSubscriber(chatId)) {
+//         let split = (operation + "").indexOf(" ");
+//         let [event, data] = [operation.slice(0, split), operation.slice(split + 1)];
+//         if (operation) {
+//           stream.writeSSE({
+//             data,
+//             event,
+//           });
+//         }
+//       }
+//     } finally {
+//       clearInterval(heartbeatInterval);
+//     }
+//   });
+// });
 
 app.get("/api/chats/:id/activeMessage", async (c) => {
   const session = c.get("session");
@@ -306,121 +305,101 @@ app.post("/api/chats/:id/new", async (c) => {
   };
 
   await db.insert(chatMessages).values(newMessage);
-  let messages: sync.Messages = await db.select().from(chatMessages).where(eq(chatMessages.chatId, chatId)).orderBy(asc(chatMessages.createdAt));
+  let messages: sync.Messages = await db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.chatId, chatId))
+    .orderBy(asc(chatMessages.createdAt));
   sync.broadcastNewMessage(chatId);
 
   return c.json({ msgId: await sync.newMessage(chatId, user.id, messages, opts) }, 201);
 });
 
-app.get("/api/msg/:id", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const msgId = c.req.param("id");
+// app.get("/api/msg/:id", async (c) => {
+//   const session = c.get("session");
+//   const user = c.get("user");
+//   const msgId = c.req.param("id");
 
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized, you must log in to use this feature" }, 401);
-  }
+//   if (!session || !user) {
+//     return c.json({ error: "Unauthorized, you must log in to use this feature" }, 401);
+//   }
 
-  const chatId = c.req.param("id");
-  if (!chatId || typeof chatId !== "string") {
-    return c.json({ error: "Invalid chat ID" }, 400);
-  }
+//   const chatId = c.req.param("id");
+//   if (!chatId || typeof chatId !== "string") {
+//     return c.json({ error: "Invalid chat ID" }, 400);
+//   }
 
-  return streamSSE(c, async (stream) => {
-    const msgStream = await sync.msgSubscribe(msgId);
-    let finish = false;
-    for (let sub = await msgStream.next(); !finish; sub = await msgStream.next()) {
-      let chunkId = 0;
-      const message = sub;
-      await stream.writeSSE({
-        id: String(chunkId++),
-        data: message.reduce((prev, cur) => prev + cur.content, ""),
-        event: "message",
-      });
-      finish = sub.reduce((prev, cur) => prev || cur.finish_reason !== "", false);
-    }
-  });
-});
+//   return streamSSE(c, async (stream) => {
+//     for await (const chunk in sync.msgSubscribe(msgId)) {
+//       let chunkId = 0;
+//       const message = sub;
+//       await stream.writeSSE({
+//         id: String(chunkId++),
+//         data: message.reduce((prev, cur) => prev + cur.content, ""),
+//         event: "message",
+//       });
+//       finish = sub.reduce((prev, cur) => prev || cur.finish_reason !== "", false);
+//     }
+//   });
+// });
 
-app.get("/api/chats/:id/ws", 
+app.get(
+  "/api/chats/:id/ws",
   upgradeWebSocket((c) => {
     const session = c.get("session");
     const user = c.get("user");
     const chatId = c.req.param("id");
-
 
     // If session or user is not available, throw an error for now. TODO: use proper middleware  (e.g. the route you see intercepting requests bound to *)
     if (!session || !user) {
       throw new Error("Unauthorized, you must log in to use this feature");
     }
     if (!chatId || typeof chatId !== "string") {
-      throw new Error("Invalid chat ID");
+      throw new Error("No Chat ID");
     }
 
+
     return {
-      onMessage(event, ws) {
-        // When a message from the client is received, start the event subscription.
-        // WebSocket is bidirectional so you can also handle client messages here.
-        (async () => {
-          // Send a heartbeat every 2500 ms (as in the events route)
-          const heartbeatInterval = setInterval(() => {
-            ws.send(JSON.stringify({
-              event: "heartbeat",
-              data: "",
-            }));
-          }, 2500);
-
-          console.log("WebSocket connection established for chat:", chatId);
-
-          try {
-            // Subscribe to chat events via sync.createChatEventSubscriber
-            for await (const operation of sync.createChatEventSubscriber(chatId)) {
-              // Split the operation into event and data, similar to the SSE logic.
-              const splitIndex = operation.indexOf(" ");
-              const eventName = operation.slice(0, splitIndex);
-              const data = operation.slice(splitIndex + 1);
-              // console.log(`WebSocket event: ${eventName}, data: ${data}`);
-              if (operation) {
-                ws.send(JSON.stringify({
-                  event: eventName,
-                  data: data,
-                }));
-              }
-              console.log(`Received event: ${eventName} with data: ${data}`);
-              if (eventName === "activeMessage") {
-                // If the event is activeMessage, send the message stream like in the /msg/:id route
-                const msgStream = await sync.msgSubscribe(data);
-                let finish = false;
-                let chunkId = 0;
-                for (let sub = await msgStream.next(); !finish; sub = await msgStream.next()) {
-                  const message = sub;
-                  ws.send(JSON.stringify({
-                    id: String(chunkId++),
-                    data: message.reduce((prev, cur) => prev + cur.content, ""),
-                    event: "newMessage",
-                  }));
-                  finish = sub.reduce((prev, cur) => prev || cur.finish_reason !== "", false);
-                }
-                console.log(`Finished message stream for chat: ${chatId}`);
-              }
-            }
-          } finally {
-            clearInterval(heartbeatInterval);
-          }
-        })().catch(err => {
-          console.error("Error in event stream:", err);
-          ws.send(JSON.stringify({ event: "error", data: "Stream error occurred" }));
-        });
+      onOpen(_evt, ws) {
+        sync.chatEventWsHandler(chatId, ws);
+        sync.userEventWsHandler(chatId, ws);
       },
-      onClose(ws) {
-        console.log("WebSocket connection closed for chat:", chatId);
-      }
+
+      onMessage(evt, ws) {
+        const callParse = z
+          .object({
+            jsonrpc: z.literal("2.0"),
+            method: z.string(),
+            params: z.any(),
+            id: z.union([z.string(), z.number()]).optional(),
+          })
+          .safeParse(JSON.parse(evt.data.toString()));
+        if (callParse.error) {
+          console.error(callParse.error);
+          return;
+        }
+        const call = callParse.data;
+        (async function () {
+          switch (call.method) {
+            case "subscribe":
+              for await (const chunk of sync.msgSubscribe(call.params)) {
+                ws.send(JSON.stringify({
+                  jsonrpc: "2.0",
+                  method: "chunk",
+                  params: chunk,
+                  id: call.params
+                }))
+              }
+              break;
+          }
+        })();
+      },
     };
-  })
+  }),
 );
 
 export default {
   port: PORT,
   fetch: app.fetch,
-  websocket
+  websocket,
 };

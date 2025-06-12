@@ -14,12 +14,16 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
+      "@": resolve(__dirname, "./src"),
     },
   },
   server: {
     proxy: {
-      "/api": "http://localhost:3001"
-    }
-  }
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+        ws: true
+      },
+    },
+  },
 });

@@ -5,7 +5,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowUpIcon, LoaderCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import React from "react";
-import { asyncSSE } from "asyncsse";
 import { authClient } from "@/lib/auth-client";
 import {
   experimental_streamedQuery,
@@ -131,7 +130,7 @@ export function ChatUI() {
         queryClient.invalidateQueries({ queryKey: ["chats"] });
       }
 
-      let res = z.object({ msgId: z.string() }).parse(
+      z.object({ msgId: z.string() }).parse(
         await ky
           .post(`/api/chats/${id}/new`, {
             body: JSON.stringify({
@@ -145,7 +144,6 @@ export function ChatUI() {
           })
           .json(),
       ).msgId;
-      setActiveMessage(res);
 
       await queryClient.invalidateQueries({ queryKey: ["messages"] });
 
@@ -155,49 +153,81 @@ export function ChatUI() {
     },
   });
 
-  const queryActiveMessage = useQuery(
-    queryOptions({
-      queryKey: ["activeMessage", activeMessage],
-      queryFn: experimental_streamedQuery({
-        queryFn: async function* () {
-          if (!activeMessage) return;
+  // const queryActiveMessage = useQuery(
+  //   queryOptions({
+  //     queryKey: ["activeMessage", activeMessage],
+  //     queryFn: experimental_streamedQuery({
+  //       queryFn: async function* () {
+  //         if (!activeMessage) return;
 
-          yield "";
+  //         yield "";
 
-          for await (const { data, error } of asyncSSE(`/api/msg/${activeMessage}`)) {
-            if (error) throw new Error(error);
+  //         for await (const { data, error } of asyncSSE(`/api/msg/${activeMessage}`)) {
+  //           if (error) throw new Error(error);
 
-            yield data + " ";
-          }
+  //           yield data + " ";
+  //         }
 
-          await queryClient.invalidateQueries({ queryKey: ["messages"] });
-          setActiveMessage("");
-        },
-      }),
-      enabled: activeMessage !== "",
-    }),
-  );
+  //         await queryClient.invalidateQueries({ queryKey: ["messages"] });
+  //         setActiveMessage("");
+  //       },
+  //     }),
+  //     enabled: activeMessage !== "",
+  //   }),
+  // );
 
-  // websocketless event notifier
+  // ~~websocketless~~ websocketed :( event notifier
   React.useEffect(() => {
-    let es: EventSource | null = null;
+    let ws: WebSocket | null = null;
     if (chatId) {
-      es = new EventSource(`/api/chats/${chatId}/events`);
+      ws = new WebSocket(`/api/chats/${chatId}/ws`);
 
-      es.addEventListener("invalidate", (evt) => {
-        console.log(evt.data);
-        queryClient.invalidateQueries({queryKey: [evt.data]})
-      });
+      ws.onmessage = (event) => {
+        try {
+          const payload = z
+            .object({
+              jsonrpc: z.literal("2.0"),
+              method: z.string(),
+              params: z.any(),
+              id: z.optional(z.union([z.number(), z.string()])),
+            })
+            .parse(JSON.parse(event.data));
 
-      es.addEventListener("activeMessage", evt => {
-        console.log(evt.data)
-        setActiveMessage(evt.data);
-      })
+          switch (payload.method) {
+            case "invalidate":
+              queryClient.invalidateQueries({ queryKey: [z.string().parse(payload.params)] });
+              break;
+            case "activeMessage":
+              if (payload.params) {
+                ws!.send(
+                  JSON.stringify({
+                    jsonrpc: "2.0",
+                    method: "subscribe",
+                    params: payload.params,
+                    id: payload.params
+                  }),
+                );
+              } else {
+                setActiveMessage("");
+              }
+              break;
+            case "chunk":
+              console.log(payload.params);
+              setActiveMessage((prev) => prev + payload.params.content);
+              break;
+            default:
+              console.log(`Received event: ${payload.method} with data: ${payload.params}`);
+          }
+        } catch (err) {
+          console.error("Failed parsing message:", event.data);
+        }
+      };
     }
 
     return () => {
-      if (es) {
-        es.close();
+      if (ws) {
+        ws.onmessage = null;
+        ws.close();
       }
     };
   }, [chatId]);
@@ -219,13 +249,13 @@ export function ChatUI() {
     });
   }
 
-  if (queryActiveMessage.data) {
+  if (activeMessage) {
     messages.push({
       id: "assistant_pending",
       role: "assistant",
       senderId: "assistant_pending",
       chatId: chatId || "",
-      message: queryActiveMessage.data.reduce((prev, cur) => prev + cur, ""),
+      message: activeMessage,
       createdAt: new Date(),
     });
   }
