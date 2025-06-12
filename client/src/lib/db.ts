@@ -15,6 +15,7 @@ export const Message = z.object({
   senderId: z.string(),
   chatId: z.string(),
   message: z.string(),
+  finish_reason: z.nullable(z.string()),
   createdAt: z.coerce.date(),
 });
 export type Message = z.infer<typeof Message>;

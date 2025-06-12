@@ -90,6 +90,13 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
         tool_calls: JSON.stringify(choice.delta?.tool_calls || null),
       });
     }
+  } catch (err: unknown) {
+    await vk_client.xAdd(`msg:${id}`, "*", {
+      finish_reason: (err as Error).message,
+      content: "",
+      refusal: "",
+      tool_calls: null + "",
+    });
   } finally {
     await vk_client.del(`chat:${chatId}:activeMessage`);
   }
@@ -151,11 +158,12 @@ export async function* msgSubscribe(msgId: string) {
       curKey = result[result.length - 1].id;
 
       for (const message of result.map((m) => m.message)) {
-        yield message;
-      }
-
-      if (result.reduce((prev, cur) => prev || cur.message.finish_reason !== "", false)) {
-        break;
+        if (message.finish_reason !== "") {
+          yield message;
+          return;
+        } else {
+          yield message;
+        }
       }
     }
   }
@@ -166,8 +174,10 @@ async function pgSubscriber(id: string, chatId: string, senderId: string) {
 
   try {
     let message = "";
+    let finish_reason = "";
     for await (const chunk of msgSubscribe(id)) {
       message += chunk.content;
+      finish_reason = chunk.finish_reason;
     }
 
     await db.insert(chatMessages).values({
@@ -176,6 +186,7 @@ async function pgSubscriber(id: string, chatId: string, senderId: string) {
       senderId,
       role: "assistant",
       message,
+      finish_reason,
       createdAt: new Date(),
     });
   } finally {

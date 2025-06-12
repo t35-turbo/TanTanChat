@@ -170,19 +170,10 @@ app.get("/api/chats/:id", async (c) => {
     .offset(offsetValue)
     .limit(limitValue);
 
-  messages = messages.map((msg) => ({
-    id: msg.id,
-    chatId: msg.chatId,
-    senderId: msg.senderId,
-    message: msg.message,
-    role: msg.role,
-    createdAt: msg.createdAt,
-  }));
-
   return c.json({ messages, cursor: cursor }, 200);
 });
 
-// app.get("/api/chats/:id/events", async (c) => {
+// app.get("/api/chats/:id/activeMessage", async (c) => {
 //   const session = c.get("session");
 //   const user = c.get("user");
 //   const chatId = c.req.param("id");
@@ -206,58 +197,8 @@ app.get("/api/chats/:id", async (c) => {
 //     return c.json({ error: "Not Found" }, 404);
 //   }
 
-//   return streamSSE(c, async (stream) => {
-//     // Send a blank message every second
-//     const heartbeatInterval = setInterval(() => {
-//       stream.writeSSE({
-//         data: "",
-//         event: "heartbeat",
-//       });
-//     }, 2500);
-
-//     try {
-//       for await (const operation of sync.createChatEventSubscriber(chatId)) {
-//         let split = (operation + "").indexOf(" ");
-//         let [event, data] = [operation.slice(0, split), operation.slice(split + 1)];
-//         if (operation) {
-//           stream.writeSSE({
-//             data,
-//             event,
-//           });
-//         }
-//       }
-//     } finally {
-//       clearInterval(heartbeatInterval);
-//     }
-//   });
+//   return c.json({ id: (await sync.getActiveMessage(chatId)) ?? "" });
 // });
-
-app.get("/api/chats/:id/activeMessage", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const chatId = c.req.param("id");
-
-  if (!session || !user) {
-    // unauth mode
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  if (!chatId) {
-    return c.json({ error: "Invalid chat ID" }, 400);
-  }
-
-  const chat = (
-    await db
-      .select()
-      .from(chats)
-      .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)))
-  )?.[0];
-  if (!chat) {
-    return c.json({ error: "Not Found" }, 404);
-  }
-
-  return c.json({ id: (await sync.getActiveMessage(chatId)) ?? "" });
-});
 
 app.post("/api/chats/:id/new", async (c) => {
   const session = c.get("session");

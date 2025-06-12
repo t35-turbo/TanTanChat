@@ -15,6 +15,7 @@ import { db, Message } from "@/lib/db";
 import { toast } from "sonner";
 import { useORKey } from "@/hooks/use-or-key";
 import { useModel, type Model } from "@/hooks/use-model";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
@@ -50,9 +51,16 @@ export function ChatUI() {
     shouldThrow: false,
   }) ?? { chatId: undefined };
 
-  const [activeMessage, setActiveMessage] = React.useState("");
+  const [activeMessage, setActiveMessage] = React.useState<
+    {
+      finish_reason: string;
+      content: string;
+      refusal: string;
+      tool_calls: any;
+    }[]
+  >([]);
   const [activeMessageId, setActiveMessageId] = React.useState<string | null>(null);
-  const model = useModel(state => state.model);
+  const model = useModel((state) => state.model);
   const [input, setInput] = React.useState("");
 
   // TODO: implement scroll
@@ -185,11 +193,11 @@ export function ChatUI() {
                 );
               } else {
                 setActiveMessageId(null);
-                setActiveMessage("");
+                setActiveMessage([]);
               }
               break;
             case "chunk":
-              setActiveMessage((prev) => prev + payload.params.content);
+              setActiveMessage((prev) => [...prev, payload.params]);
               break;
             default:
               console.log(`Received event: ${payload.method} with data: ${payload.params}`);
@@ -225,6 +233,7 @@ export function ChatUI() {
       senderId: "pending",
       chatId: chatId || "",
       message: sendMessage.variables,
+      finish_reason: null,
       createdAt: new Date(),
     });
   }
@@ -235,7 +244,8 @@ export function ChatUI() {
       role: "assistant",
       senderId: "assistant_pending",
       chatId: chatId || "",
-      message: activeMessage,
+      message: activeMessage.reduce((prev, cur) => prev + cur.content, ""),
+      finish_reason: activeMessage.reduce((prev: string | null, cur) => (prev ? prev : cur.finish_reason), null),
       createdAt: new Date(),
     });
   }
@@ -248,14 +258,16 @@ export function ChatUI() {
         className="flex flex-col w-full items-center"
       >
         {messages.map((message) => {
-          // im so done with this bro
           return (
             <div
               className={`w-full flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-              key={message.id} // as long as message is the smae it doesnt matter
+              key={message.id}
             >
               <div className="p-2 bg-background border rounded-lg mb-1 max-w-1/2 prose">
                 <ReactMarkdown>{message.message}</ReactMarkdown>
+                {message.finish_reason && message.finish_reason !== "stop" ? (
+                  <Alert variant="destructive"><AlertTitle>{message.finish_reason}</AlertTitle></Alert>
+                ) : null}
               </div>
             </div>
           );
