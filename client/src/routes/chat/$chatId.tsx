@@ -169,7 +169,7 @@ export function ChatUI() {
   React.useEffect(() => {
     let ws: WebSocket | null = null;
     if (chatId) {
-      ws = new WebSocket(`/api/chats/${chatId}/ws`);
+      ws = new WebSocket(`ws://${window.location.host}/api/chats/${chatId}/ws`);
 
       ws.onmessage = (event) => {
         try {
