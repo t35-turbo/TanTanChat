@@ -6,19 +6,15 @@ import { ArrowUpIcon, LoaderCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import React from "react";
 import { authClient } from "@/lib/auth-client";
-import {
-  experimental_streamedQuery,
-  queryOptions,
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-} from "@tanstack/react-query";
+import ReactMarkdown from "react-markdown";
+import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/routes/__root";
 import { z } from "zod/v4-mini";
 import ky, { HTTPError } from "ky";
 import { db, Message } from "@/lib/db";
 import { toast } from "sonner";
 import { useORKey } from "@/hooks/use-or-key";
+import { useModel, type Model } from "@/hooks/use-model";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
@@ -55,8 +51,10 @@ export function ChatUI() {
   }) ?? { chatId: undefined };
 
   const [activeMessage, setActiveMessage] = React.useState("");
-
+  const [activeMessageId, setActiveMessageId] = React.useState<string | null>(null);
+  const model = useModel(state => state.model);
   const [input, setInput] = React.useState("");
+
   // TODO: implement scroll
   const messagePages = useInfiniteQuery({
     queryKey: ["messages", chatId],
@@ -137,8 +135,8 @@ export function ChatUI() {
               message: message,
               opts: {
                 apiKey: or_key,
-                model: "openai/gpt-4.1-mini",
-                system_prompt: "You are an AI Assistant named GPT 4.1.",
+                model: model.id, // nvm we need zustand LOL
+                system_prompt: `You are an AI Assistant named ${model.name}`,
               },
             }),
           })
@@ -152,29 +150,6 @@ export function ChatUI() {
       }
     },
   });
-
-  // const queryActiveMessage = useQuery(
-  //   queryOptions({
-  //     queryKey: ["activeMessage", activeMessage],
-  //     queryFn: experimental_streamedQuery({
-  //       queryFn: async function* () {
-  //         if (!activeMessage) return;
-
-  //         yield "";
-
-  //         for await (const { data, error } of asyncSSE(`/api/msg/${activeMessage}`)) {
-  //           if (error) throw new Error(error);
-
-  //           yield data + " ";
-  //         }
-
-  //         await queryClient.invalidateQueries({ queryKey: ["messages"] });
-  //         setActiveMessage("");
-  //       },
-  //     }),
-  //     enabled: activeMessage !== "",
-  //   }),
-  // );
 
   // ~~websocketless~~ websocketed :( event notifier
   React.useEffect(() => {
@@ -199,20 +174,21 @@ export function ChatUI() {
               break;
             case "activeMessage":
               if (payload.params) {
+                setActiveMessageId(payload.params);
                 ws!.send(
                   JSON.stringify({
                     jsonrpc: "2.0",
                     method: "subscribe",
                     params: payload.params,
-                    id: payload.params
+                    id: payload.params,
                   }),
                 );
               } else {
+                setActiveMessageId(null);
                 setActiveMessage("");
               }
               break;
             case "chunk":
-              console.log(payload.params);
               setActiveMessage((prev) => prev + payload.params.content);
               break;
             default:
@@ -233,8 +209,12 @@ export function ChatUI() {
   }, [chatId]);
 
   function sendQuery() {
-    sendMessage.mutate(input);
-    setInput("");
+    if (model.id) {
+      sendMessage.mutate(input);
+      setInput("");
+    } else {
+      toast.error("Please select a model");
+    }
   }
 
   let messages = messagePages.data ? messagePages.data.pages.flatMap((page) => page.messages) : [];
@@ -249,7 +229,7 @@ export function ChatUI() {
     });
   }
 
-  if (activeMessage) {
+  if (activeMessageId) {
     messages.push({
       id: "assistant_pending",
       role: "assistant",
@@ -261,7 +241,7 @@ export function ChatUI() {
   }
 
   return (
-    <div className={`flex flex-col grow items-center w-full h-screen justify-center p-2`}>
+    <div className={`flex flex-col grow items-center w-full h-screen justify-center p-2 relative`}>
       <motion.div
         animate={{ height: chatId ? "100%" : "auto" }}
         transition={{ duration: 0.2 }}
@@ -274,11 +254,13 @@ export function ChatUI() {
               className={`w-full flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
               key={message.id} // as long as message is the smae it doesnt matter
             >
-              <div className="p-2 bg-background border rounded-lg mb-1 max-w-1/2">{message.message}</div>
+              <div className="p-2 bg-background border rounded-lg mb-1 max-w-1/2 prose">
+                <ReactMarkdown>{message.message}</ReactMarkdown>
+              </div>
             </div>
           );
         })}
-        {sendMessage.isPending || activeMessage ? (
+        {sendMessage.isPending || activeMessageId ? (
           <div
             className={`w-full ${chatId ? "flex" : "hidden"} flex-col ${sendMessage.isPending ? "items-end" : "items-start"}`}
             key={sendMessage.variables}
@@ -295,7 +277,7 @@ export function ChatUI() {
         {messagePages.isError ? <div>Failed to load message history</div> : null}
         <h1 className={`font-bold text-2xl md:text-4xl ${chatId ? "opacity-0" : "opacity-100"}`}>CLONE CLONE CLONE</h1>
         <motion.div
-          className={`w-full ${chatId ? "" : "md:w-1/2"}`}
+          className={`w-full ${chatId ? "" : "md:w-1/2"} sticky bottom-0 bg-background`}
           animate={{
             width: chatId ? "100%" : undefined,
           }}
@@ -314,6 +296,7 @@ export function ChatUI() {
           />
           <div className="flex mt-2">
             <ModelSelector />
+
             <Button className="ml-auto p-0 cursor-pointer" onClick={sendQuery}>
               <ArrowUpIcon />
             </Button>

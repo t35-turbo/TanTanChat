@@ -191,39 +191,53 @@ export async function chatEventWsHandler(chatId: string, ws: WSContext<ServerWeb
   if (!vk_client.isOpen) await vk_client.connect();
 
   if ((await vk_client.exists(`chat:${chatId}:activeMessage`)) === 1) {
-    ws.send(
-      JSON.stringify({
-        jsonrpc: "2.0",
-        method: "activeMessage",
-        params: await vk_client.get(`chat:${chatId}:activeMessage`),
-      }),
-    );
+    if (ws.readyState == 1) {
+      ws.send(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          method: "activeMessage",
+          params: await vk_client.get(`chat:${chatId}:activeMessage`),
+        }),
+      );
+    } else {
+      return;
+    }
   }
 
   vk_client.subscribe(`chat:${chatId}:events`, async (message) => {
     const splitIndex = message.indexOf(" ");
     const eventName = message.slice(0, splitIndex);
     const data = message.slice(splitIndex + 1);
-    if (message) {
-      ws.send(
-        JSON.stringify({
-          jsonrpc: "2.0",
-          method: eventName,
-          params: data,
-        }),
-      );
+    if (ws.readyState === 1) {
+      if (message) {
+        ws.send(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            method: eventName,
+            params: data,
+          }),
+        );
+      }
+    } else if (ws.readyState !== 0) {
+      await vk_client.unsubscribe(`chat:${chatId}:events`);
+      vk_client.destroy();
     }
   });
 }
 
-export async function userEventWsHandler(chatId: string, ws: WSContext<ServerWebSocket<undefined>>) {
+export async function userEventWsHandler(userId: string, ws: WSContext<ServerWebSocket<undefined>>) {
   const vk_client = vk.createClient();
   if (!vk_client.isOpen) vk_client.connect();
 
-  vk_client.subscribe(`chat:${chatId}:events`, (message) => {
+  vk_client.subscribe(`user:${userId}:events`, (message) => {
     const splitIndex = message.indexOf(" ");
     const eventName = message.slice(0, splitIndex);
     const data = message.slice(splitIndex + 1);
-    ws.send(JSON.stringify({ jsonrpc: "2.0", method: eventName, params: data }));
+    if (ws.readyState === 1) {
+      ws.send(JSON.stringify({ jsonrpc: "2.0", method: eventName, params: data }));
+    } else if (ws.readyState !== 0) {
+      vk_client.unsubscribe(`user:${userId}:events`);
+      vk_client.destroy();
+    }
   });
 }

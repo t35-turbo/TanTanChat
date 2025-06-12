@@ -1,13 +1,15 @@
 @import "tailwindcss";
-
+@plugin "@tailwindcss/typography";
+@plugin "@catppuccin/tailwindcss";
 @plugin "tailwindcss-animate";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant mocha (&:is(.mocha *));
+@custom-variant macchiato (&:is(.macchiato *));
 
 body {
     @apply m-0;
-    font-family:
-        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans",
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans",
         "Droid Sans", "Helvetica Neue", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -98,6 +100,121 @@ code {
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(0.274 0.006 286.033);
     --sidebar-ring: oklch(0.442 0.017 285.786);
+
+    .prose {
+        @apply prose-zinc prose-invert;
+    }
+}
+
+.accent-rosewater {
+    --ctp-accent: var(--ctp-rosewater);
+}
+
+.accent-flamingo {
+    --ctp-accent: var(--ctp-flamingo);
+}
+
+.accent-pink {
+    --ctp-accent: var(--ctp-pink);
+}
+
+.accent-mauve {
+    --ctp-accent: var(--ctp-mauve);
+}
+
+.accent-red {
+    --ctp-accent: var(--ctp-red);
+}
+
+.accent-maroon {
+    --ctp-accent: var(--ctp-maroon);
+}
+
+.accent-peach {
+    --ctp-accent: var(--ctp-peach);
+}
+
+.accent-yellow {
+    --ctp-accent: var(--ctp-yellow);
+}
+
+.accent-green {
+    --ctp-accent: var(--ctp-green);
+}
+
+.accent-teal {
+    --ctp-accent: var(--ctp-teal);
+}
+
+.accent-sky {
+    --ctp-accent: var(--ctp-sky);
+}
+
+.accent-sapphire {
+    --ctp-accent: var(--ctp-sapphire);
+}
+
+.accent-blue {
+    --ctp-accent: var(--ctp-blue);
+}
+
+.accent-lavender {
+    --ctp-accent: var(--ctp-lavender);
+}
+
+.ctp-theme {
+    --background: rgba(var(--ctp-base));
+    --foreground: rgba(var(--ctp-text));
+    --card: rgba(var(--ctp-base));
+    --card-foreground: rgba(var(--ctp-text));
+    --popover: rgba(var(--ctp-base));
+    --popover-foreground: rgba(var(--ctp-accent));
+    --primary: rgba(var(--ctp-accent));
+    --primary-foreground: rgba(var(--ctp-base));
+    --secondary: rgba(var(--ctp-surface0));
+    --secondary-foreground: rgba(var(--ctp-text));
+    --muted: rgba(var(--ctp-surface0));
+    --muted-foreground: rgba(var(--ctp-subtext1));
+    --accent: rgba(var(--ctp-surface0));
+    --accent-foreground: rgba(var(--ctp-text));
+    --destructive: rgba(var(--ctp-red));
+    --destructive-foreground: rgba(var(--ctp-mantle));
+    --border: rgba(var(--ctp-surface1));
+    --input: rgba(var(--ctp-surface1));
+    --ring: rgba(var(--ctp-text));
+    --chart-1: rgba(var(--ctp-red));
+    --chart-2: rgba(var(--ctp-teal));
+    --chart-3: rgba(var(--ctp-accent));
+    --chart-4: rgba(var(--ctp-yellow));
+    --chart-5: rgba(var(--ctp-green));
+    --sidebar: rgba(var(--ctp-base));
+    --sidebar-foreground: rgba(var(--ctp-text));
+    --sidebar-primary: rgba(var(--ctp-accent));
+    --sidebar-primary-foreground: rgba(var(--ctp-base));
+    --sidebar-accent: rgba(var(--ctp-surface0));
+    --sidebar-accent-foreground: rgba(var(--ctp-text));
+    --sidebar-border: rgba(var(--ctp-surface1));
+    --sidebar-ring: rgba(var(--ctp-text));
+    .prose {
+        --tw-prose-body: rgba(var(--ctp-text));
+        --tw-prose-headings: rgba(var(--ctp-text));
+        --tw-prose-lead: rgba(var(--ctp-subtext0));
+        --tw-prose-links: rgba(var(--ctp-accent));
+        --tw-prose-bold: rgba(var(--ctp-text));
+        --tw-prose-counters: rgba(var(--ctp-subtext1));
+        --tw-prose-bullets: rgba(var(--ctp-surface2));
+        --tw-prose-hr: rgba(var(--ctp-surface1));
+        --tw-prose-quotes: rgba(var(--ctp-text));
+        --tw-prose-quote-borders: rgba(var(--ctp-surface1));
+        --tw-prose-captions: rgba(var(--ctp-subtext1));
+        --tw-prose-kbd: rgba(var(--ctp-text));
+        --tw-prose-kbd-shadows: rgba(var(--ctp-mantle));
+        --tw-prose-code: rgba(var(--ctp-accent));
+        --tw-prose-pre-code: rgba(var(--ctp-subtext0));
+        --tw-prose-pre-bg: rgba(var(--ctp-surface0));
+        --tw-prose-th-borders: rgba(var(--ctp-surface1));
+        --tw-prose-td-borders: rgba(var(--ctp-surface1));
+    }
 }
 
 @theme inline {
@@ -138,7 +255,7 @@ code {
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
     --animate-big-bounce: bigBounce 1s infinite;
-    --font-comic: 'Comic Sans MS', "Comic Sans", cursive, sans-serif;
+    --font-comic: "Comic Sans MS", "Comic Sans", cursive, sans-serif;
 }
 
 @layer base {

@@ -315,34 +315,7 @@ app.post("/api/chats/:id/new", async (c) => {
   return c.json({ msgId: await sync.newMessage(chatId, user.id, messages, opts) }, 201);
 });
 
-// app.get("/api/msg/:id", async (c) => {
-//   const session = c.get("session");
-//   const user = c.get("user");
-//   const msgId = c.req.param("id");
-
-//   if (!session || !user) {
-//     return c.json({ error: "Unauthorized, you must log in to use this feature" }, 401);
-//   }
-
-//   const chatId = c.req.param("id");
-//   if (!chatId || typeof chatId !== "string") {
-//     return c.json({ error: "Invalid chat ID" }, 400);
-//   }
-
-//   return streamSSE(c, async (stream) => {
-//     for await (const chunk in sync.msgSubscribe(msgId)) {
-//       let chunkId = 0;
-//       const message = sub;
-//       await stream.writeSSE({
-//         id: String(chunkId++),
-//         data: message.reduce((prev, cur) => prev + cur.content, ""),
-//         event: "message",
-//       });
-//       finish = sub.reduce((prev, cur) => prev || cur.finish_reason !== "", false);
-//     }
-//   });
-// });
-
+// TODO: add one for general non-chat window
 app.get(
   "/api/chats/:id/ws",
   upgradeWebSocket((c) => {
@@ -358,11 +331,10 @@ app.get(
       throw new Error("No Chat ID");
     }
 
-
     return {
       onOpen(_evt, ws) {
         sync.chatEventWsHandler(chatId, ws);
-        sync.userEventWsHandler(chatId, ws);
+        sync.userEventWsHandler(user.id, ws);
       },
 
       onMessage(evt, ws) {

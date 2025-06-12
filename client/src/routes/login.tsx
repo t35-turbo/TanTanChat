@@ -15,9 +15,16 @@ import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 
+
 export const Route = createFileRoute("/login")({
   component: RouteComponent,
 });
+
+const signIn = async () => {
+  const data = await authClient.signIn.social({
+    provider: "discord"
+  })
+}
 
 function RouteComponent() {
   const [email, setEmail] = useState("");
@@ -89,9 +96,14 @@ function RouteComponent() {
           <Button type="submit" className="w-full">
             Login
           </Button>
-          {/* <Button variant="outline" className="w-full">
+
+          <div className="text-center text-sm text-muted-foreground">
+            or...
+          </div>
+
+          <Button variant="outline" className="w-full" onClick={signIn}>
             Login with Discord
-          </Button> */}
+          </Button>
 
           <CardAction className="text-center w-full">
             <span className="text-sm">Not Registered? </span>

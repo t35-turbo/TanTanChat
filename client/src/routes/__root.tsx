@@ -9,7 +9,7 @@ export const queryClient = new QueryClient();
 
 export const Route = createRootRoute({
   component: () => (
-    <ThemeProvider defaultTheme="dark" storageKey="t3clone-ui-theme">
+    <ThemeProvider defaultTheme="system" storageKey="tantan-ui-theme">
       <QueryClientProvider client={queryClient}>
         <KeyInputModal />
         <Toaster position="top-center" />

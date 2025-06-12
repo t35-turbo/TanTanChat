@@ -63,5 +63,26 @@ export const chatMessages = pgTable("chat_messages", {
     message: text('content').notNull(),
     createdAt: timestamp('created_at').$defaultFn(() => /* @__PURE__ */ new Date()).notNull()
 }, (table) => ({
-  chatIdCreatedAtIndex: index('idx_messages_chat_id_created_at').on(table.chatId, desc(table.createdAt)),
+    chatIdCreatedAtIndex: index('idx_messages_chat_id_created_at').on(table.chatId, desc(table.createdAt)),
+}));
+
+export const userSettings = pgTable("user_settings", {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(),
+    value: text('value').notNull(),
+    createdAt: timestamp('created_at').$defaultFn(() => /* @__PURE__ */ new Date()).notNull(),
+    updatedAt: timestamp('updated_at').$defaultFn(() => /* @__PURE__ */ new Date()).notNull()
+}, (table) => ({
+    userIdKeyIndex: index('idx_settings_user_id_key').on(table.userId, table.key)
+}));
+
+export const systemSettings = pgTable("system_settings", {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    key: text('key').notNull(),
+    value: text('value').notNull(),
+    createdAt: timestamp('created_at').$defaultFn(() => /* @__PURE__ */ new Date()).notNull(),
+    updatedAt: timestamp('updated_at').$defaultFn(() => /* @__PURE__ */ new Date()).notNull()
+}, (table) => ({
+    keyIndex: index('idx_system_settings_key').on(table.key)
 }));
