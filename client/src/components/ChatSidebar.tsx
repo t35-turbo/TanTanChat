@@ -52,14 +52,19 @@ export default function ChatSidebar() {
   const filtered = fuzzysort
     .go(searchQuery, chats.data ?? [], { key: "title", all: true })
     .map((item) => item.obj)
-    .filter((item) => item.id !== deleteChat.variables).sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
+    .filter((item) => item.id !== deleteChat.variables)
+    .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
   const renderOutput = renderChatOutput(filtered, deleteChat);
 
   return (
     <>
       <Sidebar className="select-none">
         <SidebarHeader className="flex items-center content-center mt-2">
-          <h1 className="text-2xl font-bold h-12 font-comic flex items-center"><div>Tan</div><span className="inline-block rotate-180 self-end">T</span><div>an</div></h1>
+          <h1 className="text-2xl font-bold h-12 font-comic flex items-center">
+            <div>Tan</div>
+            <span className="inline-block rotate-180 self-end">T</span>
+            <div>an</div>
+          </h1>
           <Button variant={"default"} className="w-full cursor-pointer" asChild>
             <Link to="/chat">New Chat</Link>
           </Button>
@@ -150,11 +155,12 @@ function renderChatOutput(chats: Chat[], deleteChat: UseMutationResult<void, Err
     return {
       component: (
         <div key={item.id + item.lastUpdated.getTime()} className={`group/chat`}>
-          <Button asChild variant={"ghost"} className="w-full justify-start px-2">
+          <Button asChild variant={"ghost"} className="w-full max-w-full relative justify-start px-2">
             <Link to="/chat/$chatId" params={{ chatId: item.id }}>
-              {item.title}
-              <div className={`hidden group-hover/chat:block ml-auto`}>
+              <span className="truncate" title={item.title}>{item.title}</span>
+              <div className={`hidden group-hover/chat:block ml-auto right-0`}>
                 {/* holy noncompliant html */}
+                {/* TODO: add rename button */}
                 <Button
                   variant="ghost"
                   onClick={(e) => {

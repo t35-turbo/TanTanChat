@@ -131,6 +131,7 @@ async function pgSubscriber(id: string, chatId: string, senderId: string) {
 
   await vk_client.del(`chat:${chatId}:activeMessage`);
   await vk_client.del(`msg:${id}`);
+  await vk_client.publish(`chat:${chatId}:events`, "activeMessage ");
   await broadcastNewMessage(chatId);
 }
 
@@ -159,7 +160,6 @@ export async function titleGenerator(chatId: string, message: string, opts: { ap
     await db.update(chats).set({ title: completion.choices[0].message.content }).where(eq(chats.id, chatId));
     if (!vk_client.isOpen) await vk_client.connect();
     vk_client.publish(`chat:${chatId}:events`, `invalidate chats`)
-    // TODO: notify so can invalidate on client
   }
 }
 

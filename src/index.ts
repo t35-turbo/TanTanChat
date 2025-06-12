@@ -303,7 +303,7 @@ app.post("/api/chats/:id/new", async (c) => {
   };
 
   await db.insert(chatMessages).values(newMessage);
-  let messages: sync.Messages = await db.select().from(chatMessages).where(eq(chatMessages.chatId, chatId));
+  let messages: sync.Messages = await db.select().from(chatMessages).where(eq(chatMessages.chatId, chatId)).orderBy(asc(chatMessages.createdAt));
   sync.broadcastNewMessage(chatId);
 
   return c.json({ msgId: await sync.newMessage(chatId, user.id, messages, opts) }, 201);

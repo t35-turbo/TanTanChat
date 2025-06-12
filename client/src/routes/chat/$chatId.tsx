@@ -112,7 +112,7 @@ export function ChatUI() {
                   message: message,
                   opts: {
                     apiKey: or_key,
-                    model: "openai/gpt-4.1-nano",
+                    model: "openai/gpt-4.1-mini",
                   },
                 }),
               })
@@ -138,7 +138,7 @@ export function ChatUI() {
               message: message,
               opts: {
                 apiKey: or_key,
-                model: "openai/gpt-4.1-nano",
+                model: "openai/gpt-4.1-mini",
                 system_prompt: "You are an AI Assistant named GPT 4.1.",
               },
             }),
