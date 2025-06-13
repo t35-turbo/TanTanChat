@@ -45,7 +45,7 @@ export async function newMessage(chatId: string, senderId: string, messages: Mes
   let uuid = crypto.randomUUID();
 
   newCompletion(uuid, chatId, messages, opts);
-  pgSubscriber(uuid, chatId, senderId);
+  pgSubscriber(uuid, chatId, opts.model);
 
   return uuid;
 }
