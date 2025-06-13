@@ -120,43 +120,80 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/cicd-dev'
     steps:
+      - name: Debug GitOps setup
+        run: |
+          echo "🔍 Debugging GitOps configuration:"
+          echo "Repository: ${{ github.repository }}"
+          echo "GitOps repo: ${{ github.repository }}-gitops"
+          echo "Branch: ${GITHUB_REF#refs/heads/}"
+          echo "Has GITOPS_TOKEN: ${{ secrets.GITOPS_TOKEN != '' }}"
+
       - name: Checkout GitOps repo
+        id: checkout-gitops
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository }}-gitops  # Create this repo and add GITOPS_TOKEN secret for CD
+          repository: ${{ github.repository }}-gitops
           token: ${{ secrets.GITOPS_TOKEN }}
           path: gitops
         continue-on-error: true
 
+      - name: Check GitOps checkout result
+        run: |
+          if [ -d "gitops" ]; then
+            echo "✅ GitOps repository checked out successfully"
+            ls -la gitops/
+          else
+            echo "❌ GitOps repository checkout failed"
+            echo "This could be due to:"
+            echo "1. Repository ${{ github.repository }}-gitops doesn't exist"
+            echo "2. GITOPS_TOKEN doesn't have access to the repo"
+            echo "3. Token permissions are insufficient"
+            exit 1
+          fi
+
       - name: Update image tags
         run: |
-          if [ ! -d "gitops" ]; then
-            echo "⚠️  GitOps repository not found. Create '${{ github.repository }}-gitops' repo and add GITOPS_TOKEN secret to enable auto-deployment."
-            exit 0
-          fi
           cd gitops
           
           # Extract branch name from github.ref
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
           echo "🚀 Updating image tags for branch: $BRANCH_NAME"
+          echo "📁 GitOps repository contents:"
+          find . -name "*.yaml" | head -10
+          
+          # Check if manifest structure exists
+          if [ ! -d "manifests" ]; then
+            echo "❌ No 'manifests' directory found in GitOps repo"
+            echo "Expected structure: manifests/backend/deployment.yaml"
+            echo "                   manifests/frontend/deployment.yaml"
+            echo "Current structure:"
+            ls -la
+            exit 1
+          fi
           
           # Update backend image tag
           if [ -f "manifests/backend/deployment.yaml" ]; then
+            echo "🔄 Updating backend deployment..."
             sed -i "s|image: ghcr.io/${{ github.repository }}/backend:.*|image: ghcr.io/${{ github.repository }}/backend:${BRANCH_NAME}-${{ github.sha }}|g" manifests/backend/deployment.yaml
             echo "✅ Updated backend image tag to ${BRANCH_NAME}-${{ github.sha }}"
+          else
+            echo "⚠️  manifests/backend/deployment.yaml not found"
           fi
+          
           # Update frontend image tag  
           if [ -f "manifests/frontend/deployment.yaml" ]; then
+            echo "🔄 Updating frontend deployment..."
             sed -i "s|image: ghcr.io/${{ github.repository }}/frontend:.*|image: ghcr.io/${{ github.repository }}/frontend:${BRANCH_NAME}-${{ github.sha }}|g" manifests/frontend/deployment.yaml
             echo "✅ Updated frontend image tag to ${BRANCH_NAME}-${{ github.sha }}"
+          else
+            echo "⚠️  manifests/frontend/deployment.yaml not found"
           fi
 
       - name: Commit and push changes
         run: |
           cd gitops
-          BRANCH_NAME=${GITHUB_REF#refs/heads/}
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add .
-          git commit -m "Update image tags to ${BRANCH_NAME}-${{ github.sha }}" || exit 0
+          git commit -m "Update image tags to main-${{ github.sha }}" || exit 0
           git push
