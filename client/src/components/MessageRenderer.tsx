@@ -17,7 +17,7 @@ export function MessageRenderer({ messages }: MessageRendererProps) {
             className={`w-full flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
             key={message.id}
           >
-            <div className="p-2 bg-background border rounded-lg mb-1 max-w-1/2 prose">
+            <div className="p-2 bg-background border rounded-lg mb-1 max-w-[65%] prose">
               {message.reasoning ? (
                 <Collapsible>
                   <CollapsibleTrigger className="flex items-center">
