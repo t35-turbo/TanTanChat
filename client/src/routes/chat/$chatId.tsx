@@ -1,13 +1,13 @@
 import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
 import ModelSelector from "@/components/ModelSelector";
 import Settings from "@/components/Settings";
+import MessageRenderer from "@/components/MessageRenderer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowUpIcon, ChevronsUpDown, LoaderCircle } from "lucide-react";
+import { ArrowUpIcon, LoaderCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import React from "react";
 import { authClient } from "@/lib/auth-client";
-import ReactMarkdown from "react-markdown";
 import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/routes/__root";
 import { z } from "zod/v4-mini";
@@ -16,8 +16,6 @@ import { db, Message } from "@/lib/db";
 import { toast } from "sonner";
 import { useORKey } from "@/hooks/use-or-key";
 import { useModel } from "@/hooks/use-model";
-import { Alert, AlertTitle } from "@/components/ui/alert";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
@@ -269,9 +267,11 @@ export function ChatUI() {
 
   return (
     <div className={`flex flex-col grow items-center w-full h-screen justify-center p-2 relative`}>
-      <div className="fixed top-2 right-2 z-10">
-        <Settings />
-      </div>
+      {!chatId && (
+        <div className="fixed top-2 right-2 z-10">
+          <Settings />
+        </div>
+      )}
       
       <motion.div
         ref={scrollContainerRef}
@@ -279,34 +279,7 @@ export function ChatUI() {
         transition={{ duration: 0.2 }}
         className="flex flex-col w-full items-center overflow-y-auto"
       >
-        {messages.map((message) => {
-          return (
-            <div
-              className={`w-full flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-              key={message.id}
-            >
-              <div className="p-2 bg-background border rounded-lg mb-1 max-w-1/2 prose">
-                {message.reasoning ? (
-                  <Collapsible>
-                    <CollapsibleTrigger className="flex items-center">
-                      Show Thinking <ChevronsUpDown size={14} />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <ReactMarkdown>{message.reasoning ?? ""}</ReactMarkdown>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ) : null}
-
-                <ReactMarkdown>{message.message}</ReactMarkdown>
-                {message.finish_reason && message.finish_reason !== "stop" ? (
-                  <Alert variant="destructive">
-                    <AlertTitle>{message.finish_reason}</AlertTitle>
-                  </Alert>
-                ) : null}
-              </div>
-            </div>
-          );
-        })}
+        <MessageRenderer messages={messages} />
         {sendMessage.isPending || activeMessageId ? (
           <div
             className={`w-full ${chatId ? "flex" : "hidden"} flex-col ${sendMessage.isPending ? "items-end" : "items-start"}`}
@@ -362,9 +335,6 @@ export function ChatUI() {
           )}
         </motion.div>
       </motion.div>
-      <div className="absolute right-4 bottom-4">
-        <Settings />
-      </div>
     </div>
   );
 }
