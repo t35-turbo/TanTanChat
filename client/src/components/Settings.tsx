@@ -6,7 +6,6 @@ import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
-import { useTheme } from "./ThemeProvider";
 import { useORKey } from "@/hooks/use-or-key";
 import { Settings as SettingsIcon, Palette, Key, User, Info, LogOut } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
@@ -14,14 +13,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 export function Settings() {
   const [open, setOpen] = useState(false);
-  const { theme, setTheme } = useTheme();
+  // const { theme, setTheme } = useTheme();
   const { key: orKey, setKey: setORKey } = useORKey();
   const user_sess = authClient.useSession();
   const [tempKey, setTempKey] = useState("");
-
-  const themes = [
-    { value: "system", label: "System" },
-  ];
 
   const handleSaveKey = () => {
     if (tempKey.trim()) {
@@ -81,11 +76,11 @@ export function Settings() {
                     </p>
                   </div>
                 </div>
-                
+
                 <Separator />
-                
-                <Button 
-                  variant="outline" 
+
+                <Button
+                  variant="outline"
                   onClick={async () => {
                     await authClient.signOut();
                     setOpen(false);
@@ -116,20 +111,20 @@ export function Settings() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="w-full justify-between">
-                      {themes.find(t => t.value === theme)?.label || "Select theme"}
+                      {/* {themes.find(t => t.value === theme)?.label || "Select theme"} */}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-full">
-                    <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as any)}>
+                    {/* <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as any)}>
                       {themes.map((themeOption) => (
-                        <DropdownMenuRadioItem 
-                          key={themeOption.value} 
+                        <DropdownMenuRadioItem
+                          key={themeOption.value}
                           value={themeOption.value}
                         >
                           {themeOption.label}
                         </DropdownMenuRadioItem>
                       ))}
-                    </DropdownMenuRadioGroup>
+                    </DropdownMenuRadioGroup> */}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -163,7 +158,7 @@ export function Settings() {
                   </Button>
                 </div>
               </div>
-              
+
               {orKey && (
                 <div className="flex items-center justify-between p-3 bg-muted rounded-md">
                   <span className="text-sm text-muted-foreground">
@@ -179,12 +174,12 @@ export function Settings() {
 
               <div className="space-y-2">
                 <p className="text-sm font-medium">Don't have an API key?</p>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={async () => {
                     const pkce_sec = crypto.randomUUID();
                     localStorage.setItem("pkce_sec", pkce_sec);
-                    
+
                     // Helper function for PKCE challenge
                     const createSHA256CodeChallenge = async (code: string) => {
                       const encoder = new TextEncoder();
@@ -195,7 +190,7 @@ export function Settings() {
                         .replace(/\//g, '_')
                         .replace(/=/g, '');
                     };
-                    
+
                     const sha_chal = await createSHA256CodeChallenge(pkce_sec);
                     const auth_url = `https://openrouter.ai/auth?callback_url=${location.origin}/or_auth&code_challenge=${sha_chal}&code_challenge_method=S256`;
                     location.assign(auth_url);

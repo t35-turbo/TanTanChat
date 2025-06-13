@@ -1,24 +1,25 @@
-import { createContext, useContext, useEffect, useState } from "react"
+import { useTheme } from "@/hooks/use-theme";
+import { createContext, useContext, useEffect } from "react";
 
 type Theme = "dark" | "light" | "mocha" | "system" | "latte" | "frappe" | "macchiato";
 
 type ThemeProviderProps = {
-  children: React.ReactNode
-  defaultTheme?: Theme
-  storageKey?: string
-}
+  children: React.ReactNode;
+  defaultTheme?: Theme;
+  storageKey?: string;
+};
 
 type ThemeProviderState = {
-  theme: Theme
-  setTheme: (theme: Theme) => void
-}
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+};
 
 const initialState: ThemeProviderState = {
   theme: "system",
   setTheme: () => null,
-}
+};
 
-const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
+const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
 export function ThemeProvider({
   children,
@@ -26,50 +27,32 @@ export function ThemeProvider({
   storageKey = "vite-ui-theme",
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
-  )
-
-  console.log(theme, localStorage.getItem(storageKey));
+  const base = useTheme((state) => state.base);
+  const color = useTheme(state => state.color);
 
   useEffect(() => {
-    const root = window.document.documentElement
+    const root = window.document.documentElement;
 
     root.className = "";
 
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "mocha"
-        : "latte"
+    if (base === "system") {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "mocha" : "latte";
 
-      root.classList.add(...`${systemTheme} ctp-theme accent-mauve`.split(" "))
-      return
+      root.classList.add(...`${systemTheme} ctp-theme accent-mauve`.split(" "));
+      return;
     }
 
-    root.classList.add(...theme.split(" "))
-  }, [theme])
+    let clsList: string[] = [base, color]
+    if (base !== "white" && base !== "dark") {
+      clsList.push("ctp-theme");
+    }
 
-  const value = {
-    theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme)
-      setTheme(theme)
-    },
-  }
+    root.classList.add(...clsList);
+  }, [base, color]);
 
   return (
-    <ThemeProviderContext.Provider {...props} value={value}>
+    <>
       {children}
-    </ThemeProviderContext.Provider>
-  )
-}
-
-export const useTheme = () => {
-  const context = useContext(ThemeProviderContext)
-
-  if (context === undefined)
-    throw new Error("useTheme must be used within a ThemeProvider")
-
-  return context
+    </>
+  );
 }
