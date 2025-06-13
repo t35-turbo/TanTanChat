@@ -52,10 +52,6 @@ jobs:
         with:
           version: 8
 
-      - name: Clear pnpm cache (if exists)
-        run: pnpm store prune || echo "No store to prune"
-        continue-on-error: true
-
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
