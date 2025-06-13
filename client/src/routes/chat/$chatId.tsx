@@ -247,6 +247,7 @@ export function ChatUI() {
       senderId: "pending",
       chatId: chatId || "",
       message: sendMessage.variables,
+      reasoning: null,
       finish_reason: null,
       createdAt: new Date(),
     });
