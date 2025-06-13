@@ -25,6 +25,7 @@
     "@tanstack/react-router-devtools": "^1.114.3",
     "@tanstack/router-plugin": "^1.114.3",
     "asyncsse": "^1.3.3",
+    "better-auth": "^1.2.9",
     "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
