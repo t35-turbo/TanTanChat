@@ -118,12 +118,12 @@ jobs:
   update-gitops:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/cicd-dev'
     steps:
       - name: Checkout GitOps repo
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository }}-gitops  # Create this repo and add GITOPS_TOKEN secret
+          repository: ${{ github.repository }}-gitops  # Create this repo and add GITOPS_TOKEN secret for CD
           token: ${{ secrets.GITOPS_TOKEN }}
           path: gitops
         continue-on-error: true
@@ -135,22 +135,28 @@ jobs:
             exit 0
           fi
           cd gitops
+          
+          # Extract branch name from github.ref
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          echo "🚀 Updating image tags for branch: $BRANCH_NAME"
+          
           # Update backend image tag
           if [ -f "manifests/backend/deployment.yaml" ]; then
-            sed -i "s|image: ghcr.io/${{ github.repository }}/backend:.*|image: ghcr.io/${{ github.repository }}/backend:main-${{ github.sha }}|g" manifests/backend/deployment.yaml
-            echo "✅ Updated backend image tag"
+            sed -i "s|image: ghcr.io/${{ github.repository }}/backend:.*|image: ghcr.io/${{ github.repository }}/backend:${BRANCH_NAME}-${{ github.sha }}|g" manifests/backend/deployment.yaml
+            echo "✅ Updated backend image tag to ${BRANCH_NAME}-${{ github.sha }}"
           fi
           # Update frontend image tag  
           if [ -f "manifests/frontend/deployment.yaml" ]; then
-            sed -i "s|image: ghcr.io/${{ github.repository }}/frontend:.*|image: ghcr.io/${{ github.repository }}/frontend:main-${{ github.sha }}|g" manifests/frontend/deployment.yaml
-            echo "✅ Updated frontend image tag"
+            sed -i "s|image: ghcr.io/${{ github.repository }}/frontend:.*|image: ghcr.io/${{ github.repository }}/frontend:${BRANCH_NAME}-${{ github.sha }}|g" manifests/frontend/deployment.yaml
+            echo "✅ Updated frontend image tag to ${BRANCH_NAME}-${{ github.sha }}"
           fi
 
       - name: Commit and push changes
         run: |
           cd gitops
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add .
-          git commit -m "Update image tags to main-${{ github.sha }}" || exit 0
+          git commit -m "Update image tags to ${BRANCH_NAME}-${{ github.sha }}" || exit 0
           git push
