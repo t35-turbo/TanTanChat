@@ -128,14 +128,49 @@ jobs:
           echo "Branch: ${GITHUB_REF#refs/heads/}"
           echo "Has GITOPS_TOKEN: ${{ secrets.GITOPS_TOKEN != '' }}"
 
+      - name: Check if GitOps repository exists
+        id: check-gitops-repo
+        run: |
+          # Use GitHub API to check if the repository exists
+          REPO_URL="https://api.github.com/repos/${{ github.repository }}-gitops"
+          echo "🔍 Checking if GitOps repository exists: ${{ github.repository }}-gitops"
+          
+          if curl -s -H "Authorization: token ${{ secrets.GITOPS_TOKEN }}" "$REPO_URL" | grep -q '"id"'; then
+            echo "✅ GitOps repository exists and is accessible"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ GitOps repository not found or not accessible"
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo ""
+            echo "🔧 To fix this issue:"
+            echo "1. Create repository: ${{ github.repository }}-gitops"
+            echo "2. Make sure GITOPS_TOKEN has access to the repository"
+            echo "3. Copy manifests from k8s/manifests/ to the GitOps repo"
+          fi
+
       - name: Checkout GitOps repo
+        if: steps.check-gitops-repo.outputs.exists == 'true'
         id: checkout-gitops
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository }}-gitops
           token: ${{ secrets.GITOPS_TOKEN }}
           path: gitops
-        continue-on-error: true
+
+      - name: Setup GitOps repository if empty
+        if: steps.check-gitops-repo.outputs.exists == 'true'
+        run: |
+          cd gitops
+          if [ ! -d "manifests" ]; then
+            echo "📁 GitOps repository exists but has no manifests directory"
+            echo "This means the repository is empty or not properly set up"
+            echo ""
+            echo "🔧 Setting up initial structure..."
+            # You could copy from the main repo here if needed
+            mkdir -p manifests
+            echo "# GitOps Manifests" > manifests/README.md
+            echo "Copy your Kubernetes manifests here from the main repository's k8s/manifests/ directory" >> manifests/README.md
+          fi
 
       - name: Check GitOps checkout result
         run: |
