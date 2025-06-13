@@ -16,6 +16,7 @@ import { db, Message } from "@/lib/db";
 import { toast } from "sonner";
 import { useORKey } from "@/hooks/use-or-key";
 import { useModel } from "@/hooks/use-model";
+import { useSystemPrompt } from "@/hooks/use-system-prompt";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
@@ -55,6 +56,7 @@ export function ChatUI() {
   const navigate = useNavigate();
   const user_sess = authClient.useSession();
   const or_key = useORKey((state) => state.key);
+  const systemPrompt = useSystemPrompt((state) => state.systemPrompt);
 
   const { chatId } = useParams({
     from: "/chat/$chatId",
@@ -149,7 +151,7 @@ export function ChatUI() {
               opts: {
                 apiKey: or_key,
                 model: model.id, // nvm we need zustand LOL
-                system_prompt: `You are an AI Assistant named ${model.name}`,
+                system_prompt: systemPrompt || `You are an AI Assistant named ${model.name}`,
               },
             }),
           })

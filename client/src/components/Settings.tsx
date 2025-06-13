@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -6,9 +6,11 @@ import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import { Textarea } from "./ui/textarea";
 import { useTheme } from "./ThemeProvider";
 import { useORKey } from "@/hooks/use-or-key";
-import { Settings as SettingsIcon, Palette, Key, User, Info, LogOut } from "lucide-react";
+import { useSystemPrompt } from "@/hooks/use-system-prompt";
+import { Settings as SettingsIcon, Palette, Key, User, Info, LogOut, MessageSquare } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
@@ -16,8 +18,10 @@ export function Settings() {
   const [open, setOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const { key: orKey, setKey: setORKey } = useORKey();
+  const { systemPrompt, setSystemPrompt } = useSystemPrompt();
   const user_sess = authClient.useSession();
   const [tempKey, setTempKey] = useState("");
+  const [tempSystemPrompt, setTempSystemPrompt] = useState(systemPrompt);
 
   const themes = [
     { value: "system", label: "System" },
@@ -34,6 +38,21 @@ export function Settings() {
     setORKey("");
     setTempKey("");
   };
+
+  const handleSaveSystemPrompt = () => {
+    setSystemPrompt(tempSystemPrompt);
+  };
+
+  const handleClearSystemPrompt = () => {
+    setSystemPrompt("");
+    setTempSystemPrompt("");
+  };
+
+  useEffect(() => {
+    if (open) {
+      setTempSystemPrompt(systemPrompt);
+    }
+  }, [open, systemPrompt]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -133,6 +152,54 @@ export function Settings() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* System Prompt Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="size-4" />
+                System Prompt
+              </CardTitle>
+              <CardDescription>
+                Set a custom system prompt that will be used for all conversations
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="system-prompt">System Prompt</Label>
+                <Textarea
+                  id="system-prompt"
+                  placeholder="You are a helpful AI assistant..."
+                  value={tempSystemPrompt}
+                  onChange={(e) => setTempSystemPrompt(e.target.value)}
+                  rows={4}
+                  className="resize-none"
+                />
+                <div className="flex gap-2">
+                  <Button onClick={handleSaveSystemPrompt} size="sm">
+                    Save
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleClearSystemPrompt}
+                    disabled={!systemPrompt && !tempSystemPrompt}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+              
+              {systemPrompt && (
+                <div className="p-3 bg-muted rounded-md">
+                  <p className="text-sm font-medium mb-1">Current system prompt:</p>
+                  <p className="text-sm text-muted-foreground line-clamp-3">
+                    {systemPrompt}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
