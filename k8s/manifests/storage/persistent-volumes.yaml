@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: local-pv-postgres
+  labels:
+    type: local
+    app: postgres
+spec:
+  storageClassName: local-storage
+  capacity:
+    storage: 0.25Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /ssd2/data/postgres  # Change this to your partition mount point
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - pablonarapoweredger630  # Replace with actual node name
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: local-pv-redis
+  labels:
+    type: local
+    app: redis
+spec:
+  storageClassName: local-storage
+  capacity:
+    storage: 0.5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /ssd2/cache/redis  # Change this to your partition mount point
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - pablonarapoweredger630  # Replace with actual node name

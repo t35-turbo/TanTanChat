@@ -9,7 +9,7 @@ console.log("Auth started with mode: " + process.env.NODE_ENV);
 export const auth = betterAuth({
   trustedOrigins: isDev
     ? ["http://localhost:3000"]
-    : ["https://production-domain"],
+    : [process.env.FRONTEND_URL || "https://tantan.pablonara.com"],
   emailAndPassword: {
     enabled: true,
     // autoSignIn: true, // defaults to true, set to false if you want to explicitly sign in after signup
