@@ -10,7 +10,6 @@ import { type Models, useModel } from "@/hooks/use-model";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,

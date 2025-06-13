@@ -4,7 +4,6 @@ import {
   Card,
   CardAction,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -21,7 +20,7 @@ export const Route = createFileRoute("/login")({
 });
 
 const signIn = async () => {
-  const data = await authClient.signIn.social({
+  await authClient.signIn.social({
     provider: "discord"
   })
 }
