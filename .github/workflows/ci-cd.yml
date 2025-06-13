@@ -84,10 +84,10 @@ jobs:
       matrix:
         include:
           - dockerfile: ./Dockerfile
-            image: ${{ env.BACKEND_IMAGE_NAME }}
+            image: ${{ github.repository }}/backend
             context: .
           - dockerfile: ./client/Dockerfile
-            image: ${{ env.FRONTEND_IMAGE_NAME }}
+            image: ${{ github.repository }}/frontend
             context: .
     steps:
       - name: Checkout code
