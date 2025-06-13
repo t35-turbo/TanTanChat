@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
 import ModelSelector from "@/components/ModelSelector";
+import Settings from "@/components/Settings";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowUpIcon, ChevronsUpDown, LoaderCircle } from "lucide-react";
@@ -268,6 +269,10 @@ export function ChatUI() {
 
   return (
     <div className={`flex flex-col grow items-center w-full h-screen justify-center p-2 relative`}>
+      <div className="fixed top-2 right-2 z-10">
+        <Settings />
+      </div>
+      
       <motion.div
         ref={scrollContainerRef}
         animate={{ height: chatId ? "100%" : "auto" }}
@@ -357,6 +362,9 @@ export function ChatUI() {
           )}
         </motion.div>
       </motion.div>
+      <div className="absolute right-4 bottom-4">
+        <Settings />
+      </div>
     </div>
   );
 }

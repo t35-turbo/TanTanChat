@@ -13,6 +13,7 @@ import { Chat, Chats, db } from "@/lib/db";
 import { z } from "zod/v4-mini";
 import ky from "ky";
 import { queryClient } from "@/routes/__root";
+import Settings from "./Settings";
 
 export default function ChatSidebar() {
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -96,11 +97,14 @@ export default function ChatSidebar() {
               <div>{user_sess.data.user.name}</div>
             </Button>
           ) : (
-            <Button variant={"ghost"} className="grow text-left justify-start items-center p-4 text-md">
-              <LogIn />
-              <div>Log In</div>
+            <Button variant={"ghost"} className="grow text-left justify-start items-center p-4 text-md" asChild>
+              <Link to="/login" params={{ redirect: "/chat" }}>
+                <LogIn />
+                <div>Log In</div>
+              </Link>
             </Button>
           )}
+          <Settings />
         </SidebarFooter>
       </Sidebar>
 
