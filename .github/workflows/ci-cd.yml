@@ -167,6 +167,40 @@ jobs:
             exit 1
           fi
 
+      - name: Update deployment manifests
+        run: |
+          cd gitops
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          # Use truncated SHA to match docker metadata action (7 characters)
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          NEW_TAG="${BRANCH_NAME}-${SHORT_SHA}"
+          
+          # Update backend deployment manifest
+          if [ -f "manifests/backend/deployment.yaml" ]; then
+            echo "🔄 Updating backend deployment manifest..."
+            sed -i "s|image: ghcr\.io/.*/backend:.*# This will be updated by CI/CD|image: ghcr.io/${{ github.repository }}/backend:$NEW_TAG  # This will be updated by CI/CD|g" manifests/backend/deployment.yaml
+            echo "✅ Updated backend deployment with tag: $NEW_TAG"
+            
+            # Show what was updated
+            echo "📄 Updated backend image line:"
+            grep "image: ghcr.io" manifests/backend/deployment.yaml
+          else
+            echo "⚠️  manifests/backend/deployment.yaml not found"
+          fi
+          
+          # Update frontend deployment manifest
+          if [ -f "manifests/frontend/deployment.yaml" ]; then
+            echo "🔄 Updating frontend deployment manifest..."
+            sed -i "s|image: ghcr\.io/.*/frontend:.*# This will be updated by CI/CD|image: ghcr.io/${{ github.repository }}/frontend:$NEW_TAG  # This will be updated by CI/CD|g" manifests/frontend/deployment.yaml
+            echo "✅ Updated frontend deployment with tag: $NEW_TAG"
+            
+            # Show what was updated
+            echo "📄 Updated frontend image line:"
+            grep "image: ghcr.io" manifests/frontend/deployment.yaml
+          else
+            echo "⚠️  manifests/frontend/deployment.yaml not found"
+          fi
+
       - name: Commit and push changes
         run: |
           cd gitops
