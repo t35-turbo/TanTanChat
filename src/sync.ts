@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import * as vk from "./db/redis";
 import { WSContext } from "hono/ws";
 import { ServerWebSocket } from "bun";
+import Exa from "exa-js"
 
 export type Messages = {
   id: string;
@@ -40,18 +41,40 @@ const RedisMessageResponse = z.object({
 });
 
 const vk_client = vk.createClient();
+const MAX_ITERATIONS = 10; // Maximum number of LLM-tool-LLM iterations
+
+const exa = new Exa(process.env.EXASEARCH_API_KEY || "");
+
+export async function callTestTool(params: string) {
+  let sampleReturn = "Test tool called! Was successful!";
+  return sampleReturn;
+}
+
+export async function searchWeb(query: string) {
+
+  const result = await exa.searchAndContents(
+    query,
+    {
+      text: true,
+      numResults: 10
+    });
+  console.log("Search result:", result);
+  return result;
+}
 
 export async function newMessage(chatId: string, senderId: string, messages: Messages, opts: Options) {
   let uuid = crypto.randomUUID();
 
   newCompletion(uuid, chatId, messages, opts);
-  pgSubscriber(uuid, chatId, opts.model);
+  pgSubscriber(uuid, chatId, "assistant", opts.model);
 
   return uuid;
 }
 
-async function newCompletion(id: string, chatId: string, messages: Messages, opts: Options) {
+async function newCompletion(id: string, chatId: string, messages: Messages, opts: Options, iters: number = 0) {
   if (!vk_client.isOpen) await vk_client.connect();
+
+  let accumulatedContent = "";
 
   try {
     await vk_client.set(`chat:${chatId}:activeMessage`, id);
@@ -84,29 +107,101 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
       },
     });
 
+    // Stream the original response
     for await (const chunk of stream) {
       const choice = chunk.choices?.[0];
       if (!choice) {
         continue;
       }
 
+      const contentChunk = choice.delta?.content || "";
+      accumulatedContent += contentChunk;
+
       await vk_client.xAdd(`msg:${id}`, "*", {
         finish_reason: choice.finish_reason || "",
         reasoning: (choice.delta as any).reasoning || "",
-        content: choice.delta?.content || "",
+        content: contentChunk,
         refusal: choice.delta?.refusal || "",
         tool_calls: JSON.stringify(choice.delta?.tool_calls || null),
       });
     }
+
+    // Original stream is complete. Now check for tool call
+    if (accumulatedContent.includes("<WEB_SEARCH_TOOL>") && accumulatedContent.includes("</WEB_SEARCH_TOOL>")) {
+
+      const toolCallStartTag = "<WEB_SEARCH_TOOL>";
+      const toolCallEndTag = "</WEB_SEARCH_TOOL>";
+      const toolCallStartIndex = accumulatedContent.indexOf(toolCallStartTag) + toolCallStartTag.length;
+      const toolCallEndIndex = accumulatedContent.indexOf(toolCallEndTag);
+      
+      const queryForSearch = accumulatedContent.substring(toolCallStartIndex, toolCallEndIndex);
+      
+      const rawToolResponse = await searchWeb(queryForSearch);
+      const toolResponse = JSON.stringify(rawToolResponse);
+      const toolResponseId = crypto.randomUUID();
+
+      await vk_client.set(`chat:${chatId}:activeMessage`, toolResponseId);
+      await vk_client.publish(`chat:${chatId}:events`, `activeMessage ${toolResponseId}`);
+
+      await vk_client.xAdd(`msg:${toolResponseId}`, "*", {
+        finish_reason: "tool_response",
+        reasoning: "",
+        content: toolResponse,
+        refusal: "",
+        tool_calls: null + "", // No further tool calls from this tool's direct response
+      });
+
+      // pgSubscriber needs to be called for this new tool response
+      pgSubscriber(toolResponseId, chatId, "assistant_tool_response", opts.model);
+
+      // Call LLM again with tool output until max iters
+      if (iters < MAX_ITERATIONS) {
+        const nextMessagesForLLM: Messages = [
+          ...messages, // Original messages history
+          {
+            id: id,
+            role: "assistant",
+            chatId: chatId,
+            senderId: "assistant",
+            message: accumulatedContent,
+            createdAt: new Date(),
+          },
+          { // The tool's output
+            id: toolResponseId,
+            role: "assistant",
+            chatId: chatId,
+            senderId: "assistant_tool_response",
+            message: toolResponse,
+            createdAt: new Date(),
+          }
+        ];
+
+        const finalResponseId = crypto.randomUUID();
+        newCompletion(finalResponseId, chatId, nextMessagesForLLM, opts, iters + 1);
+        pgSubscriber(finalResponseId, chatId, "assistant_final_response", opts.model);
+      } else {
+        console.log(`Max iterations (${MAX_ITERATIONS}) reached for chatId: ${chatId}. Halting further LLM calls.`);
+      }
+    }
+
   } catch (err: unknown) {
+    // Log error to the original message stream
     await vk_client.xAdd(`msg:${id}`, "*", {
       finish_reason: (err as Error).message,
       content: "",
+      reasoning: "",
       refusal: "",
       tool_calls: null + "",
     });
   } finally {
+    // The activeMessage was initially set to `id`.
+    // If a tool call occurred, it was then set to `toolResponseId`.
+    // In either case, by this point, the generation process that this `newCompletion` call
+    // was responsible for (either the main message or the subsequent tool message) is done.
+    // Clearing `chat:${chatId}:activeMessage` signals no more *new* messages are imminently expected from this flow.
     await vk_client.del(`chat:${chatId}:activeMessage`);
+    // Optionally, publish an event to explicitly clear the active message on the client side.
+    // await vk_client.publish(`chat:${chatId}:events`, `activeMessage `);
   }
 }
 
@@ -180,7 +275,7 @@ export async function* msgSubscribe(msgId: string) {
   }
 }
 
-async function pgSubscriber(id: string, chatId: string, senderId: string) {
+async function pgSubscriber(id: string, chatId: string, senderId: string, model: string) {
   if (!vk_client.isOpen) await vk_client.connect();
 
   try {
@@ -193,10 +288,14 @@ async function pgSubscriber(id: string, chatId: string, senderId: string) {
       finish_reason = chunk.finish_reason;
     }
 
+    console.log("message", message);
+    console.log("reasoning", reasoning);
+    console.log("finish_reason", finish_reason);
+
     await db.insert(chatMessages).values({
       id,
       chatId,
-      senderId,
+      senderId, // Ensure senderId is passed correctly
       role: "assistant",
       message,
       reasoning,
