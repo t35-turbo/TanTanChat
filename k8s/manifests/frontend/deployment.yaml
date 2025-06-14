@@ -5,6 +5,11 @@ metadata:
   namespace: t3-cloneathon
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
   selector:
     matchLabels:
       app: frontend
@@ -13,9 +18,11 @@ spec:
       labels:
         app: frontend
     spec:
+      imagePullSecrets:
+      - name: ghcr-io-secret
       containers:
       - name: frontend
-        image: ghcr.io/t3-chat-cloneathon/t3-cloneathon-backend/frontend:latest  # This will be updated by CI/CD
+        image: ghcr.io/t3-chat-cloneathon/t3-cloneathon-backend/frontend:main-latest  # This will be updated by CI/CD
         ports:
         - containerPort: 80
         livenessProbe:

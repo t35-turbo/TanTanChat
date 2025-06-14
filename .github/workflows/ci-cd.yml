@@ -148,41 +148,39 @@ jobs:
             echo "3. Copy manifests from k8s/manifests/ to the GitOps repo"
           fi
 
-      - name: Checkout GitOps repo
-        if: steps.check-gitops-repo.outputs.exists == 'true'
+      - name: Checkout GitOps repo or use fallback
         id: checkout-gitops
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.repository }}-gitops
-          token: ${{ secrets.GITOPS_TOKEN }}
-          path: gitops
-
-      - name: Setup GitOps repository if empty
-        if: steps.check-gitops-repo.outputs.exists == 'true'
         run: |
-          cd gitops
-          if [ ! -d "manifests" ]; then
-            echo "📁 GitOps repository exists but has no manifests directory"
-            echo "This means the repository is empty or not properly set up"
-            echo ""
-            echo "🔧 Setting up initial structure..."
-            # You could copy from the main repo here if needed
-            mkdir -p manifests
-            echo "# GitOps Manifests" > manifests/README.md
-            echo "Copy your Kubernetes manifests here from the main repository's k8s/manifests/ directory" >> manifests/README.md
+          if [ "${{ steps.check-gitops-repo.outputs.exists }}" == "true" ]; then
+            echo "🔄 Checking out GitOps repository..."
+            if git clone https://${{ secrets.GITOPS_TOKEN }}@github.com/${{ github.repository }}-gitops.git gitops; then
+              echo "✅ GitOps repository checked out successfully"
+              echo "using_gitops=true" >> $GITHUB_OUTPUT
+              cd gitops
+              if [ ! -d "manifests" ]; then
+                echo "📁 Setting up initial manifests structure..."
+                mkdir -p manifests
+                cp -r ../k8s/manifests/* manifests/ 2>/dev/null || echo "No local manifests to copy"
+              fi
+            else
+              echo "❌ Failed to checkout GitOps repository, using fallback"
+              echo "using_gitops=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "⚠️  GitOps repository not found, using local manifests as fallback"
+            echo "using_gitops=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Check GitOps checkout result
+      - name: Setup fallback GitOps structure
+        if: steps.checkout-gitops.outputs.using_gitops == 'false'
         run: |
-          if [ -d "gitops" ]; then
-            echo "✅ GitOps repository checked out successfully"
-            ls -la gitops/
+          echo "🔄 Setting up fallback GitOps structure in current repo..."
+          mkdir -p gitops/manifests
+          if [ -d "k8s/manifests" ]; then
+            cp -r k8s/manifests/* gitops/manifests/
+            echo "✅ Copied local manifests to gitops directory"
           else
-            echo "❌ GitOps repository checkout failed"
-            echo "This could be due to:"
-            echo "1. Repository ${{ github.repository }}-gitops doesn't exist"
-            echo "2. GITOPS_TOKEN doesn't have access to the repo"
-            echo "3. Token permissions are insufficient"
+            echo "❌ No local manifests found in k8s/manifests/"
             exit 1
           fi
 
@@ -227,8 +225,40 @@ jobs:
       - name: Commit and push changes
         run: |
           cd gitops
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add .
-          git commit -m "Update image tags to main-${{ github.sha }}" || exit 0
-          git push
+          
+          # Extract branch name from github.ref
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          
+          if [ "${{ steps.checkout-gitops.outputs.using_gitops }}" == "true" ]; then
+            echo "🚀 Committing changes to GitOps repository..."
+            git config user.name "GitHub Actions"
+            git config user.email "actions@github.com"
+            git add .
+            if git commit -m "Update image tags to ${BRANCH_NAME}-${{ github.sha }}"; then
+              git push
+              echo "✅ Changes pushed to GitOps repository"
+            else
+              echo "ℹ️  No changes to commit"
+            fi
+          else
+            echo "⚠️  Using fallback mode - changes made to local manifests only"
+            echo "📁 Updated manifest files:"
+            find . -name "*.yaml" -exec echo "  {}" \;
+            echo ""
+            echo "🔧 To enable GitOps workflow:"
+            echo "1. Create repository: ${{ github.repository }}-gitops"
+            echo "2. Add GITOPS_TOKEN secret with repo access"
+            echo "3. Copy these manifests to the GitOps repository"
+            echo ""
+            echo "📄 Manifest contents that would be deployed:"
+            echo "=========================================="
+            find . -name "deployment.yaml" -exec echo "--- {} ---" \; -exec cat {} \; -exec echo "" \;
+          fi
+
+      - name: Upload updated manifests as artifact
+        if: steps.checkout-gitops.outputs.using_gitops == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: updated-k8s-manifests
+          path: gitops/manifests/
+          retention-days: 30

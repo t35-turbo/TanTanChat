@@ -5,6 +5,11 @@ metadata:
   namespace: t3-cloneathon
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
   selector:
     matchLabels:
       app: backend
@@ -13,9 +18,11 @@ spec:
       labels:
         app: backend
     spec:
+      imagePullSecrets:
+      - name: ghcr-io-secret
       containers:
       - name: backend
-        image: ghcr.io/t3-chat-cloneathon/t3-cloneathon-backend/backend:latest  # This will be updated by CI/CD
+        image: ghcr.io/t3-chat-cloneathon/t3-cloneathon-backend/backend:main-latest  # This will be updated by CI/CD
         ports:
         - containerPort: 3001
         env:
@@ -53,24 +60,27 @@ spec:
             configMapKeyRef:
               name: app-config
               key: REDIS_PORT
-        - name: OPENAI_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: OPENAI_API_KEY
-        - name: JWT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: JWT_SECRET
         - name: DATABASE_URL
           value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)"
         - name: REDIS_URL
           value: "redis://$(REDIS_HOST):$(REDIS_PORT)"
         - name: REDIS_PASSWORD
-          value: ""  # Redis has no password in your setup
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: REDIS_PASSWORD
+        - name: SERVER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: SERVER_PORT
         - name: PORT
           value: "3001"
+        - name: BETTER_AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: BETTER_AUTH_SECRET
         - name: DISCORD_CLIENT_ID
           valueFrom:
             secretKeyRef:

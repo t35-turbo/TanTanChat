@@ -58,7 +58,7 @@ spec:
             command:
               - pg_isready
               - -U
-              - postgres
+              - $(POSTGRES_USER)
           initialDelaySeconds: 30
           timeoutSeconds: 5
         readinessProbe:
@@ -66,9 +66,16 @@ spec:
             command:
               - pg_isready
               - -U
-              - postgres
+              - $(POSTGRES_USER)
           initialDelaySeconds: 5
           timeoutSeconds: 1
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
       volumes:
       - name: postgres-storage
         persistentVolumeClaim:
