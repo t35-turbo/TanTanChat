@@ -222,6 +222,22 @@ jobs:
             echo "⚠️  manifests/frontend/deployment.yaml not found"
           fi
 
+          # Update kustomization.yaml file if it exists
+          if [ -f "manifests/kustomization.yaml" ]; then
+            echo "🔄 Updating kustomization.yaml..."
+            # Update backend image tag in kustomization
+            sed -i "s|name: ghcr.io/${{ github.repository }}/backend.*|name: ghcr.io/${{ github.repository }}/backend|g" manifests/kustomization.yaml
+            sed -i "/name: ghcr.io\/${{ github.repository }}\/backend/,/newTag:/ s|newTag:.*|newTag: ${BRANCH_NAME}-${{ github.sha }}|" manifests/kustomization.yaml
+            
+            # Update frontend image tag in kustomization
+            sed -i "s|name: ghcr.io/${{ github.repository }}/frontend.*|name: ghcr.io/${{ github.repository }}/frontend|g" manifests/kustomization.yaml
+            sed -i "/name: ghcr.io\/${{ github.repository }}\/frontend/,/newTag:/ s|newTag:.*|newTag: ${BRANCH_NAME}-${{ github.sha }}|" manifests/kustomization.yaml
+            
+            echo "✅ Updated kustomization.yaml with new image tags"
+          else
+            echo "⚠️  manifests/kustomization.yaml not found"
+          fi
+
       - name: Commit and push changes
         run: |
           cd gitops
