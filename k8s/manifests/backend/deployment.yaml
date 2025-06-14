@@ -13,6 +13,8 @@ spec:
   selector:
     matchLabels:
       app: backend
+      app.kubernetes.io/name: t3-cloneathon # Add this line
+      app.kubernetes.io/version: "1.0.0" 
   template:
     metadata:
       labels:

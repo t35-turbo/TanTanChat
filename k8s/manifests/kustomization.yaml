@@ -1,27 +1,27 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
+# apiVersion: kustomize.config.k8s.io/v1beta1
+# kind: Kustomization
 
-resources:
-  - namespace/namespace.yaml
-  - storage/storageclass.yaml
-  - storage/persistent-volumes.yaml
-  - configmap/configmap.yaml
-  - secret/secret.yaml
-  - secret/image-pull-secret.yaml
-  - postgres/postgres.yaml
-  - redis/redis.yaml
-  - backend/deployment.yaml
-  - frontend/deployment.yaml
-  - ingress/ingress.yaml
+# resources:
+#   - namespace/namespace.yaml
+#   - storage/storageclass.yaml
+#   - storage/persistent-volumes.yaml
+#   - configmap/configmap.yaml
+#   - secret/secret.yaml
+#   - secret/image-pull-secret.yaml
+#   - postgres/postgres.yaml
+#   - redis/redis.yaml
+#   - backend/deployment.yaml
+#   - frontend/deployment.yaml
+#   - ingress/ingress.yaml
 
-namespace: t3-cloneathon
+# namespace: t3-cloneathon
 
-commonLabels:
-  app.kubernetes.io/name: t3-cloneathon
-  app.kubernetes.io/version: "1.0.0"
+# commonLabels:
+#   app.kubernetes.io/name: t3-cloneathon
+#   app.kubernetes.io/version: "1.0.0"
 
-images:
-  - name: ghcr.io/t3-chat-cloneathon/t3-cloneathon-backend/backend
-    newTag: main-latest
-  - name: ghcr.io/t3-chat-cloneathon/t3-cloneathon-backend/frontend
-    newTag: main-latest
+# images:
+#   - name: ghcr.io/t3-chat-cloneathon/t3-cloneathon-backend/backend
+#     newTag: main-latest
+#   - name: ghcr.io/t3-chat-cloneathon/t3-cloneathon-backend/frontend
+#     newTag: main-latest
