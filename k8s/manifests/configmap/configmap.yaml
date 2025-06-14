@@ -9,3 +9,9 @@ data:
   POSTGRES_PORT: "5432"
   REDIS_PORT: "6379"
   NODE_ENV: "production"
+registries:
+  - name: GitHub Container Registry
+    api_url: https://ghcr.io
+    prefix: ghcr.io
+    ping: yes
+    credentials: secret:argocd/ghcr-secret#token
