@@ -190,52 +190,66 @@ jobs:
           
           # Extract branch name from github.ref
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          NEW_TAG="${BRANCH_NAME}-${{ github.sha }}"
           echo "🚀 Updating image tags for branch: $BRANCH_NAME"
+          echo "🏷️  New tag: $NEW_TAG"
           echo "📁 GitOps repository contents:"
           find . -name "*.yaml" | head -10
           
           # Check if manifest structure exists
           if [ ! -d "manifests" ]; then
             echo "❌ No 'manifests' directory found in GitOps repo"
-            echo "Expected structure: manifests/backend/deployment.yaml"
-            echo "                   manifests/frontend/deployment.yaml"
+            echo "Expected structure: manifests/kustomization.yaml"
             echo "Current structure:"
             ls -la
             exit 1
           fi
           
-          # Update backend image tag
-          if [ -f "manifests/backend/deployment.yaml" ]; then
-            echo "🔄 Updating backend deployment..."
-            sed -i "s|image: ghcr.io/${{ github.repository }}/backend:.*|image: ghcr.io/${{ github.repository }}/backend:${BRANCH_NAME}-${{ github.sha }}|g" manifests/backend/deployment.yaml
-            echo "✅ Updated backend image tag to ${BRANCH_NAME}-${{ github.sha }}"
-          else
-            echo "⚠️  manifests/backend/deployment.yaml not found"
-          fi
-          
-          # Update frontend image tag  
-          if [ -f "manifests/frontend/deployment.yaml" ]; then
-            echo "🔄 Updating frontend deployment..."
-            sed -i "s|image: ghcr.io/${{ github.repository }}/frontend:.*|image: ghcr.io/${{ github.repository }}/frontend:${BRANCH_NAME}-${{ github.sha }}|g" manifests/frontend/deployment.yaml
-            echo "✅ Updated frontend image tag to ${BRANCH_NAME}-${{ github.sha }}"
-          else
-            echo "⚠️  manifests/frontend/deployment.yaml not found"
-          fi
-
-          # Update kustomization.yaml file if it exists
+          # Primary focus: Update kustomization.yaml in GitOps repo
           if [ -f "manifests/kustomization.yaml" ]; then
-            echo "🔄 Updating kustomization.yaml..."
+            echo "🔄 Updating kustomization.yaml in GitOps repository..."
+            
             # Update backend image tag in kustomization
-            sed -i "s|name: ghcr.io/${{ github.repository }}/backend.*|name: ghcr.io/${{ github.repository }}/backend|g" manifests/kustomization.yaml
-            sed -i "/name: ghcr.io\/${{ github.repository }}\/backend/,/newTag:/ s|newTag:.*|newTag: ${BRANCH_NAME}-${{ github.sha }}|" manifests/kustomization.yaml
+            sed -i.bak "s|name: ghcr.io/${{ github.repository }}/backend.*|name: ghcr.io/${{ github.repository }}/backend|g" manifests/kustomization.yaml
+            sed -i.bak "/name: ghcr\.io\/${{ github.repository }}\/backend/,/newTag:/ s|newTag:.*|newTag: $NEW_TAG|" manifests/kustomization.yaml
             
             # Update frontend image tag in kustomization
-            sed -i "s|name: ghcr.io/${{ github.repository }}/frontend.*|name: ghcr.io/${{ github.repository }}/frontend|g" manifests/kustomization.yaml
-            sed -i "/name: ghcr.io\/${{ github.repository }}\/frontend/,/newTag:/ s|newTag:.*|newTag: ${BRANCH_NAME}-${{ github.sha }}|" manifests/kustomization.yaml
+            sed -i.bak "s|name: ghcr.io/${{ github.repository }}/frontend.*|name: ghcr.io/${{ github.repository }}/frontend|g" manifests/kustomization.yaml
+            sed -i.bak "/name: ghcr\.io\/${{ github.repository }}\/frontend/,/newTag:/ s|newTag:.*|newTag: $NEW_TAG|" manifests/kustomization.yaml
             
-            echo "✅ Updated kustomization.yaml with new image tags"
+            # Clean up backup files
+            rm -f manifests/kustomization.yaml.bak
+            
+            echo "✅ Updated kustomization.yaml with new image tags: $NEW_TAG"
+            
+            # Show the updated content for verification
+            echo "📄 Updated kustomization.yaml content:"
+            echo "========================================"
+            grep -A 10 "images:" manifests/kustomization.yaml || echo "Could not find images section"
+            
           else
-            echo "⚠️  manifests/kustomization.yaml not found"
+            echo "❌ manifests/kustomization.yaml not found in GitOps repository"
+            echo "Please ensure the GitOps repository has the correct structure"
+            exit 1
+          fi
+
+          # Also update individual deployment files as fallback (optional)
+          echo "🔄 Also updating individual deployment files as backup..."
+          
+          # Update backend deployment if it exists
+          if [ -f "manifests/backend/deployment.yaml" ]; then
+            echo "🔄 Updating backend deployment..."
+            sed -i.bak "s|image: ghcr.io/${{ github.repository }}/backend:.*|image: ghcr.io/${{ github.repository }}/backend:$NEW_TAG|g" manifests/backend/deployment.yaml
+            rm -f manifests/backend/deployment.yaml.bak
+            echo "✅ Updated backend deployment image tag"
+          fi
+          
+          # Update frontend deployment if it exists
+          if [ -f "manifests/frontend/deployment.yaml" ]; then
+            echo "🔄 Updating frontend deployment..."
+            sed -i.bak "s|image: ghcr.io/${{ github.repository }}/frontend:.*|image: ghcr.io/${{ github.repository }}/frontend:$NEW_TAG|g" manifests/frontend/deployment.yaml
+            rm -f manifests/frontend/deployment.yaml.bak
+            echo "✅ Updated frontend deployment image tag"
           fi
 
       - name: Commit and push changes
