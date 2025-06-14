@@ -143,7 +143,9 @@ jobs:
         run: |
           cd gitops
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
-          NEW_TAG="${BRANCH_NAME}-${{ github.sha }}"
+          # Use truncated SHA to match docker metadata action (7 characters)
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          NEW_TAG="${BRANCH_NAME}-${SHORT_SHA}"
           
           if [ -f "manifests/kustomization.yaml" ]; then
             echo "🔄 Updating kustomization.yaml..."
@@ -169,7 +171,9 @@ jobs:
         run: |
           cd gitops
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
-          NEW_TAG="${BRANCH_NAME}-${{ github.sha }}"
+          # Use truncated SHA to match docker metadata action (7 characters)
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          NEW_TAG="${BRANCH_NAME}-${SHORT_SHA}"
           
           # Add and commit changes
           git add .
