@@ -174,11 +174,14 @@ jobs:
           # Use truncated SHA to match docker metadata action (7 characters)
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           NEW_TAG="${BRANCH_NAME}-${SHORT_SHA}"
+          TIMESTAMP=$(date +%s)
           
           # Update backend deployment manifest
           if [ -f "manifests/backend/deployment.yaml" ]; then
             echo "🔄 Updating backend deployment manifest..."
-            sed -i "s|image: ghcr\.io/.*/backend:.*# This will be updated by CI/CD|image: ghcr.io/${{ github.repository }}/backend:$NEW_TAG  # This will be updated by CI/CD|g" manifests/backend/deployment.yaml
+            # More specific regex to match the full image line
+            sed -i "s|image: ghcr\.io/[^/]*/[^/]*/backend:[^[:space:]]*|image: ghcr.io/${{ github.repository }}/backend:$NEW_TAG|g" manifests/backend/deployment.yaml
+            
             echo "✅ Updated backend deployment with tag: $NEW_TAG"
             
             # Show what was updated
@@ -191,7 +194,9 @@ jobs:
           # Update frontend deployment manifest
           if [ -f "manifests/frontend/deployment.yaml" ]; then
             echo "🔄 Updating frontend deployment manifest..."
-            sed -i "s|image: ghcr\.io/.*/frontend:.*# This will be updated by CI/CD|image: ghcr.io/${{ github.repository }}/frontend:$NEW_TAG  # This will be updated by CI/CD|g" manifests/frontend/deployment.yaml
+            # More specific regex to match the full image line
+            sed -i "s|image: ghcr\.io/[^/]*/[^/]*/frontend:[^[:space:]]*|image: ghcr.io/${{ github.repository }}/frontend:$NEW_TAG|g" manifests/frontend/deployment.yaml
+            
             echo "✅ Updated frontend deployment with tag: $NEW_TAG"
             
             # Show what was updated

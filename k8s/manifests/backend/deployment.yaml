@@ -25,6 +25,7 @@ spec:
       containers:
       - name: backend
         image: ghcr.io/t3-chat-cloneathon/t3-cloneathon-backend/backend:main-latest  # This will be updated by CI/CD
+        imagePullPolicy: Always
         ports:
         - containerPort: 3001
         env:

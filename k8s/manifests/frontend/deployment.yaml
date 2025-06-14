@@ -25,6 +25,7 @@ spec:
       containers:
       - name: frontend
         image: ghcr.io/t3-chat-cloneathon/t3-cloneathon-backend/frontend:main-latest  # This will be updated by CI/CD
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
         livenessProbe:
