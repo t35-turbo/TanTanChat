@@ -1,10 +1,9 @@
 import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
 import ModelSelector from "@/components/ModelSelector";
-import Settings from "@/components/Settings";
 import MessageRenderer from "@/components/MessageRenderer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowUpIcon, LoaderCircle } from "lucide-react";
+import { ArrowUpIcon, LoaderCircle, Settings, SettingsIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import React from "react";
 import { authClient } from "@/lib/auth-client";
@@ -267,12 +266,12 @@ export function ChatUI() {
 
   return (
     <div className={`flex flex-col grow items-center w-full h-screen justify-center p-2 relative`}>
-      {!chatId && (
-        <div className="fixed top-2 right-2 z-10">
-          <Settings />
-        </div>
-      )}
-      
+      {/* {!chatId && (
+        <Link to="/settings" className="fixed top-2 right-2 z-10">
+          <SettingsIcon size={14} />
+        </Link>
+      )} */}
+
       <motion.div
         ref={scrollContainerRef}
         animate={{ height: chatId ? "100%" : "auto" }}

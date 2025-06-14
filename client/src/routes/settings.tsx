@@ -1,12 +1,13 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { useKeyInput } from "@/hooks/use-key-input";
+import { useORKey } from "@/hooks/use-or-key";
 import { useTheme } from "@/hooks/use-theme";
 import { authClient } from "@/lib/auth-client";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeftIcon, LogIn, LogOut, Palette, User } from "lucide-react";
+import { createFileRoute, Link, useCanGoBack, useNavigate, useRouter } from "@tanstack/react-router";
+import { ArrowLeftIcon, Info, KeyIcon, LogIn, LogOut, Palette, User } from "lucide-react";
 
 export const Route = createFileRoute("/settings")({
   component: RouteComponent,
@@ -14,10 +15,23 @@ export const Route = createFileRoute("/settings")({
 
 function RouteComponent() {
   const user_sess = authClient.useSession();
+  const canGoBack = useCanGoBack();
+  const navigate = useNavigate();
+  const router = useRouter();
 
   return (
-    <div className="flex flex-col p-4">
-      <Button variant="ghost" className="max-w-32">
+    <div className="flex flex-col gap-2 p-4">
+      <Button
+        variant="ghost"
+        className="max-w-32"
+        onClick={() => {
+          if (canGoBack) {
+            router.history.back();
+          } else {
+            navigate({ to: "/" });
+          }
+        }}
+      >
         <ArrowLeftIcon />
         Back to chat
       </Button>
@@ -30,12 +44,15 @@ function RouteComponent() {
 
       <AccountCard />
       <AppearanceCard />
+      <AboutCard />
     </div>
   );
 }
 
 function AccountCard() {
   const user_sess = authClient.useSession();
+  const keySet = useORKey((state) => !!state.key);
+  const openKeyInput = useKeyInput((state) => state.open);
 
   return (
     <Card>
@@ -56,6 +73,16 @@ function AccountCard() {
             <p className="text-sm text-muted-foreground">{user_sess.data?.user?.email || "Unknown Email"}</p>
           </div>
         </div>
+
+        <Separator />
+        <p>
+          OpenRouter API Key: <b>{keySet ? "Activated" : "Not Set"}</b>
+        </p>
+
+        <Button onClick={openKeyInput} variant={"default"}>
+          <KeyIcon />
+          Set Key
+        </Button>
 
         <Separator />
 
@@ -104,10 +131,8 @@ function AppearanceCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <p>
-            Base Theme
-          </p>
-          <div className="flex space-x-2">
+          <p>Base Theme</p>
+          <div className="flex flex-wrap gap-2">
             <Button
               className={`rounded-full w-12 h-12 bg-white hover:bg-white dark:bg-white hover:border-4 ${base === "white" ? "border-accent" : ""}`}
               variant="outline"
@@ -147,9 +172,7 @@ function AppearanceCard() {
           </div>
           {base !== "white" && base !== "dark" && (
             <>
-              <p>
-                Accent Color
-              </p>
+              <p>Accent Color</p>
               <div className="flex flex-wrap gap-2">
                 <Button
                   className={`accent-rosewater rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${color === "rosewater" ? "border-accent" : ""}`}
@@ -233,6 +256,29 @@ function AppearanceCard() {
             </>
           )}
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AboutCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Info className="size-4" />
+          About
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>© 2025 - {new Date().getFullYear()} 0x41*32 and Cocogoatmain. Made freely available via the MIT License.</p>
+        <p>Clone Clone Clone &lt;3</p>
+        <p>Shiroha Best Girl</p>
+        <p>
+          <a href="https://x4132.dev" className="underline">
+            https://x4132.dev
+          </a>
+        </p>
       </CardContent>
     </Card>
   );

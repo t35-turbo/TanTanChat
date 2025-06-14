@@ -1,6 +1,6 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { LogIn, PanelLeftIcon, SearchIcon, XIcon } from "lucide-react";
+import { LogIn, PanelLeftIcon, SearchIcon, Settings, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import React from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
@@ -13,7 +13,6 @@ import { Chat, Chats, db } from "@/lib/db";
 import { z } from "zod/v4-mini";
 import ky from "ky";
 import { queryClient } from "@/routes/__root";
-import Settings from "./Settings";
 
 export default function ChatSidebar() {
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -104,7 +103,9 @@ export default function ChatSidebar() {
               </Link>
             </Button>
           )}
-          <Settings />
+          <Link to="/settings">
+            <Settings className="size-5" />
+          </Link>
         </SidebarFooter>
       </Sidebar>
 
@@ -161,7 +162,9 @@ function renderChatOutput(chats: Chat[], deleteChat: UseMutationResult<void, Err
         <div key={item.id + item.lastUpdated.getTime()} className={`group/chat`}>
           <Button asChild variant={"ghost"} className="w-full max-w-full relative justify-start px-2">
             <Link to="/chat/$chatId" params={{ chatId: item.id }}>
-              <span className="truncate" title={item.title}>{item.title}</span>
+              <span className="truncate" title={item.title}>
+                {item.title}
+              </span>
               <div className={`hidden group-hover/chat:block ml-auto right-0`}>
                 {/* holy noncompliant html */}
                 {/* TODO: add rename button */}

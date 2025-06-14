@@ -60,6 +60,9 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
     const oai_client = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
       apiKey: opts.apiKey,
+      defaultHeaders: {
+        "X-Title": "TanTan Chat"
+      }
     });
 
     const stream = await oai_client.chat.completions.create({
@@ -126,6 +129,9 @@ export async function titleGenerator(
   const oai_client = new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
     apiKey: opts.apiKey,
+    defaultHeaders: {
+      "X-Title": "TanTan Chat"
+    }
   });
 
   let completion = await oai_client.chat.completions.create({

@@ -36,6 +36,7 @@ function RouteComponent() {
           .post("https://openrouter.ai/api/v1/auth/keys", {
             headers: {
               "Content-Type": "application/json",
+              "X-Title": "TanTan Chat"
             },
             body: JSON.stringify({
               code: code,
