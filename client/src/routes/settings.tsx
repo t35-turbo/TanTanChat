@@ -1,13 +1,27 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { useKeyInput } from "@/hooks/use-key-input";
 import { useORKey } from "@/hooks/use-or-key";
 import { useTheme } from "@/hooks/use-theme";
 import { authClient } from "@/lib/auth-client";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useCanGoBack, useNavigate, useRouter } from "@tanstack/react-router";
-import { ArrowLeftIcon, Info, KeyIcon, LogIn, LogOut, Palette, User } from "lucide-react";
+import ky from "ky";
+import { ArrowLeftIcon, Info, KeyIcon, LogIn, LogOut, Palette, User, Wrench } from "lucide-react";
+import { z } from "zod/v4-mini";
+import { queryClient } from "./__root";
+
+export const getUserSetting = async (key: string, userId?: string) => {
+  if (!userId) return ""; // TODO: Dexie Db for logged out users
+  return z
+    .object({ value: z.nullable(z.object({ value: z.string() })) })
+    .parse(await ky.get(`/api/user/settings/${key}`).json())?.value?.value;
+};
 
 export const Route = createFileRoute("/settings")({
   component: RouteComponent,
@@ -44,6 +58,7 @@ function RouteComponent() {
 
       <AccountCard />
       <AppearanceCard />
+      <SystemPromptCard />
       <AboutCard />
     </div>
   );
@@ -260,7 +275,148 @@ function AppearanceCard() {
     </Card>
   );
 }
+function SystemPromptCard() {
+  const user_sess = authClient.useSession();
 
+  const nameQ = useQuery({
+    queryKey: ["name", user_sess?.data?.user?.id],
+    queryFn: () => getUserSetting("name", user_sess?.data?.user?.id),
+    enabled: !user_sess.isPending && !user_sess.error,
+  });
+
+  const selfAttrQ = useQuery({
+    queryKey: ["self-attr", user_sess?.data?.user?.id],
+    queryFn: () => getUserSetting("self-attr", user_sess?.data?.user?.id),
+    enabled: !user_sess.isPending && !user_sess.error,
+  });
+
+  const traitsQ = useQuery({
+    queryKey: ["traits", user_sess?.data?.user?.id],
+    queryFn: () => getUserSetting("traits", user_sess?.data?.user?.id),
+    enabled: !user_sess.isPending && !user_sess.error,
+  });
+
+  const nameMut = useMutation({
+    mutationFn: async (newName: string) => {
+      if (user_sess.data) {
+        return await ky
+          .put(`/api/user/settings/name`, {
+            json: { value: newName },
+          })
+          .json();
+      } else if (!user_sess.isPending && !user_sess.error) {
+        // dexie db
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["name"] }),
+  });
+
+  const selfAttrMut = useMutation({
+    mutationFn: async (newSelfAttr: string) => {
+      if (user_sess.data) {
+        return await ky
+          .put(`/api/user/settings/self-attr`, {
+            json: { value: newSelfAttr },
+          })
+          .json();
+      } else if (!user_sess.isPending && !user_sess.error) {
+        // dexie db
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["self-attr"] }),
+  });
+
+  const traitsMut = useMutation({
+    mutationFn: async (newTraits: string) => {
+      if (user_sess.data) {
+        return await ky
+          .put(`/api/user/settings/traits`, {
+            json: { value: newTraits },
+          })
+          .json();
+      } else if (!user_sess.isPending && !user_sess.error) {
+        // dexie db
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["traits"] }),
+  });
+
+  let name = "";
+  if (nameQ.isPending) {
+    name = "Loading...";
+  } else if (nameQ.isError) {
+    name = "Error loading data";
+  } else if (nameQ.isSuccess) {
+    name = nameQ.data || "";
+  }
+
+  if (nameMut.isPending && nameMut.variables) {
+    name = nameMut.variables;
+  }
+
+  let selfAttr = "";
+  if (selfAttrQ.isPending) {
+    selfAttr = "Loading...";
+  } else if (selfAttrQ.isError) {
+    selfAttr = "Error loading data";
+  } else if (selfAttrQ.isSuccess) {
+    selfAttr = selfAttrQ.data || "";
+  }
+
+  if (selfAttrMut.isPending && selfAttrMut.variables) {
+    selfAttr = selfAttrMut.variables;
+  }
+
+  let traits = "";
+  if (traitsQ.isPending) {
+    traits = "Loading...";
+  } else if (traitsQ.isError) {
+    traits = "Error loading data";
+  } else if (traitsQ.isSuccess) {
+    traits = traitsQ.data || "";
+  }
+
+  if (traitsMut.isPending && traitsMut.variables) {
+    traits = traitsMut.variables;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Wrench className="size-4" />
+          Customization
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <Label htmlFor="name">What Should We Call You?</Label>
+        <Input
+          name="name"
+          placeholder="Enter Your Name..."
+          value={name}
+          onChange={(e) => nameMut.mutate(e.target.value)}
+          onFocus={() => queryClient.invalidateQueries({ queryKey: ["name"] })}
+        />
+        <Label htmlFor="self-attr">What do you do?</Label>
+        <Input
+          name="self-attr"
+          placeholder="Scientist, Writer, etc..."
+          value={selfAttr}
+          onChange={(e) => selfAttrMut.mutate(e.target.value)}
+          onFocus={() => queryClient.invalidateQueries({ queryKey: ["self-attr"] })}
+        />
+        <Label htmlFor="traits">What Should We Consider When Responding?</Label>
+        <Textarea
+          name="traits"
+          placeholder="Interests or Preferences to keep in mind"
+          value={traits}
+          onChange={(e) => traitsMut.mutate(e.target.value)}
+          onFocus={() => queryClient.invalidateQueries({ queryKey: ["traits"] })}
+        />
+      </CardContent>
+    </Card>
+  );
+}
 function AboutCard() {
   return (
     <Card>

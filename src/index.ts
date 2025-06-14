@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { auth } from "./lib/auth";
 import { db } from "./db";
-import { chats, chatMessages } from "./db/schema";
+import { chats, chatMessages, userSettings } from "./db/schema";
 import { eq, desc, and, asc } from "drizzle-orm";
 import * as sync from "./sync";
 import { z } from "zod";
@@ -173,33 +173,6 @@ app.get("/api/chats/:id", async (c) => {
   return c.json({ messages, cursor: cursor }, 200);
 });
 
-// app.get("/api/chats/:id/activeMessage", async (c) => {
-//   const session = c.get("session");
-//   const user = c.get("user");
-//   const chatId = c.req.param("id");
-
-//   if (!session || !user) {
-//     // unauth mode
-//     return c.json({ error: "Unauthorized" }, 401);
-//   }
-
-//   if (!chatId) {
-//     return c.json({ error: "Invalid chat ID" }, 400);
-//   }
-
-//   const chat = (
-//     await db
-//       .select()
-//       .from(chats)
-//       .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)))
-//   )?.[0];
-//   if (!chat) {
-//     return c.json({ error: "Not Found" }, 404);
-//   }
-
-//   return c.json({ id: (await sync.getActiveMessage(chatId)) ?? "" });
-// });
-
 app.post("/api/chats/:id/new", async (c) => {
   const session = c.get("session");
   const user = c.get("user");
@@ -255,6 +228,75 @@ app.post("/api/chats/:id/new", async (c) => {
 
   return c.json({ msgId: await sync.newMessage(chatId, user.id, messages, opts) }, 201);
 });
+
+app.get("/api/user/settings/:key", async (c) => {
+  const session = c.get("session");
+  const user = c.get("user");
+  const key = c.req.param("key");
+
+  if (!session || !user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+
+  const val = await db.select().from(userSettings).where(and(eq(userSettings.userId, user.id), eq(userSettings.key, key)));
+
+  return c.json({ value: val.length > 0 ? val[0] : null });
+})
+
+app.put("/api/user/settings/:key", async (c) => {
+  const session = c.get("session");
+  const user = c.get("user");
+  const key = c.req.param("key");
+
+  if (!session || !user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  if (!key) {
+    return c.json({ error: "Setting key is required" }, 400);
+  }
+
+
+
+  const body = await c.req.json();
+  const { value } = body;
+
+  if (value === undefined || value === null) {
+    return c.json({ error: "Value is required" }, 400);
+  }
+
+  try {
+    // Check if setting already exists
+    const existingSetting = await db
+      .select()
+      .from(userSettings)
+      .where(and(eq(userSettings.userId, user.id), eq(userSettings.key, key)));
+
+    if (existingSetting.length > 0) {
+      // Update existing setting
+      await db
+        .update(userSettings)
+        .set({ 
+          value: String(value),
+          updatedAt: new Date()
+        })
+        .where(and(eq(userSettings.userId, user.id), eq(userSettings.key, key)));
+    } else {
+      // Create new setting
+      await db.insert(userSettings).values({
+        userId: user.id,
+        key: key,
+        value: String(value),
+      });
+    }
+
+    return c.json({ message: "Setting updated successfully" }, 200);
+  } catch (error) {
+    console.error("Error updating user setting:", error);
+    return c.json({ error: "Failed to update setting" }, 500);
+  }
+})
 
 // TODO: add one for general non-chat window
 app.get(

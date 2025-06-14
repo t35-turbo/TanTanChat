@@ -110,9 +110,7 @@ export const userSettings = pgTable(
       .$defaultFn(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => ({
-    userIdKeyIndex: index("idx_settings_user_id_key").on(table.userId, table.key),
-  }),
+  (table) => [index("idx_settings_user_id_key").on(table.userId, table.key)],
 );
 
 export const systemSettings = pgTable(
@@ -130,7 +128,5 @@ export const systemSettings = pgTable(
       .$defaultFn(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => ({
-    keyIndex: index("idx_system_settings_key").on(table.key),
-  }),
+  (table) => [index("idx_system_settings_key").on(table.key)],
 );

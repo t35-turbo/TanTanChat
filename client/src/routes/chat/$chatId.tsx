@@ -3,11 +3,11 @@ import ModelSelector from "@/components/ModelSelector";
 import MessageRenderer from "@/components/MessageRenderer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowUpIcon, LoaderCircle, Settings, SettingsIcon } from "lucide-react";
+import { ArrowUpIcon, LoaderCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import React from "react";
 import { authClient } from "@/lib/auth-client";
-import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/routes/__root";
 import { z } from "zod/v4-mini";
 import ky, { HTTPError } from "ky";
@@ -15,7 +15,7 @@ import { db, Message } from "@/lib/db";
 import { toast } from "sonner";
 import { useORKey } from "@/hooks/use-or-key";
 import { useModel } from "@/hooks/use-model";
-import { useSystemPrompt } from "@/hooks/use-system-prompt";
+import { getUserSetting } from "../settings";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
@@ -55,7 +55,6 @@ export function ChatUI() {
   const navigate = useNavigate();
   const user_sess = authClient.useSession();
   const or_key = useORKey((state) => state.key);
-  const systemPrompt = useSystemPrompt((state) => state.systemPrompt);
 
   const { chatId } = useParams({
     from: "/chat/$chatId",
@@ -66,6 +65,23 @@ export function ChatUI() {
   const [activeMessageId, setActiveMessageId] = React.useState<string | null>(null);
   const model = useModel((state) => state.model);
   const [input, setInput] = React.useState("");
+
+  const nameQ = useQuery({
+    queryKey: ["name", user_sess?.data?.user?.id],
+    queryFn: () => getUserSetting("name", user_sess?.data?.user?.id),
+    enabled: !user_sess.isPending && !user_sess.error,
+  });
+  const selfAttrQ = useQuery({
+    queryKey: ["self-attr", user_sess?.data?.user?.id],
+    queryFn: () => getUserSetting("self-attr", user_sess?.data?.user?.id),
+    enabled: !user_sess.isPending && !user_sess.error,
+  });
+
+  const traitsQ = useQuery({
+    queryKey: ["traits", user_sess?.data?.user?.id],
+    queryFn: () => getUserSetting("traits", user_sess?.data?.user?.id),
+    enabled: !user_sess.isPending && !user_sess.error,
+  });
 
   // TODO: implement scroll
   const messagePages = useInfiniteQuery({
@@ -150,7 +166,7 @@ export function ChatUI() {
               opts: {
                 apiKey: or_key,
                 model: model.id, // nvm we need zustand LOL
-                system_prompt: systemPrompt || `You are an AI Assistant named ${model.name}`,
+                system_prompt: `${nameQ.data ? `The person wishes to be called ${nameQ.data}\n` : ""}${selfAttrQ.data ? `The person has also informed the assistant that they are ${selfAttrQ.data}.\n` : ""}${traitsQ.data ? `The person perfers the assistant to act in this way: ${traitsQ.data}` : ""}`,
               },
             }),
           })
@@ -318,7 +334,11 @@ export function ChatUI() {
           <div className="flex mt-2">
             <ModelSelector />
 
-            <Button className="ml-auto p-0 cursor-pointer" onClick={sendQuery}>
+            <Button
+              className="ml-auto p-0 cursor-pointer"
+              onClick={sendQuery}
+              disabled={!!activeMessageId || !nameQ.isSuccess || !selfAttrQ.isSuccess || !traitsQ.isSuccess}
+            >
               <ArrowUpIcon />
             </Button>
           </div>
