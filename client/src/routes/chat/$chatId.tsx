@@ -83,7 +83,6 @@ export function ChatUI() {
     enabled: !user_sess.isPending && !user_sess.error,
   });
 
-  // TODO: implement scroll
   const messagePages = useInfiniteQuery({
     queryKey: ["messages", chatId],
     queryFn: async ({ pageParam: cursor }) => {
@@ -233,6 +232,13 @@ The person's date and time is ${(new Date()).toLocaleDateString()}`,
     });
   }
 
+  React.useEffect(() => {
+    // auto scroll to the bottom when a new message is added
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, [activeMessage, messagePages.data])
+
   // ~~websocketless~~ websocketed :( event notifier
   React.useEffect(() => {
     let ws: WebSocket | null = null;
@@ -305,6 +311,33 @@ The person's date and time is ${(new Date()).toLocaleDateString()}`,
     } else {
       toast.error("Please select a model");
     }
+  }
+
+  let messages = messagePages.data ? messagePages.data.pages.flatMap((page) => page.messages) : [];
+  if (sendMessage.isPending) {
+    messages.push({
+      id: "pending",
+      role: "user",
+      senderId: "pending",
+      chatId: chatId || "",
+      message: sendMessage.variables,
+      reasoning: null,
+      finish_reason: null,
+      createdAt: new Date(),
+    });
+  }
+
+  if (activeMessageId) {
+    messages.push({
+      id: "assistant_pending",
+      role: "assistant",
+      senderId: "assistant_pending",
+      chatId: chatId || "",
+      message: activeMessage.reduce((prev, cur) => prev + cur.content, ""),
+      reasoning: activeMessage.reduce((prev, cur) => prev + cur.reasoning, ""),
+      finish_reason: activeMessage.reduce((prev: string | null, cur) => (prev ? prev : cur.finish_reason), null),
+      createdAt: new Date(),
+    });
   }
 
   return (

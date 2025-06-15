@@ -313,6 +313,9 @@ app.get(
       throw new Error("No Chat ID");
     }
 
+    // Track active subscriptions to prevent duplicates
+    const activeSubscriptions = new Set<string>();
+
     return {
       onOpen(_evt, ws) {
         sync.chatEventWsHandler(chatId, ws);
@@ -336,13 +339,32 @@ app.get(
         (async function () {
           switch (call.method) {
             case "subscribe":
-              for await (const chunk of sync.msgSubscribe(call.params)) {
-                ws.send(JSON.stringify({
-                  jsonrpc: "2.0",
-                  method: "chunk",
-                  params: chunk,
-                  id: call.params
-                }))
+              const messageId = call.params;
+              if (activeSubscriptions.has(messageId)) {
+                console.log(`Already subscribed to message: ${messageId}, ignoring duplicate subscription`);
+                return;
+              }
+              
+              activeSubscriptions.add(messageId);
+              console.log(`Starting chunk stream for message: ${messageId}`);
+              
+              try {
+                for await (const chunk of sync.msgSubscribe(messageId)) {
+                  if (ws.readyState === 1) { // Only send if connection is open
+                    ws.send(JSON.stringify({
+                      jsonrpc: "2.0",
+                      method: "chunk",
+                      params: chunk,
+                      id: messageId
+                    }));
+                  } else {
+                    console.log(`WebSocket closed, stopping chunk stream for ${messageId}`);
+                    break;
+                  }
+                }
+              } finally {
+                activeSubscriptions.delete(messageId);
+                console.log(`Finished chunk stream for message: ${messageId}`);
               }
               break;
           }

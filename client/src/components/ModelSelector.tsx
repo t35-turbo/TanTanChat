@@ -29,6 +29,14 @@ export const defaultModels: Models = {
     thinking: true,
     thinkingEffort: "medium",
   },
+  "openai/gpt-4.1-nano-2025-04-14": {
+    name: "GPT-4.1 Nano",
+    id: "openai/gpt-4.1-nano-2025-04-14",
+    thinking: false,}, 
+  "openai/gpt-4.1-mini": {
+    name: "GPT-4.1 mini",
+    id: "openai/gpt-4.1-mini",
+    thinking: false}, 
   "openai/gpt-4.1": { name: "GPT-4.1", id: "openai/gpt-4.1", thinking: false },
   "openai/o4-mini": { name: "o4 Mini", id: "openai/o4-mini", thinking: true, thinkingEffort: "medium" },
   "anthropic/claude-sonnet-4": {
@@ -43,6 +51,12 @@ export const defaultModels: Models = {
     thinking: true,
     thinkingEffort: "medium",
   },
+  "qwen/qwq-32b:free": {
+    name: "Qwen QWQ-32B (Free)",
+    id: "qwen/qwq-32b:free",
+    thinking: true,
+    thinkingEffort: "high",
+  }
 };
 
 export default function ModelSelector() {
