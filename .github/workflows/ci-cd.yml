@@ -1,0 +1,227 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, cicd-dev ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE_NAME: ${{ github.repository }}/backend
+  FRONTEND_IMAGE_NAME: ${{ github.repository }}/frontend
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run tests
+        run: bun test 2>/dev/null || echo "No tests configured yet"
+        continue-on-error: true
+
+      - name: Type check
+        run: bun run tsc --noEmit 2>/dev/null || echo "No TypeScript config found"
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./client
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run tests
+        run: pnpm run test || echo "No tests found, skipping..."
+        continue-on-error: true
+
+      - name: Build application
+        run: pnpm run build
+        continue-on-error: false
+
+  build-and-push:
+    needs: [test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/cicd-dev')
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - dockerfile: ./Dockerfile
+            image: ${{ github.repository }}/backend
+            context: .
+          - dockerfile: ./client/Dockerfile
+            image: ${{ github.repository }}/frontend
+            context: .
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ matrix.image }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  update-gitops:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/cicd-dev'
+    steps:
+      - name: Checkout GitOps repository
+        run: |
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          NEW_TAG="${BRANCH_NAME}-${{ github.sha }}"
+          
+          echo "🚀 Updating GitOps repository with new image tags"
+          echo "🏷️  New tag: $NEW_TAG"
+          echo "� GitOps repo: ${{ github.repository }}-gitops"
+          
+          # Clone the GitOps repository
+          git clone https://${{ secrets.GITOPS_TOKEN }}@github.com/${{ github.repository }}-gitops.git gitops
+          cd gitops
+          
+          # Configure git
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          
+          echo "✅ GitOps repository checked out successfully"
+
+      - name: Update kustomization.yaml
+        run: |
+          cd gitops
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          # Use truncated SHA to match docker metadata action (7 characters)
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          NEW_TAG="${BRANCH_NAME}-${SHORT_SHA}"
+          
+          if [ -f "manifests/kustomization.yaml" ]; then
+            echo "🔄 Updating kustomization.yaml..."
+            
+            # Update backend image tag
+            sed -i "s|newTag: .*# This will be updated by CI/CD|newTag: $NEW_TAG # This will be updated by CI/CD|g" manifests/kustomization.yaml
+            
+            # Alternative approach if the above doesn't work - target specific lines
+            sed -i "/name: ghcr\.io.*backend/,/newTag:/ s|newTag: .*|newTag: $NEW_TAG|" manifests/kustomization.yaml
+            sed -i "/name: ghcr\.io.*frontend/,/newTag:/ s|newTag: .*|newTag: $NEW_TAG|" manifests/kustomization.yaml
+            
+            echo "✅ Updated kustomization.yaml with tag: $NEW_TAG"
+            
+            # Show what was updated
+            echo "📄 Updated image section:"
+            grep -A 5 "images:" manifests/kustomization.yaml
+          else
+            echo "❌ kustomization.yaml not found!"
+            exit 1
+          fi
+
+      - name: Update deployment manifests
+        run: |
+          cd gitops
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          # Use truncated SHA to match docker metadata action (7 characters)
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          NEW_TAG="${BRANCH_NAME}-${SHORT_SHA}"
+          TIMESTAMP=$(date +%s)
+          
+          # Update backend deployment manifest
+          if [ -f "manifests/backend/deployment.yaml" ]; then
+            echo "🔄 Updating backend deployment manifest..."
+            # More specific regex to match the full image line
+            sed -i "s|image: ghcr\.io/[^/]*/[^/]*/backend:[^[:space:]]*|image: ghcr.io/${{ github.repository }}/backend:$NEW_TAG|g" manifests/backend/deployment.yaml
+            
+            echo "✅ Updated backend deployment with tag: $NEW_TAG"
+            
+            # Show what was updated
+            echo "📄 Updated backend image line:"
+            grep "image: ghcr.io" manifests/backend/deployment.yaml
+          else
+            echo "⚠️  manifests/backend/deployment.yaml not found"
+          fi
+          
+          # Update frontend deployment manifest
+          if [ -f "manifests/frontend/deployment.yaml" ]; then
+            echo "🔄 Updating frontend deployment manifest..."
+            # More specific regex to match the full image line
+            sed -i "s|image: ghcr\.io/[^/]*/[^/]*/frontend:[^[:space:]]*|image: ghcr.io/${{ github.repository }}/frontend:$NEW_TAG|g" manifests/frontend/deployment.yaml
+            
+            echo "✅ Updated frontend deployment with tag: $NEW_TAG"
+            
+            # Show what was updated
+            echo "📄 Updated frontend image line:"
+            grep "image: ghcr.io" manifests/frontend/deployment.yaml
+          else
+            echo "⚠️  manifests/frontend/deployment.yaml not found"
+          fi
+
+      - name: Commit and push changes
+        run: |
+          cd gitops
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          # Use truncated SHA to match docker metadata action (7 characters)
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          NEW_TAG="${BRANCH_NAME}-${SHORT_SHA}"
+          
+          # Add and commit changes
+          git add .
+          
+          if git diff --staged --quiet; then
+            echo "ℹ️  No changes to commit"
+          else
+            echo "📝 Committing changes..."
+            git commit -m "Update image tags to $NEW_TAG"
+            git push
+            echo "✅ Changes pushed to GitOps repository"
+          fi

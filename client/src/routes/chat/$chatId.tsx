@@ -181,6 +181,57 @@ export function ChatUI() {
     },
   });
 
+  let messagesForRenderer: Message[] = [];
+
+  // Process historical messages
+  if (messagePages.data) {
+    const historicalMessages = messagePages.data.pages.flatMap((page) => page.messages);
+    messagesForRenderer = historicalMessages.map(msg => {
+      if (msg.senderId === "assistant_tool_response") {
+        return { ...msg, message: "Web search results processed." };
+      }
+      return msg;
+    });
+  }
+
+  if (sendMessage.isPending) {
+    messagesForRenderer.push({
+      id: "pending",
+      role: "user",
+      senderId: user_sess?.data?.user?.id || "pending_user",
+      chatId: chatId || "",
+      message: sendMessage.variables,
+      reasoning: null,
+      finish_reason: null,
+      createdAt: new Date(),
+    });
+  }
+
+  if (activeMessageId) {
+    const currentAccumulatedContent = activeMessage.reduce((prev, cur) => prev + cur.content, "");
+    const isToolResponseStream = activeMessage.length > 0 && activeMessage.some(chunk => chunk.finish_reason === "tool_response");
+    const isCallingToolStream = !isToolResponseStream && currentAccumulatedContent.includes("<WEB_SEARCH_TOOL>") && currentAccumulatedContent.includes("</WEB_SEARCH_TOOL>");
+
+    let displayMessage = currentAccumulatedContent;
+
+    if (isToolResponseStream) {
+      displayMessage = `${model.id} is searching the web...`;
+    } else if (isCallingToolStream) {
+      displayMessage = "Calling web search...";
+    }
+
+    messagesForRenderer.push({
+      id: "assistant_pending",
+      role: "assistant",
+      senderId: "assistant_pending", 
+      chatId: chatId || "",
+      message: displayMessage,
+      reasoning: activeMessage.reduce((prev, cur) => prev + cur.reasoning, ""),
+      finish_reason: activeMessage.reduce((prev: string | null, cur) => cur.finish_reason || prev, null),
+      createdAt: new Date(),
+    });
+  }
+
   // ~~websocketless~~ websocketed :( event notifier
   React.useEffect(() => {
     let ws: WebSocket | null = null;
@@ -255,33 +306,6 @@ export function ChatUI() {
     }
   }
 
-  let messages = messagePages.data ? messagePages.data.pages.flatMap((page) => page.messages) : [];
-  if (sendMessage.isPending) {
-    messages.push({
-      id: "pending",
-      role: "user",
-      senderId: "pending",
-      chatId: chatId || "",
-      message: sendMessage.variables,
-      reasoning: null,
-      finish_reason: null,
-      createdAt: new Date(),
-    });
-  }
-
-  if (activeMessageId) {
-    messages.push({
-      id: "assistant_pending",
-      role: "assistant",
-      senderId: "assistant_pending",
-      chatId: chatId || "",
-      message: activeMessage.reduce((prev, cur) => prev + cur.content, ""),
-      reasoning: activeMessage.reduce((prev, cur) => prev + cur.reasoning, ""),
-      finish_reason: activeMessage.reduce((prev: string | null, cur) => (prev ? prev : cur.finish_reason), null),
-      createdAt: new Date(),
-    });
-  }
-
   return (
     <div className={`flex flex-col grow items-center w-full h-screen justify-center p-2 relative`}>
       {/* {!chatId && (
@@ -296,7 +320,7 @@ export function ChatUI() {
         transition={{ duration: 0.2 }}
         className="flex flex-col w-full items-center overflow-y-auto"
       >
-        <MessageRenderer messages={messages} />
+        <MessageRenderer messages={messagesForRenderer} />
         {sendMessage.isPending || activeMessageId ? (
           <div
             className={`w-full ${chatId ? "flex" : "hidden"} flex-col ${sendMessage.isPending ? "items-end" : "items-start"}`}
