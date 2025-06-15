@@ -151,8 +151,7 @@ jobs:
             echo "🔄 Updating kustomization.yaml..."
             
             # Update backend image tag
-            sed -i "s|newTag: .*# This will be updated by CI/CD|newTag: $NEW_TAG # This will be updated by CI/CD|g" 
-manifests/kustomization.yaml
+            sed -i "s|newTag: .*# This will be updated by CI/CD|newTag: $NEW_TAG # This will be updated by CI/CD|g" manifests/kustomization.yaml
             
             # Alternative approach if the above doesn't work - target specific lines
             sed -i "/name: ghcr\.io.*backend/,/newTag:/ s|newTag: .*|newTag: $NEW_TAG|" manifests/kustomization.yaml
@@ -181,8 +180,7 @@ manifests/kustomization.yaml
           if [ -f "manifests/backend/deployment.yaml" ]; then
             echo "🔄 Updating backend deployment manifest..."
             # More specific regex to match the full image line
-            sed -i "s|image: ghcr\.io/[^/]*/[^/]*/backend:[^[:space:]]*|image: ghcr.io/${{ github.repository }}/backend:$NEW_TAG|g" 
-manifests/backend/deployment.yaml
+            sed -i "s|image: ghcr\.io/[^/]*/[^/]*/backend:[^[:space:]]*|image: ghcr.io/${{ github.repository }}/backend:$NEW_TAG|g" manifests/backend/deployment.yaml
             
             echo "✅ Updated backend deployment with tag: $NEW_TAG"
             
@@ -197,8 +195,7 @@ manifests/backend/deployment.yaml
           if [ -f "manifests/frontend/deployment.yaml" ]; then
             echo "🔄 Updating frontend deployment manifest..."
             # More specific regex to match the full image line
-            sed -i "s|image: ghcr\.io/[^/]*/[^/]*/frontend:[^[:space:]]*|image: ghcr.io/${{ github.repository }}/frontend:$NEW_TAG|g" 
-manifests/frontend/deployment.yaml
+            sed -i "s|image: ghcr\.io/[^/]*/[^/]*/frontend:[^[:space:]]*|image: ghcr.io/${{ github.repository }}/frontend:$NEW_TAG|g" manifests/frontend/deployment.yaml
             
             echo "✅ Updated frontend deployment with tag: $NEW_TAG"
             
