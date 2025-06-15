@@ -59,7 +59,7 @@ export async function searchWeb(query: string) {
       numResults: 3
     });
   console.log("Search result:", result);
-  return "search_result: "+result;
+  return "search_result: "+JSON.stringify(result);
 }
 
 export async function newMessage(chatId: string, senderId: string, messages: Messages, opts: Options) {
@@ -137,7 +137,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
       const queryForSearch = accumulatedContent.substring(toolCallStartIndex, toolCallEndIndex);
       
       const rawToolResponse = await searchWeb(queryForSearch);
-      const toolResponse = JSON.stringify(rawToolResponse);
+      const toolResponse = rawToolResponse;
       const toolResponseId = crypto.randomUUID();
 
       await vk_client.set(`chat:${chatId}:activeMessage`, toolResponseId);
