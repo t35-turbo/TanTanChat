@@ -56,10 +56,10 @@ export async function searchWeb(query: string) {
     query,
     {
       text: true,
-      numResults: 10
+      numResults: 3
     });
   console.log("Search result:", result);
-  return result;
+  return "search_result: "+result;
 }
 
 export async function newMessage(chatId: string, senderId: string, messages: Messages, opts: Options) {
