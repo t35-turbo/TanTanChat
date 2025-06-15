@@ -5,7 +5,10 @@ import { ChevronsUpDown } from "lucide-react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Message } from "@/lib/db";
-import { useTheme, type ThemeState } from "@/hooks/use-theme";
+import { useTheme } from "@/hooks/use-theme";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 
 interface MessageRendererProps {
   messages: Message[];
@@ -27,7 +30,7 @@ function RenderedMsg({ message }: { message: Message }) {
       <div className="p-2 bg-background border rounded-lg mb-1 max-w-[65%] prose">
         {message.reasoning ? (
           <Collapsible>
-            <CollapsibleTrigger className="flex items-center">
+            <CollapsibleTrigger className="flex items-center gap-1">
               Show Thinking <ChevronsUpDown size={14} />
             </CollapsibleTrigger>
             <CollapsibleContent>
@@ -80,6 +83,8 @@ function MarkdownRenderer({ children }: { children: string | null | undefined })
           );
         },
       }}
+      remarkPlugins={[remarkMath]}
+      rehypePlugins={[rehypeKatex]}
     >
       {children}
     </ReactMarkdown>
