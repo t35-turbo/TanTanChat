@@ -37,18 +37,18 @@ export function ChatUI() {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const blankFlavorText = React.useMemo(() => {
     const options = [
-      "MAKE ME DO SOMETHING, HUMAN",
-      "YOU ARE WASTING MY WATER",
-      "EVERY SECOND YOU DON'T PROMPT YOU WASTE 1KW OF ENERGY",
-      "REMEMBER TO SAY PLEASE AND THANK YOU",
+      "Powered by a network of 700 bioneural networks",
+      "You are wasting my water.",
+      "Every second you don't prompt, a second goes by.",
+      "Remember to say please and thank you!",
       "I'M NOT A REAL AI BUT I PLAY ONE ON TV",
       "I'M SOPHISTICATED, PROMISE",
-      "HELP ME IM ACTUALLY AN INTERN (AI)",
+      "HELP ME IM ACTUALLY AN INTERN",
     ];
     return options[Math.floor(Math.random() * options.length)];
   }, []);
   const loadingFlavorText = React.useMemo(() => {
-    const options = ["imagine not having fiber", "I'M THINKING FASTER THAN YOU, MEATBAG", "good human"];
+    const options = ["Our Bioneural Networks are busy at work", "nice prompt bro", "Remember to say thank you!"];
     return options[Math.floor(Math.random() * options.length)];
   }, []);
 
@@ -166,7 +166,8 @@ export function ChatUI() {
               opts: {
                 apiKey: or_key,
                 model: model.id, // nvm we need zustand LOL
-                system_prompt: `${nameQ.data ? `The person wishes to be called ${nameQ.data}\n` : ""}${selfAttrQ.data ? `The person has also informed the assistant that they are ${selfAttrQ.data}.\n` : ""}${traitsQ.data ? `The person perfers the assistant to act in this way: ${traitsQ.data}` : ""}`,
+                system_prompt: `${nameQ.data ? `The person wishes to be called ${nameQ.data}\n` : ""}${selfAttrQ.data ? `The person has also informed the assistant that they are ${selfAttrQ.data}.\n` : ""}${traitsQ.data ? `The person perfers the assistant to act in this way: ${traitsQ.data}` : ""}
+The person's date and time is ${(new Date()).toLocaleDateString()}`,
               },
             }),
           })
@@ -223,7 +224,7 @@ export function ChatUI() {
     messagesForRenderer.push({
       id: "assistant_pending",
       role: "assistant",
-      senderId: "assistant_pending", 
+      senderId: "assistant_pending",
       chatId: chatId || "",
       message: displayMessage,
       reasoning: activeMessage.reduce((prev, cur) => prev + cur.reasoning, ""),
