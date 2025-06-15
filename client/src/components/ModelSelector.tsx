@@ -51,6 +51,12 @@ export const defaultModels: Models = {
     thinking: true,
     thinkingEffort: "medium",
   },
+  "qwen/qwq-32b:free": {
+    name: "Qwen QWQ-32B (Free)",
+    id: "qwen/qwq-32b:free",
+    thinking: true,
+    thinkingEffort: "high",
+  }
 };
 
 export default function ModelSelector() {
