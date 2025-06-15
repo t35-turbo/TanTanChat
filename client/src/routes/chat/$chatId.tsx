@@ -83,7 +83,6 @@ export function ChatUI() {
     enabled: !user_sess.isPending && !user_sess.error,
   });
 
-  // TODO: implement scroll
   const messagePages = useInfiniteQuery({
     queryKey: ["messages", chatId],
     queryFn: async ({ pageParam: cursor }) => {
@@ -232,6 +231,13 @@ export function ChatUI() {
     });
   }
 
+  React.useEffect(() => {
+    // auto scroll to the bottom when a new message is added
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, [activeMessage, messagePages.data])
+
   // ~~websocketless~~ websocketed :( event notifier
   React.useEffect(() => {
     let ws: WebSocket | null = null;
@@ -298,9 +304,9 @@ export function ChatUI() {
     if (model.id) {
       sendMessage.mutate(input);
       setInput("");
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-      }
+      // if (scrollContainerRef.current) {
+      //   scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      // }
     } else {
       toast.error("Please select a model");
     }
