@@ -304,9 +304,39 @@ export function ChatUI() {
     if (model.id) {
       sendMessage.mutate(input);
       setInput("");
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      }
     } else {
       toast.error("Please select a model");
     }
+  }
+
+  let messages = messagePages.data ? messagePages.data.pages.flatMap((page) => page.messages) : [];
+  if (sendMessage.isPending) {
+    messages.push({
+      id: "pending",
+      role: "user",
+      senderId: "pending",
+      chatId: chatId || "",
+      message: sendMessage.variables,
+      reasoning: null,
+      finish_reason: null,
+      createdAt: new Date(),
+    });
+  }
+
+  if (activeMessageId) {
+    messages.push({
+      id: "assistant_pending",
+      role: "assistant",
+      senderId: "assistant_pending",
+      chatId: chatId || "",
+      message: activeMessage.reduce((prev, cur) => prev + cur.content, ""),
+      reasoning: activeMessage.reduce((prev, cur) => prev + cur.reasoning, ""),
+      finish_reason: activeMessage.reduce((prev: string | null, cur) => (prev ? prev : cur.finish_reason), null),
+      createdAt: new Date(),
+    });
   }
 
   return (
