@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-type ThemeState = {
+export type ThemeState = {
   base: "white" | "latte" | "frappe" | "macchiato" | "mocha" | "dark" | "system";
   color:
     | "rosewater"
