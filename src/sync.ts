@@ -66,7 +66,7 @@ export async function newMessage(chatId: string, senderId: string, messages: Mes
   let uuid = crypto.randomUUID();
 
   newCompletion(uuid, chatId, messages, opts);
-  pgSubscriber(uuid, chatId, "assistant", opts.model);
+  // pgSubscriber will be called by newCompletion when streaming is complete
 
   return uuid;
 }
@@ -79,6 +79,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
   try {
     await vk_client.set(`chat:${chatId}:activeMessage`, id);
     await vk_client.publish(`chat:${chatId}:events`, `activeMessage ${id}`);
+    console.log(`New completion started for chatId: ${chatId}, messageId: ${id}`);
 
     const oai_client = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
@@ -115,6 +116,8 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
       }
 
       const contentChunk = choice.delta?.content || "";
+      process.stdout.write(contentChunk);
+
       accumulatedContent += contentChunk;
 
       await vk_client.xAdd(`msg:${id}`, "*", {
@@ -128,6 +131,8 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
 
     // Original stream is complete. Now check for tool call
     if (accumulatedContent.includes("<WEB_SEARCH_TOOL>") && accumulatedContent.includes("</WEB_SEARCH_TOOL>")) {
+      // Save the original message first and wait for it to complete
+      await pgSubscriber(id, chatId, "assistant", opts.model);
 
       const toolCallStartTag = "<WEB_SEARCH_TOOL>";
       const toolCallEndTag = "</WEB_SEARCH_TOOL>";
@@ -151,8 +156,8 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
         tool_calls: null + "", // No further tool calls from this tool's direct response
       });
 
-      // pgSubscriber needs to be called for this new tool response
-      pgSubscriber(toolResponseId, chatId, "assistant_tool_response", opts.model);
+      // Wait for tool response to be saved before proceeding
+      await pgSubscriber(toolResponseId, chatId, "assistant_tool_response", opts.model);
 
       // Call LLM again with tool output until max iters
       if (iters < MAX_ITERATIONS) {
@@ -177,11 +182,18 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
         ];
 
         const finalResponseId = crypto.randomUUID();
-        newCompletion(finalResponseId, chatId, nextMessagesForLLM, opts, iters + 1);
-        pgSubscriber(finalResponseId, chatId, "assistant_final_response", opts.model);
+        await vk_client.publish(`chat:${chatId}:events`, `activeMessage ${finalResponseId}`);
+        // Call newCompletion and wait for it to complete
+        await newCompletion(finalResponseId, chatId, nextMessagesForLLM, opts, iters + 1);
       } else {
         console.log(`Max iterations (${MAX_ITERATIONS}) reached for chatId: ${chatId}. Halting further LLM calls.`);
+        // Clear active message when max iterations reached
+        await vk_client.del(`chat:${chatId}:activeMessage`);
+        await vk_client.publish(`chat:${chatId}:events`, `activeMessage `);
       }
+    } else {
+      // No tool call detected, handle normal completion
+      await pgSubscriber(id, chatId, "assistant", opts.model);
     }
 
   } catch (err: unknown) {
@@ -193,15 +205,8 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
       refusal: "",
       tool_calls: null + "",
     });
-  } finally {
-    // The activeMessage was initially set to `id`.
-    // If a tool call occurred, it was then set to `toolResponseId`.
-    // In either case, by this point, the generation process that this `newCompletion` call
-    // was responsible for (either the main message or the subsequent tool message) is done.
-    // Clearing `chat:${chatId}:activeMessage` signals no more *new* messages are imminently expected from this flow.
-    await vk_client.del(`chat:${chatId}:activeMessage`);
-    // Optionally, publish an event to explicitly clear the active message on the client side.
-    // await vk_client.publish(`chat:${chatId}:events`, `activeMessage `);
+    // Handle error case - still need to call pgSubscriber to clean up
+    await pgSubscriber(id, chatId, "assistant", opts.model);
   }
 }
 
@@ -288,9 +293,9 @@ async function pgSubscriber(id: string, chatId: string, senderId: string, model:
       finish_reason = chunk.finish_reason;
     }
 
-    console.log("message", message);
-    console.log("reasoning", reasoning);
-    console.log("finish_reason", finish_reason);
+    // console.log("message", message);
+    // console.log("reasoning", reasoning);
+    // console.log("finish_reason", finish_reason);
 
     await db.insert(chatMessages).values({
       id,
