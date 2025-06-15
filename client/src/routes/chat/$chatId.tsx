@@ -304,9 +304,6 @@ export function ChatUI() {
     if (model.id) {
       sendMessage.mutate(input);
       setInput("");
-      // if (scrollContainerRef.current) {
-      //   scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-      // }
     } else {
       toast.error("Please select a model");
     }
