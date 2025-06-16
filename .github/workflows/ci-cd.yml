@@ -53,7 +53,7 @@ jobs:
           version: 8
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install && pnpm add better-auth
 
       - name: Run tests
         run: pnpm run test || echo "No tests found, skipping..."
