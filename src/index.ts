@@ -225,7 +225,7 @@ app.post("/api/chats/:id/new", async (c) => {
     .orderBy(asc(chatMessages.createdAt));
   sync.broadcastNewMessage(chatId);
 
-  return c.json({ msgId: await sync.newMessage(chatId, user.id, messages, opts) }, 201);
+  return c.json({ msgId: await sync.newMessage(chatId, messages, opts) }, 201);
 });
 
 app.get("/api/user/settings/:key", async (c) => {

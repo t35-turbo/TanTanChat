@@ -42,16 +42,9 @@ const RedisMessageResponse = z.object({
 });
 
 const vk_client = vk.createClient();
-const MAX_ITERATIONS = 10; // Maximum number of LLM-tool-LLM iterations
-
-const exa = new Exa(process.env.EXASEARCH_API_KEY || "");
-
-export async function callTestTool(params: string) {
-  let sampleReturn = "Test tool called! Was successful!";
-  return sampleReturn;
-}
 
 export async function searchWeb(query: string) {
+  const exa = new Exa(process.env.EXASEARCH_API_KEY || "");
   const result = await exa.searchAndContents(query, {
     text: true,
     numResults: 3,
@@ -62,151 +55,70 @@ export async function searchWeb(query: string) {
   return "search_result: " + JSON.stringify(result);
 }
 
-export async function newMessage(chatId: string, senderId: string, messages: Messages, opts: Options) {
+export async function newMessage(chatId: string, messages: Messages, opts: Options) {
   let uuid = crypto.randomUUID();
 
   newCompletion(uuid, chatId, messages, opts);
-  // pgSubscriber will be called by newCompletion when streaming is complete
+  pgSubscriber(uuid, chatId, opts.model);
 
   return uuid;
 }
 
-async function newCompletion(id: string, chatId: string, messages: Messages, opts: Options, iters: number = 0) {
+async function newCompletion(id: string, chatId: string, messages: Messages, opts: Options) {
   if (!vk_client.isOpen) await vk_client.connect();
 
   let accumulatedContent = "";
 
-  try {
-    await vk_client.set(`chat:${chatId}:activeMessage`, id);
-    await vk_client.publish(`chat:${chatId}:events`, `activeMessage ${id}`);
-    console.log(`New completion started for chatId: ${chatId}, messageId: ${id}`);
+  await vk_client.set(`chat:${chatId}:activeMessage`, id);
+  await vk_client.publish(`chat:${chatId}:events`, `activeMessage ${id}`);
+  console.log(`New completion started for chatId: ${chatId}, messageId: ${id}`);
 
-    const oai_client = new OpenAI({
-      baseURL: "https://openrouter.ai/api/v1",
-      apiKey: opts.apiKey,
-      defaultHeaders: {
-        "X-Title": "TanTan Chat",
+  const oai_client = new OpenAI({
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKey: opts.apiKey,
+    defaultHeaders: {
+      "X-Title": "TanTan Chat",
+    },
+  });
+
+  const stream = await oai_client.chat.completions.create({
+    model: opts.model,
+    messages: [
+      {
+        role: "system",
+        content: default_prompt(opts.model.split("/")[0], opts.model.split("/")[0]) + "\n" + opts.system_prompt,
       },
-    });
+      ...messages.map((m) => ({
+        role: m.role,
+        content: m.message,
+      })),
+    ],
+    reasoning_effort: opts.reasoning_effort,
+    stream: true,
+    stream_options: {
+      include_usage: true,
+    },
+  });
 
-    const stream = await oai_client.chat.completions.create({
-      model: opts.model,
-      messages: [
-        {
-          role: "system",
-          content: default_prompt(opts.model.split("/")[0], opts.model.split("/")[0]) + "\n" + opts.system_prompt,
-        },
-        ...messages.map((m) => ({
-          role: m.role,
-          content: m.message,
-        })),
-      ],
-      reasoning_effort: opts.reasoning_effort,
-      stream: true,
-      stream_options: {
-        include_usage: true,
-      },
-    });
-
-    // Stream the original response
-    for await (const chunk of stream) {
-      const choice = chunk.choices?.[0];
-      if (!choice) {
-        continue;
-      }
-
-      const contentChunk = choice.delta?.content || "";
-      process.stdout.write(contentChunk);
-
-      accumulatedContent += contentChunk;
-
-      await vk_client.xAdd(`msg:${id}`, "*", {
-        finish_reason: choice.finish_reason || "",
-        reasoning: (choice.delta as any).reasoning || "",
-        content: contentChunk,
-        refusal: choice.delta?.refusal || "",
-        tool_calls: JSON.stringify(choice.delta?.tool_calls || null),
-      });
+  // Stream the original response
+  for await (const chunk of stream) {
+    const choice = chunk.choices?.[0];
+    if (!choice) {
+      continue;
     }
 
-    // Original stream is complete. Now check for tool call
-    if (accumulatedContent.includes("<WEB_SEARCH_TOOL>") && accumulatedContent.includes("</WEB_SEARCH_TOOL>")) {
-      // Save the original message first and wait for it to complete
-      await pgSubscriber(id, chatId, "assistant", opts.model);
+    const contentChunk = choice.delta?.content || "";
+    process.stdout.write(contentChunk);
 
-      const toolCallStartTag = "<WEB_SEARCH_TOOL>";
-      const toolCallEndTag = "</WEB_SEARCH_TOOL>";
-      const toolCallStartIndex = accumulatedContent.indexOf(toolCallStartTag) + toolCallStartTag.length;
-      const toolCallEndIndex = accumulatedContent.indexOf(toolCallEndTag);
+    accumulatedContent += contentChunk;
 
-      const queryForSearch = accumulatedContent.substring(toolCallStartIndex, toolCallEndIndex);
-
-      const rawToolResponse = await searchWeb(queryForSearch);
-      const toolResponse = rawToolResponse;
-      const toolResponseId = crypto.randomUUID();
-
-      await vk_client.set(`chat:${chatId}:activeMessage`, toolResponseId);
-      await vk_client.publish(`chat:${chatId}:events`, `activeMessage ${toolResponseId}`);
-
-      await vk_client.xAdd(`msg:${toolResponseId}`, "*", {
-        finish_reason: "tool_response",
-        reasoning: "",
-        content: toolResponse,
-        refusal: "",
-        tool_calls: null + "", // No further tool calls from this tool's direct response
-      });
-
-      // Wait for tool response to be saved before proceeding
-      await pgSubscriber(toolResponseId, chatId, "assistant_tool_response", opts.model);
-
-      // Call LLM again with tool output until max iters
-      if (iters < MAX_ITERATIONS) {
-        const nextMessagesForLLM: Messages = [
-          ...messages, // Original messages history
-          {
-            id: id,
-            role: "assistant",
-            chatId: chatId,
-            senderId: "assistant",
-            message: accumulatedContent,
-            createdAt: new Date(),
-          },
-          {
-            // The tool's output
-            id: toolResponseId,
-            role: "assistant",
-            chatId: chatId,
-            senderId: "assistant_tool_response",
-            message: toolResponse,
-            createdAt: new Date(),
-          },
-        ];
-
-        const finalResponseId = crypto.randomUUID();
-        await vk_client.publish(`chat:${chatId}:events`, `activeMessage ${finalResponseId}`);
-        // Call newCompletion and wait for it to complete
-        await newCompletion(finalResponseId, chatId, nextMessagesForLLM, opts, iters + 1);
-      } else {
-        console.log(`Max iterations (${MAX_ITERATIONS}) reached for chatId: ${chatId}. Halting further LLM calls.`);
-        // Clear active message when max iterations reached
-        await vk_client.del(`chat:${chatId}:activeMessage`);
-        await vk_client.publish(`chat:${chatId}:events`, `activeMessage `);
-      }
-    } else {
-      // No tool call detected, handle normal completion
-      await pgSubscriber(id, chatId, "assistant", opts.model);
-    }
-  } catch (err: unknown) {
-    // Log error to the original message stream
     await vk_client.xAdd(`msg:${id}`, "*", {
-      finish_reason: (err as Error).message,
-      content: "",
-      reasoning: "",
-      refusal: "",
-      tool_calls: null + "",
+      finish_reason: choice.finish_reason || "",
+      reasoning: (choice.delta as any).reasoning || "",
+      content: contentChunk,
+      refusal: choice.delta?.refusal || "",
+      tool_calls: JSON.stringify(choice.delta?.tool_calls || null),
     });
-    // Handle error case - still need to call pgSubscriber to clean up
-    await pgSubscriber(id, chatId, "assistant", opts.model);
   }
 }
 
@@ -280,7 +192,7 @@ export async function* msgSubscribe(msgId: string) {
   }
 }
 
-async function pgSubscriber(id: string, chatId: string, senderId: string, model: string) {
+async function pgSubscriber(id: string, chatId: string, model: string) {
   if (!vk_client.isOpen) await vk_client.connect();
 
   try {
@@ -293,14 +205,10 @@ async function pgSubscriber(id: string, chatId: string, senderId: string, model:
       finish_reason = chunk.finish_reason;
     }
 
-    // console.log("message", message);
-    // console.log("reasoning", reasoning);
-    // console.log("finish_reason", finish_reason);
-
     await db.insert(chatMessages).values({
       id,
       chatId,
-      senderId, // Ensure senderId is passed correctly
+      senderId: model, // Ensure senderId is passed correctly
       role: "assistant",
       message,
       reasoning,
