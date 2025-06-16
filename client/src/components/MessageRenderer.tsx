@@ -22,7 +22,7 @@ export function MessageRenderer({ messages }: MessageRendererProps) {
           >
             <div className="p-2 bg-background border rounded-lg mb-1 max-w-[65%] prose">
               {message.reasoning ? (
-                <Collapsible className="border mb-2 p-2 rounded-lg bg-muted">
+                <Collapsible className="border mb-2 p-2 rounded-lg bg-secondary">
                   <CollapsibleTrigger className="flex items-center">
                     Show Thinking <ChevronsUpDown size={14} />
                   </CollapsibleTrigger>
