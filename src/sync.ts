@@ -7,6 +7,7 @@ import * as vk from "./db/redis";
 import { WSContext } from "hono/ws";
 import { ServerWebSocket } from "bun";
 import Exa from "exa-js"
+import { default_prompt } from "./lib/sys_prompts";
 
 export type Messages = {
   id: string;
@@ -94,7 +95,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
       messages: [
         {
           role: "system",
-          content: opts.system_prompt,
+          content: default_prompt(opts.model.split("/")[0], opts.model.split("/")[0]) + "\n" + opts.system_prompt,
         },
         ...messages.map((m) => ({
           role: m.role,
@@ -138,9 +139,9 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
       const toolCallEndTag = "</WEB_SEARCH_TOOL>";
       const toolCallStartIndex = accumulatedContent.indexOf(toolCallStartTag) + toolCallStartTag.length;
       const toolCallEndIndex = accumulatedContent.indexOf(toolCallEndTag);
-      
+
       const queryForSearch = accumulatedContent.substring(toolCallStartIndex, toolCallEndIndex);
-      
+
       const rawToolResponse = await searchWeb(queryForSearch);
       const toolResponse = rawToolResponse;
       const toolResponseId = crypto.randomUUID();

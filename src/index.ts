@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { streamSSE } from "hono/streaming";
 import { auth } from "./lib/auth";
 import { db } from "./db";
 import { chats, chatMessages, userSettings } from "./db/schema";
@@ -277,7 +276,7 @@ app.put("/api/user/settings/:key", async (c) => {
       // Update existing setting
       await db
         .update(userSettings)
-        .set({ 
+        .set({
           value: String(value),
           updatedAt: new Date()
         })
