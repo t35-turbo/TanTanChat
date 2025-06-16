@@ -341,6 +341,8 @@ app.get(
           case "subscribe":
             sync.chatEventWsHandler(chatId, ws);
             break;
+          default:
+            break;
         }
       },
     };
