@@ -313,9 +313,6 @@ app.get(
       throw new Error("No Chat ID");
     }
 
-    // Track active subscriptions to prevent duplicates
-    const activeSubscriptions = new Set<string>();
-
     return {
       onOpen(_evt, ws) {
         sync.chatEventWsHandler(chatId, ws);
