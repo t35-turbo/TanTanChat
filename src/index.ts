@@ -237,11 +237,13 @@ app.get("/api/user/settings/:key", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-
-  const val = await db.select().from(userSettings).where(and(eq(userSettings.userId, user.id), eq(userSettings.key, key)));
+  const val = await db
+    .select()
+    .from(userSettings)
+    .where(and(eq(userSettings.userId, user.id), eq(userSettings.key, key)));
 
   return c.json({ value: val.length > 0 ? val[0] : null });
-})
+});
 
 app.put("/api/user/settings/:key", async (c) => {
   const session = c.get("session");
@@ -255,8 +257,6 @@ app.put("/api/user/settings/:key", async (c) => {
   if (!key) {
     return c.json({ error: "Setting key is required" }, 400);
   }
-
-
 
   const body = await c.req.json();
   const { value } = body;
@@ -278,7 +278,7 @@ app.put("/api/user/settings/:key", async (c) => {
         .update(userSettings)
         .set({
           value: String(value),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .where(and(eq(userSettings.userId, user.id), eq(userSettings.key, key)));
     } else {
@@ -295,7 +295,7 @@ app.put("/api/user/settings/:key", async (c) => {
     console.error("Error updating user setting:", error);
     return c.json({ error: "Failed to update setting" }, 500);
   }
-})
+});
 
 // TODO: add one for general non-chat window
 app.get(
@@ -332,43 +332,16 @@ app.get(
           })
           .safeParse(JSON.parse(evt.data.toString()));
         if (callParse.error) {
-          console.error(callParse.error);
+          ws.send(JSON.stringify({ jsonrpc: "2.0", method: "invalid_call" }));
           return;
         }
+
         const call = callParse.data;
-        (async function () {
-          switch (call.method) {
-            case "subscribe":
-              const messageId = call.params;
-              if (activeSubscriptions.has(messageId)) {
-                console.log(`Already subscribed to message: ${messageId}, ignoring duplicate subscription`);
-                return;
-              }
-              
-              activeSubscriptions.add(messageId);
-              console.log(`Starting chunk stream for message: ${messageId}`);
-              
-              try {
-                for await (const chunk of sync.msgSubscribe(messageId)) {
-                  if (ws.readyState === 1) { // Only send if connection is open
-                    ws.send(JSON.stringify({
-                      jsonrpc: "2.0",
-                      method: "chunk",
-                      params: chunk,
-                      id: messageId
-                    }));
-                  } else {
-                    console.log(`WebSocket closed, stopping chunk stream for ${messageId}`);
-                    break;
-                  }
-                }
-              } finally {
-                activeSubscriptions.delete(messageId);
-                console.log(`Finished chunk stream for message: ${messageId}`);
-              }
-              break;
-          }
-        })();
+        switch (call.method) {
+          case "subscribe":
+            sync.chatEventWsHandler(chatId, ws);
+            break;
+        }
       },
     };
   }),

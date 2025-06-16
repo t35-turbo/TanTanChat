@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import * as vk from "./db/redis";
 import { WSContext } from "hono/ws";
 import { ServerWebSocket } from "bun";
-import Exa from "exa-js"
+import Exa from "exa-js";
 import { default_prompt } from "./lib/sys_prompts";
 
 export type Messages = {
@@ -52,17 +52,14 @@ export async function callTestTool(params: string) {
 }
 
 export async function searchWeb(query: string) {
-
-  const result = await exa.searchAndContents(
-    query,
-    {
-      text: true,
-      numResults: 3,
-      context: true,
-      // summary: true,
-    });
+  const result = await exa.searchAndContents(query, {
+    text: true,
+    numResults: 3,
+    context: true,
+    // summary: true,
+  });
   console.log("Search result:", result);
-  return "search_result: "+JSON.stringify(result);
+  return "search_result: " + JSON.stringify(result);
 }
 
 export async function newMessage(chatId: string, senderId: string, messages: Messages, opts: Options) {
@@ -88,8 +85,8 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
       baseURL: "https://openrouter.ai/api/v1",
       apiKey: opts.apiKey,
       defaultHeaders: {
-        "X-Title": "TanTan Chat"
-      }
+        "X-Title": "TanTan Chat",
+      },
     });
 
     const stream = await oai_client.chat.completions.create({
@@ -174,14 +171,15 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
             message: accumulatedContent,
             createdAt: new Date(),
           },
-          { // The tool's output
+          {
+            // The tool's output
             id: toolResponseId,
             role: "assistant",
             chatId: chatId,
             senderId: "assistant_tool_response",
             message: toolResponse,
             createdAt: new Date(),
-          }
+          },
         ];
 
         const finalResponseId = crypto.randomUUID();
@@ -198,7 +196,6 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
       // No tool call detected, handle normal completion
       await pgSubscriber(id, chatId, "assistant", opts.model);
     }
-
   } catch (err: unknown) {
     // Log error to the original message stream
     await vk_client.xAdd(`msg:${id}`, "*", {
@@ -233,8 +230,8 @@ export async function titleGenerator(
     baseURL: "https://openrouter.ai/api/v1",
     apiKey: opts.apiKey,
     defaultHeaders: {
-      "X-Title": "TanTan Chat"
-    }
+      "X-Title": "TanTan Chat",
+    },
   });
 
   let completion = await oai_client.chat.completions.create({
@@ -372,4 +369,22 @@ export async function userEventWsHandler(userId: string, ws: WSContext<ServerWeb
       vk_client.destroy();
     }
   });
+}
+
+export async function wsMessageSubscriber(msgId: string, ws: WSContext<ServerWebSocket<undefined>>) {
+  for await (const chunk of msgSubscribe(msgId)) {
+    if (ws.readyState === 1) {
+      // Only send if connection is open
+      ws.send(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          method: "chunk",
+          params: chunk,
+          id: msgId,
+        }),
+      );
+    } else {
+      break;
+    }
+  }
 }
