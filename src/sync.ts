@@ -243,7 +243,7 @@ export async function titleGenerator(
       {
         role: "system",
         content:
-          "You are a title generator. The next message will be a user's query. You will generate a short title based on the query.",
+          "You are a title generator. The next message will be a user's query. You will generate a short title based on the query. Use only plain text without any markdown formatting.",
       },
       {
         role: "user",
