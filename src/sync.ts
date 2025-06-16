@@ -57,7 +57,9 @@ export async function searchWeb(query: string) {
     query,
     {
       text: true,
-      numResults: 3
+      numResults: 3,
+      context: true,
+      // summary: true,
     });
   console.log("Search result:", result);
   return "search_result: "+JSON.stringify(result);

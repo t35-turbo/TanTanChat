@@ -45,6 +45,18 @@ export const defaultModels: Models = {
     thinking: true,
     thinkingEffort: "low",
   },
+  "deepseek/deepseek-r1-0528-qwen3-8b:free": {
+    name: "Deepseek R1 Qwen3 8B (Free)",
+    id: "deepseek/deepseek-r1-0528-qwen3-8b:free",
+    thinking: true,
+    thinkingEffort: "medium",
+  },
+  "deepseek/deepseek-r1-0528:free": {
+    name: "Deepseek R1 (Free)",
+    id: "deepseek/deepseek-r1-0528:free",
+    thinking: true,
+    thinkingEffort: "medium",
+  },
   "deepseek/deepseek-r1-0528": {
     name: "Deepseek R1",
     id: "deepseek/deepseek-r1-0528",
