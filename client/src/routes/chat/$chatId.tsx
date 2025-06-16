@@ -62,9 +62,11 @@ export function ChatUI() {
   }) ?? { chatId: undefined };
 
   const [activeMessage, setActiveMessage] = React.useState<WSModelStreamResponse[]>([]);
+  const [followActiveMessage, setFollowActiveMessage] = React.useState(true);
   const [activeMessageId, setActiveMessageId] = React.useState<string | null>(null);
   const model = useModel((state) => state.model);
   const [input, setInput] = React.useState("");
+  const scrollPosRef = React.useRef(0);
 
   const nameQ = useQuery({
     queryKey: ["name", user_sess?.data?.user?.id],
@@ -234,8 +236,9 @@ The person's date and time is ${(new Date()).toLocaleDateString()}`,
 
   React.useEffect(() => {
     // auto scroll to the bottom when a new message is added
-    if (scrollContainerRef.current) {
+    if (scrollContainerRef.current && followActiveMessage) {
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      scrollPosRef.current = scrollContainerRef.current.scrollTop;
     }
   }, [activeMessage, messagePages.data])
 
@@ -306,8 +309,19 @@ The person's date and time is ${(new Date()).toLocaleDateString()}`,
       sendMessage.mutate(input);
       setInput("");
       if (scrollContainerRef.current) {
+        const handleScroll = () => {
+          if (scrollContainerRef.current && scrollContainerRef.current.scrollTop < scrollPosRef.current) {
+            setFollowActiveMessage(false);
+            console.log("Scroll event detected, disabling auto-scroll");
+          }
+
+          scrollPosRef.current = scrollContainerRef.current.scrollTop;
+        };
+
         scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        scrollContainerRef.current.addEventListener('scroll', handleScroll);
       }
+      setFollowActiveMessage(true);
     } else {
       toast.error("Please select a model");
     }
