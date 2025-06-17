@@ -2,7 +2,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, useSidebar } fro
 import { Button } from "@/components/ui/button";
 import { Eraser, LogIn, PanelLeftIcon, SearchIcon, Settings, TextCursor, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import fuzzysort from "fuzzysort";
 import { Input } from "./ui/input";

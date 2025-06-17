@@ -19,8 +19,8 @@ import { queryClient } from "./__root";
 export const getUserSetting = async (key: string, userId?: string) => {
   if (!userId) return ""; // TODO: Dexie Db for logged out users
   return z
-    .object({ value: z.nullable(z.object({ value: z.string() })) })
-    .parse(await ky.get(`/api/user/settings/${key}`).json())?.value?.value;
+    .object({ value: z.nullable(z.string()) })
+    .parse(await ky.get(`/api/user/settings/${key}`).json())?.value;
 };
 
 export const Route = createFileRoute("/settings")({
