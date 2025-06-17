@@ -278,7 +278,6 @@ export async function userEventWsHandler(userId: string, ws: WSContext<ServerWeb
 }
 
 export async function wsMessageSubscriber(msgId: string, ws: WSContext<ServerWebSocket<undefined>>) {
-  console.log("subscribe msg");
   try {
     for await (const chunk of msgSubscribe(msgId)) {
       if (ws.readyState === 1) {

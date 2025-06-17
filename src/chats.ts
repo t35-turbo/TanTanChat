@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { auth } from "./lib/auth";
 import { db } from "./db";
 import { chats, chatMessages } from "./db/schema";
-import { eq, desc, and, asc } from "drizzle-orm";
+import { eq, desc, and, asc, gte, inArray } from "drizzle-orm";
 import * as sync from "./sync";
 import { z } from "zod";
 import * as crypto from "crypto";
@@ -14,6 +14,7 @@ const chatsApp = new Hono<{
   };
 }>();
 
+// get all chat threads
 chatsApp.get("/", async (c) => {
   const session = c.get("session");
   const user = c.get("user");
@@ -43,6 +44,16 @@ const NewChatBody = z.object({
   }),
 });
 
+type Message = {
+  id: string;
+  chatId: string;
+  senderId: string;
+  role: "user" | "system" | "assistant";
+  message: string;
+  createdAt: Date;
+};
+
+// make new chat thread
 chatsApp.post("/new", async (c) => {
   const session = c.get("session");
   const user = c.get("user");
@@ -70,6 +81,19 @@ chatsApp.post("/new", async (c) => {
   return c.json({ uuid: newChat.id }, 201);
 });
 
+function getChatMessages(chatId: string) {
+  return db.select().from(chatMessages).where(eq(chatMessages.chatId, chatId)).orderBy(asc(chatMessages.createdAt));
+}
+
+async function checkChatExists(chatId: string, userId: string) {
+  return !!(
+    await db
+      .select()
+      .from(chats)
+      .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
+  )?.[0];
+}
+
 chatsApp.get("/:id", async (c) => {
   const session = c.get("session");
   const user = c.get("user");
@@ -88,13 +112,7 @@ chatsApp.get("/:id", async (c) => {
     return c.json({ error: "Invalid chat ID" }, 400);
   }
 
-  const chat = (
-    await db
-      .select()
-      .from(chats)
-      .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)))
-  )?.[0];
-  if (!chat) {
+  if (!(await checkChatExists(chatId, user.id))) {
     return c.json({ error: "Not Found" }, 404);
   }
 
@@ -130,13 +148,7 @@ chatsApp.delete("/:id", async (c) => {
     return c.json({ error: "Chat ID is required" }, 400);
   }
 
-  // Check if the chat exists and belongs to the user
-  const existingChat = await db
-    .select()
-    .from(chats)
-    .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)));
-
-  if (existingChat.length === 0) {
+  if (!(await checkChatExists(chatId, user.id))) {
     return c.json({ error: "Chat not found" }, 404);
   }
 
@@ -161,13 +173,7 @@ chatsApp.post("/:id/new", async (c) => {
   if (!message || message.trim() === "") {
     return c.json({ error: "Invalid message", message: message }, 400);
   }
-  const chat = (
-    await db
-      .select()
-      .from(chats)
-      .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)))
-  )?.[0];
-  if (!chat) {
+  if (!(await checkChatExists(chatId, user.id))) {
     return c.json({ error: "Not Found" }, 404);
   }
 
@@ -175,14 +181,7 @@ chatsApp.post("/:id/new", async (c) => {
     return c.json({ error: "Chat is Busy" }, 409);
   }
 
-  const newMessage: {
-    id: string;
-    chatId: string;
-    senderId: string;
-    role: "user";
-    message: string;
-    createdAt: Date;
-  } = {
+  const newMessage: Message = {
     id: crypto.randomUUID(),
     chatId: chatId,
     senderId: user.id,
@@ -192,13 +191,59 @@ chatsApp.post("/:id/new", async (c) => {
   };
 
   await db.insert(chatMessages).values(newMessage);
-  let messages: sync.Messages = await db
-    .select()
-    .from(chatMessages)
-    .where(eq(chatMessages.chatId, chatId))
-    .orderBy(asc(chatMessages.createdAt));
+  let messages: sync.Messages = await getChatMessages(chatId);
   sync.broadcastNewMessage(chatId);
 
+  return c.json({ msgId: await sync.newMessage(chatId, messages, opts) }, 201);
+});
+
+chatsApp.post("/:id/retry", async (c) => {
+  const session = c.get("session");
+  const user = c.get("user");
+  const { opts } = await c.req.json();
+  const chatId = c.req.param("id");
+  const msgId = c.req.query("msgId");
+
+  if (!session || !user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  if (!chatId || !msgId) {
+    return c.json({ error: "Chat ID and Message ID are required" }, 400);
+  }
+
+  if (!(await checkChatExists(chatId, user.id))) {
+    return c.json({ error: "Not Found" }, 404);
+  }
+
+  const newMsgs = (await getChatMessages(chatId)).reduce(
+    (prev: { arr: Message[]; delArr: string[]; flag: boolean }, cur: Message) => {
+      if (prev.flag) {
+        return { ...prev, delArr: [...prev.delArr, cur.id] };
+      } else if (cur.id === msgId) {
+        console.log(cur);
+        if (cur.role === "user") {
+          return { arr: [...prev.arr, cur], delArr: [], flag: true };
+        } else {
+          return { arr: prev.arr, delArr: [cur.id], flag: true };
+        }
+      } else {
+        return { arr: [...prev.arr, cur], delArr: [], flag: false };
+      }
+    },
+    { arr: [], delArr: [], flag: false },
+  );
+
+  if (await sync.getActiveMessage(chatId)) {
+    return c.json({ error: "Chat is Busy" }, 409);
+  }
+
+  // Delete messages after the specified message
+  await db
+    .delete(chatMessages)
+    .where(inArray(chatMessages.id, newMsgs.delArr));
+
+  let messages: sync.Messages = newMsgs.arr;
   return c.json({ msgId: await sync.newMessage(chatId, messages, opts) }, 201);
 });
 

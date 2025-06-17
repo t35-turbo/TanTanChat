@@ -154,7 +154,6 @@ app.get(
         }
 
         const call = callParse.data;
-        console.log("call", call, call.method);
         switch (call.method) {
           case "subscribe":
             sync.wsMessageSubscriber(call.params, ws);
