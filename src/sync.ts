@@ -51,7 +51,6 @@ export async function searchWeb(query: string) {
     context: true,
     // summary: true,
   });
-  console.log("Search result:", result);
   return "search_result: " + JSON.stringify(result);
 }
 
@@ -71,7 +70,6 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
 
   await vk_client.set(`chat:${chatId}:activeMessage`, id);
   await vk_client.publish(`chat:${chatId}:events`, `activeMessage ${id}`);
-  console.log(`New completion started for chatId: ${chatId}, messageId: ${id}`);
 
   const oai_client = new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
@@ -108,7 +106,6 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
     }
 
     const contentChunk = choice.delta?.content || "";
-    process.stdout.write(contentChunk);
 
     accumulatedContent += contentChunk;
 
@@ -280,6 +277,7 @@ export async function userEventWsHandler(userId: string, ws: WSContext<ServerWeb
 }
 
 export async function wsMessageSubscriber(msgId: string, ws: WSContext<ServerWebSocket<undefined>>) {
+  console.log("subscribe msg");
   try {
     for await (const chunk of msgSubscribe(msgId)) {
       if (ws.readyState === 1) {
@@ -296,6 +294,6 @@ export async function wsMessageSubscriber(msgId: string, ws: WSContext<ServerWeb
       }
     }
   } catch (error) {
-    console.error(error);
+    console.error("error", error);
   }
 }

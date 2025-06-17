@@ -292,7 +292,6 @@ app.put("/api/user/settings/:key", async (c) => {
 
     return c.json({ message: "Setting updated successfully" }, 200);
   } catch (error) {
-    console.error("Error updating user setting:", error);
     return c.json({ error: "Failed to update setting" }, 500);
   }
 });
@@ -334,9 +333,10 @@ app.get(
         }
 
         const call = callParse.data;
+        console.log('call', call, call.method);
         switch (call.method) {
           case "subscribe":
-            sync.chatEventWsHandler(chatId, ws);
+            sync.wsMessageSubscriber(call.params, ws);
             break;
           default:
             break;
