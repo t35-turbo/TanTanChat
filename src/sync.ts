@@ -8,6 +8,7 @@ import { WSContext } from "hono/ws";
 import { ServerWebSocket } from "bun";
 import Exa from "exa-js";
 import { default_prompt } from "./lib/sys_prompts";
+import env from "./lib/env";
 
 export type Messages = {
   id: string;
@@ -43,16 +44,16 @@ const RedisMessageResponse = z.object({
 
 const vk_client = vk.createClient();
 
-export async function searchWeb(query: string) {
-  const exa = new Exa(process.env.EXASEARCH_API_KEY || "");
-  const result = await exa.searchAndContents(query, {
-    text: true,
-    numResults: 3,
-    context: true,
-    // summary: true,
-  });
-  return "search_result: " + JSON.stringify(result);
-}
+// export async function searchWeb(query: string) {
+//   const exa = new Exa(env.EXASEARCH_API_KEY || "");
+//   const result = await exa.searchAndContents(query, {
+//     text: true,
+//     numResults: 3,
+//     context: true,
+//     // summary: true,
+//   });
+//   return "search_result: " + JSON.stringify(result);
+// }
 
 export async function newMessage(chatId: string, messages: Messages, opts: Options) {
   let uuid = crypto.randomUUID();

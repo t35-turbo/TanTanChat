@@ -1,7 +1,8 @@
 import * as redis from "redis";
+import env from "../lib/env";
 
 export const createClient = () =>
   redis.createClient({
-    url: process.env.REDIS_URL!,
-    password: process.env.REDIS_PASSWORD!,
+    url: env.REDIS_URL,
+    password: env.REDIS_PASSWORD,
   });

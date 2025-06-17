@@ -1,42 +1,20 @@
 import { Hono } from "hono";
 import { auth } from "./lib/auth";
 import { db } from "./db";
-import { chats, files, chatMessages, userSettings } from "./db/schema";
+import { chats, chatMessages, userSettings } from "./db/schema";
 import { eq, desc, and, asc } from "drizzle-orm";
 import * as sync from "./sync";
 import { z } from "zod";
 import { createBunWebSocket } from "hono/bun";
 import type { ServerWebSocket } from "bun";
 import { mkdir, readdir } from "node:fs/promises";
-import * as crypto from 'crypto';
-import mime from 'mime';
-import { error } from "node:console";
-import { except } from "drizzle-orm/gel-core";
-
+import * as crypto from "crypto";
+import { filesApp } from "./files";
+import chatsApp from "./chats";
 
 const PORT = process.env.PORT || 3001;
 
 const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
-
-
-// INIT FUNCTIONS --------------------------------------------------------------------
-
-if (process.env.USE_S3 === "false") {
-  let exists = false;
-  try {
-    readdir("./tmp");
-    exists = true;
-  } catch { /* Create local store directory for attachments */
-    // check if env variable is set
-    if (!process.env.LOCAL_FILE_STORE_PATH) {
-      throw new Error("LOCAL_FILE_STORE_PATH is not set but USE_S3 is not true!");
-    }
-    mkdir(process.env.LOCAL_FILE_STORE_PATH + "/store", { recursive: true });
-  }
-}
-
-// END INIT FUNCTIONS --------------------------------------------------------------------
-
 
 const app = new Hono<{
   Variables: {
@@ -66,193 +44,6 @@ app.use("*", async (c, next) => {
 app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 app.get("/api/heartbeat", (c) => c.text("OK"));
-
-app.get("/api/chats", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  const userChats = await db.select().from(chats).where(eq(chats.userId, user.id));
-  if (userChats.length === 0) {
-    return c.json({ chats: [] });
-  }
-  const chatData = userChats.map((chat) => ({
-    id: chat.id,
-    title: chat.title,
-    lastUpdated: chat.lastUpdated,
-  }));
-
-  return c.json({ chats: chatData });
-});
-
-const NewChatBody = z.object({
-  message: z.string(),
-  opts: z.object({
-    apiKey: z.string(),
-    model: z.string(),
-  }),
-});
-app.post("/api/chats/new", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const body = await NewChatBody.safeParseAsync(await c.req.json());
-
-  // TODO: allow unauth
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-  if (body.error) {
-    return c.json({ error: "Invalid message" }, 400);
-  }
-  const { message, opts } = body.data;
-
-  const newChat = {
-    id: crypto.randomUUID(),
-    userId: user.id,
-    title: "New Chat",
-    lastUpdated: new Date(),
-  };
-
-  sync.titleGenerator(newChat.id, message, [user.id], opts);
-
-  await db.insert(chats).values(newChat);
-  return c.json({ uuid: newChat.id }, 201);
-});
-
-app.delete("/api/chats/:id", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const chatId = c.req.param("id");
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  if (!chatId) {
-    return c.json({ error: "Chat ID is required" }, 400);
-  }
-
-  // Check if the chat exists and belongs to the user
-  const existingChat = await db
-    .select()
-    .from(chats)
-    .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)));
-
-  if (existingChat.length === 0) {
-    return c.json({ error: "Chat not found" }, 404);
-  }
-
-  // Delete the chat
-  await db.delete(chats).where(and(eq(chats.id, chatId), eq(chats.userId, user.id)));
-
-  return c.json({ message: "Chat deleted successfully" }, 200);
-});
-
-app.get("/api/chats/:id", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const chatId = c.req.param("id");
-
-  // Get query parameters from URL
-  const CHUNK_RANGE = 100;
-  const cursor = parseInt(c.req.query("cursor") ?? "0");
-  const descending = c.req.query("descending") === "true";
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  if (!chatId || typeof chatId !== "string") {
-    return c.json({ error: "Invalid chat ID" }, 400);
-  }
-
-  const chat = (
-    await db
-      .select()
-      .from(chats)
-      .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)))
-  )?.[0];
-  if (!chat) {
-    return c.json({ error: "Not Found" }, 404);
-  }
-
-  if (isNaN(cursor)) {
-    return c.json({ error: "Invalid Cursor" }, 400);
-  }
-
-  let messages;
-  const offsetValue = cursor * CHUNK_RANGE;
-  const limitValue = (cursor + 1) * CHUNK_RANGE - offsetValue;
-
-  messages = await db
-    .select()
-    .from(chatMessages)
-    .where(eq(chatMessages.chatId, chatId))
-    .orderBy(descending ? desc(chatMessages.createdAt) : asc(chatMessages.createdAt))
-    .offset(offsetValue)
-    .limit(limitValue);
-
-  return c.json({ messages, cursor: cursor }, 200);
-});
-
-app.post("/api/chats/:id/new", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const { message, opts } = await c.req.json();
-  const chatId = c.req.param("id");
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-  if (!chatId) {
-    return c.json({ error: "Invalid chat ID" }, 400);
-  }
-  if (!message || message.trim() === "") {
-    return c.json({ error: "Invalid message", message: message }, 400);
-  }
-  const chat = (
-    await db
-      .select()
-      .from(chats)
-      .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)))
-  )?.[0];
-  if (!chat) {
-    return c.json({ error: "Not Found" }, 404);
-  }
-
-  if (await sync.getActiveMessage(chatId)) {
-    return c.json({ error: "Chat is Busy" }, 409);
-  }
-
-  const newMessage: {
-    id: string;
-    chatId: string;
-    senderId: string;
-    role: "user";
-    message: string;
-    createdAt: Date;
-  } = {
-    id: crypto.randomUUID(),
-    chatId: chatId,
-    senderId: user.id,
-    role: "user",
-    message: message,
-    createdAt: new Date(),
-  };
-
-  await db.insert(chatMessages).values(newMessage);
-  let messages: sync.Messages = await db
-    .select()
-    .from(chatMessages)
-    .where(eq(chatMessages.chatId, chatId))
-    .orderBy(asc(chatMessages.createdAt));
-  sync.broadcastNewMessage(chatId);
-
-  return c.json({ msgId: await sync.newMessage(chatId, messages, opts) }, 201);
-});
 
 app.get("/api/user/settings/:key", async (c) => {
   const session = c.get("session");
@@ -323,121 +114,8 @@ app.put("/api/user/settings/:key", async (c) => {
   }
 });
 
-app.post("/api/files/upload", async (c) => {
-
-  // TODO: S3 support
-
-  const session = c.get("session");
-  const user = c.get("user");
-  const formData = await c.req.formData();
-  const file = formData.get("file");
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  if (!file || !(file instanceof Blob)) {
-    return c.json({ error: "Invalid file" }, 400);
-  }
-
-  if (process.env.USE_S3 === "true") {
-    throw new Error("File uploads are not supported when USE_S3 is true");
-  }
-
-  const fileId = crypto.randomUUID();
-  const filePath = `${fileId}`;
-  const arrayBuffer = await file.arrayBuffer();
-
-  await Bun.write(filePath, arrayBuffer);
-  
-  const fileName = file.name || `${fileId}`;
-  const fileSize = file.size || arrayBuffer.byteLength;
-  const fileHash = crypto.createHash('md5').update(new Uint8Array(arrayBuffer)).digest('hex');
-
-  const fileData = {
-    id: fileId,
-    filename: fileName,
-    size: fileSize,
-    hash: fileHash,
-    ownedBy: user.id,
-    onS3: process.env.USE_S3 === "true",
-    filePath: filePath,
-    createdAt: new Date(),
-  };
-
-  await db.insert(files).values(fileData);
-  return c.json({ fileId: fileId, fileName: fileName, fileSize: fileSize, fileHash: fileHash }, 201);
-
-});
-
-app.get("/api/files/:id", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const fileId = c.req.param("id");
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-  if (!fileId || typeof fileId !== "string") {
-    return c.json({ error: "Invalid file ID" }, 400);
-  }
-
-  const file = await db.select().from(files).where(eq(files.id, fileId)).limit(1);
-
-  if (file.length === 0) {
-    return c.json({ error: "File not found" }, 404);
-  }
-
-  if (user.id !== file[0].ownedBy) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
-  if (process.env.USE_S3 === "true") {
-    throw new Error("File downloads are not supported when USE_S3 is true currently");
-  }
-
-  let fileData;
-  try {
-    fileData = Bun.file(`${file[0].filePath}`);
-  } catch (error) {
-    console.error("Error retrieving file:", error);
-    console.log("Trying to read file from ENV local store path");
-    fileData = Bun.file(`${process.env.LOCAL_FILE_STORE_PATH}/${fileId}`);
-  }
-
-  const filetype = mime.getType(file[0].filename) || "application/octet-stream";
-
-  c.header("Content-Type", filetype);
-
-  return c.body(await fileData.arrayBuffer(), 200, {
-    "Content-Disposition": `attachment; filename="${file[0].filename}"`,
-  });
-});
-
-app.delete("/api/files/:id", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const fileId = c.req.param("id");
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-  if (!fileId || typeof fileId !== "string") {
-    return c.json({ error: "Invalid file ID" }, 400);
-  }
-  const file = await db.select().from(files).where(eq(files.id, fileId)).limit(1);
-  if (file.length === 0) {
-    return c.json({ error: "File not found" }, 404);
-  }
-  if (user.id !== file[0].ownedBy) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-  try {
-    // Delete the file from the local store
-    await Bun.file(`${file[0].filePath}`).delete();
-  } catch (error) {
-    console.error("Error deleting file:", error);
-    return c.json({ error: "Failed to delete file" }, 500);
-  }
-});
+app.route("/api/chats", chatsApp);
+app.route("/api/files", filesApp);
 
 // TODO: add one for general non-chat window
 app.get(
@@ -476,7 +154,7 @@ app.get(
         }
 
         const call = callParse.data;
-        console.log('call', call, call.method);
+        console.log("call", call, call.method);
         switch (call.method) {
           case "subscribe":
             sync.wsMessageSubscriber(call.params, ws);

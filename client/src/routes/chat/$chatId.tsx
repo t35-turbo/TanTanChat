@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { useORKey } from "@/hooks/use-or-key";
 import { useModel } from "@/hooks/use-model";
 import { getUserSetting } from "../settings";
+import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
+import { useTools } from "@/hooks/use-tools";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
@@ -55,6 +57,7 @@ export function ChatUI() {
   const navigate = useNavigate();
   const user_sess = authClient.useSession();
   const or_key = useORKey((state) => state.key);
+  const web_search = useTools((state) => state.web_search);
 
   const { chatId } = useParams({
     from: "/chat/$chatId",
@@ -166,8 +169,14 @@ export function ChatUI() {
               opts: {
                 apiKey: or_key,
                 model: model.id, // nvm we need zustand LOL
-                system_prompt: `${nameQ.data ? `The person wishes to be called ${nameQ.data}\n` : ""}${selfAttrQ.data ? `The person has also informed the assistant that they are ${selfAttrQ.data}.\n` : ""}${traitsQ.data ? `The person perfers the assistant to act in this way: ${traitsQ.data}` : ""}
-The person's date and time is ${(new Date()).toLocaleDateString()}`,
+                system_prompt: generateSystemPrompt({
+                  name: nameQ.data,
+                  selfAttr: selfAttrQ.data,
+                  traits: traitsQ.data,
+                }),
+                tools: {
+                  web_search
+                },
               },
             }),
           })

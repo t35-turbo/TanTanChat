@@ -1,7 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import { PrismAsyncLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { ChevronDown, ChevronRight, ChevronsUpDown, ChevronUp, Search, TestTube } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronsUpDown, ChevronUp, Copy, CopyIcon, RefreshCw, Search, TestTube } from "lucide-react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Message } from "@/lib/db";
@@ -11,6 +11,8 @@ import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 import { ToolCallRenderer } from "./ToolCallRenderer";
 import React from "react";
+import { Button } from "./ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 interface MessageRendererProps {
   messages: Message[];
@@ -19,7 +21,9 @@ interface MessageRendererProps {
 export function MessageRenderer({ messages }: MessageRendererProps) {
   return (
     <>
-      {messages.map((message) => <RenderedMsg message={message} />)}
+      {messages.map((message) => (
+        <RenderedMsg message={message} />
+      ))}
     </>
   );
 }
@@ -27,30 +31,68 @@ export function MessageRenderer({ messages }: MessageRendererProps) {
 function RenderedMsg({ message }: { message: Message }) {
   const [showThink, setShowThink] = React.useState(false);
 
+  function copyMessage() {
+    navigator.clipboard.writeText(message.message);
+  }
+
+  function retryMessage() {
+  }
+
   return (
-    <div className={`w-full flex ${message.role === "user" ? "justify-end" : "justify-start"}`} key={message.id}>
-      <div className="p-2 bg-background border rounded-lg mb-1 max-w-[65%] prose">
-        {message.reasoning ? (
-          <Collapsible>
-            <CollapsibleTrigger
-              className="flex items-center gap-1 transition-all text-foreground/50 hover:text-foreground"
-              onClick={() => setShowThink(!showThink)}
-            >
-              {showThink ? <ChevronDown /> : <ChevronRight />} {showThink ? "Hide Thinking" : "Show Thinking"}
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <MarkdownRenderer>{message.reasoning ?? ""}</MarkdownRenderer>
-            </CollapsibleContent>
-          </Collapsible>
-        ) : null}
+    <div
+      className={`w-full flex flex-col ${message.role === "user" ? "items-end" : "items-start"}`}
+      key={message.id}
+    >
+      <div className="group relative max-w-[70%]">
+        <div
+          className={`${message.role === "user" ? "border p-2 rounded-lg" : "px-2 py-1"} bg-background mb-1 prose`}
+        >
+          {message.reasoning ? (
+            <Collapsible>
+              <CollapsibleTrigger
+                className="flex items-center gap-1 transition-all text-foreground/50 hover:text-foreground"
+                onClick={() => setShowThink(!showThink)}
+              >
+                {showThink ? <ChevronDown /> : <ChevronRight />} {showThink ? "Hide Thinking" : "Show Thinking"}
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <MarkdownRenderer>{message.reasoning ?? ""}</MarkdownRenderer>
+              </CollapsibleContent>
+            </Collapsible>
+          ) : null}
 
-        <MarkdownRenderer>{message.message}</MarkdownRenderer>
+          <MarkdownRenderer>{message.message}</MarkdownRenderer>
 
-        {message.finish_reason && message.finish_reason !== "stop" ? (
-          <Alert variant="destructive">
-            <AlertTitle>{message.finish_reason}</AlertTitle>
-          </Alert>
-        ) : null}
+          {message.finish_reason && message.finish_reason !== "stop" ? (
+            <Alert variant="destructive">
+              <AlertTitle>{message.finish_reason}</AlertTitle>
+            </Alert>
+          ) : null}
+        </div>
+        <div
+          className={`flex items-center opacity-0 transition-opacity absolute z-10 ${message.role === "user" ? "right-0" : "left-0"} group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100 text-foreground/80`}
+        >
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant={"ghost"} onClick={() => copyMessage()}>
+                <Copy className="size-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>Copy message</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant={"ghost"} onClick={() => retryMessage()}>
+                <RefreshCw className="size-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>Regenerate message from this point</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
       </div>
     </div>
   );

@@ -1,24 +1,23 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "../db";
-
-const databaseUrl = process.env.DATABASE_URL;
-const isDev = process.env.NODE_ENV == "development";
+import env from "./env";
 
 export const auth = betterAuth({
-  trustedOrigins: isDev
-    ? ["http://localhost:3000"]
-    : ["https://production-domain"],
+  trustedOrigins: env.NODE_ENV == "development" ? ["http://localhost:3000"] : ["https://production-domain"],
   emailAndPassword: {
     enabled: true,
     // autoSignIn: true, // defaults to true, set to false if you want to explicitly sign in after signup
   },
 
   socialProviders: {
-    discord: {
-      clientId: process.env.DISCORD_CLIENT_ID || "",
-      clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
-    },
+    discord:
+      env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET
+        ? {
+            clientId: env.DISCORD_CLIENT_ID,
+            clientSecret: env.DISCORD_CLIENT_SECRET,
+          }
+        : undefined,
   },
 
   database: drizzleAdapter(db, {

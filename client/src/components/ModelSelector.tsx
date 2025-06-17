@@ -78,7 +78,7 @@ export default function ModelSelector() {
   const model = useModel((state) => state.model);
   const setModel = useModel((state) => state.setModel);
 
-  const webSearch = useTools(state => state.webSearch);
+  const webSearch = useTools(state => state.web_search);
   const setWebSearch = useTools(state => state.setWebSearch);
 
   const or_key = useORKey((state) => state.key);
@@ -167,7 +167,7 @@ export default function ModelSelector() {
         </DropdownMenu>
       ) : null}
 
-      <Toggle className="border" onPressedChange={setWebSearch} pressed={webSearch}><Globe /> Search</Toggle>
+      {/* <Toggle className="border" onPressedChange={setWebSearch} pressed={webSearch}><Globe /> Search</Toggle> */}
     </>
   );
 }
