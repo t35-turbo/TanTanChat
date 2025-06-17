@@ -3,7 +3,7 @@ import ModelSelector from "@/components/ModelSelector";
 import MessageRenderer from "@/components/MessageRenderer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowUpIcon, LoaderCircle } from "lucide-react";
+import { ArrowUpIcon, LoaderCircle, SquareIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import React from "react";
 import { authClient } from "@/lib/auth-client";
@@ -332,7 +332,7 @@ The person's date and time is ${(new Date()).toLocaleDateString()}`,
             value={input}
             onChange={(e) => setInput(e.target.value)}
           />
-          <div className="flex mt-2">
+          <div className="flex mt-2 gap-2">
             <ModelSelector />
 
             <Button
@@ -340,7 +340,7 @@ The person's date and time is ${(new Date()).toLocaleDateString()}`,
               onClick={sendQuery}
               disabled={!!activeMessageId || !nameQ.isSuccess || !selfAttrQ.isSuccess || !traitsQ.isSuccess}
             >
-              <ArrowUpIcon />
+              {!activeMessageId ? <ArrowUpIcon /> : <SquareIcon className="fill-background" />}
             </Button>
           </div>
           {user_sess.data ? null : (
