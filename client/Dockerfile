@@ -23,6 +23,9 @@ COPY client/package.json client/pnpm-lock.yaml* ./
 COPY --from=deps /app/node_modules ./node_modules
 COPY client/ .
 
+# Install deps (backup)
+RUN pnpm install
+
 # Build the application
 RUN pnpm run build
 
