@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
 import ModelSelector from "@/components/ModelSelector";
 import MessageRenderer from "@/components/MessageRenderer";
 import { Button } from "@/components/ui/button";
@@ -79,7 +79,7 @@ export function ChatUI() {
     queryFn: () => getUserSetting("self-attr", user_sess?.data?.user?.id),
     enabled: !user_sess.isPending && !user_sess.error,
   });
-
+  ;
   const traitsQ = useQuery({
     queryKey: ["traits", user_sess?.data?.user?.id],
     queryFn: () => getUserSetting("traits", user_sess?.data?.user?.id),
@@ -177,7 +177,7 @@ export function ChatUI() {
 
       await queryClient.invalidateQueries({ queryKey: ["messages"] });
 
-      if (!newChatId && newChatId) {
+      if (!chatId && newChatId) {
         navigate({ to: "/chat/$chatId", params: { chatId: newChatId } });
       }
     },
@@ -316,14 +316,6 @@ export function ChatUI() {
         className="flex flex-col w-full items-center overflow-y-auto"
       >
         <MessageRenderer messages={messages} />
-        {sendMessage.isPending || activeMessageId ? (
-          <div
-            className={`w-full ${chatId ? "flex" : "hidden"} flex-col ${sendMessage.isPending ? "items-end" : "items-start"}`}
-            key={sendMessage.variables}
-          >
-            <LoaderCircle size={14} className="animate-spin" />
-          </div>
-        ) : null}
         <div className="mb-auto"></div>
         {messagePages.isPending ? (
           <div className="flex space-x-2 p-10">
@@ -339,6 +331,14 @@ export function ChatUI() {
           }}
           transition={{ duration: 0.2 }}
         >
+          {sendMessage.isPending || activeMessageId ? (
+            <div
+              className={`w-full ${chatId ? "flex" : "hidden"} justify-end p-2 ${sendMessage.isPending ? "items-end" : "items-start"}`}
+              key={sendMessage.variables}
+            >
+              <LoaderCircle className="animate-spin size-4" />
+            </div>
+          ) : null}
           <Textarea
             placeholder={chatId ? loadingFlavorText : blankFlavorText}
             onKeyDown={(evt) => {

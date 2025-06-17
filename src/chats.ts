@@ -158,6 +158,33 @@ chatsApp.delete("/:id", async (c) => {
   return c.json({ message: "Chat deleted successfully" }, 200);
 });
 
+chatsApp.put("/:id/rename", async (c) => {
+  const session = c.get("session");
+  const user = c.get("user");
+  const { name } = await c.req.json();
+  const chatId = c.req.param("id");
+
+  if (!session || !user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  if (!chatId) {
+    return c.json({ error: "Invalid chat ID" }, 400);
+  }
+  if (!name || typeof name !== "string") {
+    return c.json({ error: "Invalid Name" }, 400);
+  }
+  if (!(await checkChatExists(chatId, user.id))) {
+    return c.json({ error: "Not Found" }, 404);
+  }
+
+  await db
+    .update(chats)
+    .set({ title: name })
+    .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)));
+
+  return c.json({}, 200);
+});
+
 chatsApp.post("/:id/new", async (c) => {
   const session = c.get("session");
   const user = c.get("user");
@@ -246,15 +273,11 @@ chatsApp.post("/:id/retry", async (c) => {
   const operations = [];
 
   if (newMsgs.delArr.length > 0) {
-    operations.push(
-      db.delete(chatMessages).where(inArray(chatMessages.id, newMsgs.delArr))
-    );
+    operations.push(db.delete(chatMessages).where(inArray(chatMessages.id, newMsgs.delArr)));
   }
 
   if (message) {
-    operations.push(
-      db.update(chatMessages).set({ message }).where(eq(chatMessages.id, msgId))
-    );
+    operations.push(db.update(chatMessages).set({ message }).where(eq(chatMessages.id, msgId)));
   }
 
   await Promise.all(operations);

@@ -1,19 +1,95 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { LogIn, PanelLeftIcon, SearchIcon, Settings, XIcon } from "lucide-react";
+import { Eraser, LogIn, PanelLeftIcon, SearchIcon, Settings, TextCursor, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import fuzzysort from "fuzzysort";
 import { Input } from "./ui/input";
 import { authClient } from "@/lib/auth-client";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useMutation, useQuery, type UseMutationResult } from "@tanstack/react-query";
-
 import { z } from "zod/v4-mini";
 import ky from "ky";
 import { queryClient } from "@/routes/__root";
 import { Chat, Chats } from "@/lib/db";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "./ui/context-menu";
+
+interface ChatItemProps {
+  item: Chat;
+  deleteChat: UseMutationResult<void, Error, string, unknown>;
+  renameChat: UseMutationResult<void, Error, { id: string; name: string }, unknown>;
+}
+
+function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
+  const [renameInput, setRenameInput] = useState<string>("");
+  const [renaming, setRenaming] = useState<boolean>(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function renameKeyHandler(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.code === "Enter") {
+      renameChat.mutate({ id: item.id, name: renameInput });
+      setRenaming(false);
+    } else if (e.code === "Escape") {
+      setRenaming(false);
+    }
+  }
+
+  return (
+    <ContextMenu key={item.id + item.lastUpdated.getTime()}>
+      <div className={`group/chat`}>
+        <ContextMenuTrigger>
+          <Button asChild variant={"ghost"} className="w-full max-w-full relative justify-start px-2">
+            {renaming ? (
+              <Input
+                value={renameInput}
+                onChange={(e) => setRenameInput(e.target.value)}
+                onKeyDown={renameKeyHandler}
+                ref={inputRef}
+              />
+            ) : (
+              <Link to="/chat/$chatId" params={{ chatId: item.id }}>
+                <span className="truncate" title={item.title}>
+                  {item.title}
+                </span>
+                <div className={`hidden group-hover/chat:block ml-auto right-0`}>
+                  <Button
+                    variant="ghost"
+                    onClick={(e) => {
+                      deleteChat.mutate(item.id);
+                      e.preventDefault();
+                    }}
+                  >
+                    <XIcon />
+                  </Button>
+                </div>
+              </Link>
+            )}
+          </Button>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem
+            onClick={() => {
+              setRenameInput(item.title);
+              setRenaming(true);
+            }}
+          >
+            <TextCursor />
+            Rename
+          </ContextMenuItem>
+          <ContextMenuItem
+            onClick={() => {
+              deleteChat.mutate(item.id);
+            }}
+          >
+            <Eraser />
+            Delete
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </div>
+    </ContextMenu>
+  );
+}
 
 export default function ChatSidebar() {
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -44,12 +120,23 @@ export default function ChatSidebar() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["chats"] }),
   });
 
+  const renameChat = useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+      await ky.put(`/api/chats/${id}/rename`, {
+        json: { name },
+      });
+    },
+
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["chats"] }),
+  });
+
   const filtered = fuzzysort
     .go(searchQuery, chats.data ?? [], { key: "title", all: true })
     .map((item) => item.obj)
     .filter((item) => item.id !== deleteChat.variables)
+    .map((item) => item.id === renameChat.variables?.id ? {...item, title: renameChat.variables?.name} : item)
     .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
-  const renderOutput = renderChatOutput(filtered, deleteChat);
+  const renderOutput = renderChatOutput(filtered, deleteChat, renameChat);
 
   return (
     <>
@@ -81,7 +168,6 @@ export default function ChatSidebar() {
           {chats.isPending ? "Loading Chats..." : null}
         </SidebarContent>
         <SidebarFooter className="flex flex-row items-center mb-4">
-          {/* TODO: USER PAGE */}
           {user_sess.data ? (
             <Button variant="ghost" className="grow text-left justify-start items-center p-4 text-md">
               <Avatar>
@@ -147,35 +233,23 @@ function timeDelta(date: Date) {
   }
 }
 
-function renderChatOutput(chats: Chat[], deleteChat: UseMutationResult<void, Error, string, unknown>) {
+function renderChatOutput(
+  chats: Chat[],
+  deleteChat: UseMutationResult<void, Error, string, unknown>,
+  renameChat: UseMutationResult<void, Error, { id: string; name: string }, unknown>,
+) {
   let renderOutput: {
     component: React.ReactElement;
     item: { title: string; id: string; lastUpdated: Date } | null;
   }[] = chats.map((item) => {
     return {
       component: (
-        <div key={item.id + item.lastUpdated.getTime()} className={`group/chat`}>
-          <Button asChild variant={"ghost"} className="w-full max-w-full relative justify-start px-2">
-            <Link to="/chat/$chatId" params={{ chatId: item.id }}>
-              <span className="truncate" title={item.title}>
-                {item.title}
-              </span>
-              <div className={`hidden group-hover/chat:block ml-auto right-0`}>
-                {/* holy noncompliant html */}
-                {/* TODO: add rename button */}
-                <Button
-                  variant="ghost"
-                  onClick={(e) => {
-                    deleteChat.mutate(item.id);
-                    e.preventDefault();
-                  }}
-                >
-                  <XIcon />
-                </Button>
-              </div>
-            </Link>
-          </Button>
-        </div>
+        <ChatItem
+          key={item.id + item.lastUpdated.getTime()}
+          item={item}
+          deleteChat={deleteChat}
+          renameChat={renameChat}
+        />
       ),
       item,
     };

@@ -62,10 +62,10 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
   });
 
   const retryMessage = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (newMessage?: string) => {
       return await ky.post(`/api/chats/${message.chatId}/retry?msgId=${message.id}`, {
         body: JSON.stringify({
-          message: editingMessage ? editMessage : undefined,
+          message: newMessage,
           opts: {
             apiKey: or_key,
             model: model.id,
@@ -95,7 +95,7 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
         break;
       case "Enter":
         if (!evt.shiftKey && !evt.metaKey && !evt.ctrlKey && !evt.altKey) {
-          retryMessage.mutate();
+          retryMessage.mutate(editMessage);
           evt.preventDefault();
         }
     }
@@ -106,7 +106,7 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
       className={`w-full flex ${last ? "min-h-[calc(100vh-20rem)]" : ""} ${message.role === "user" ? "justify-end" : "justify-start"}`}
       key={message.id}
     >
-      <div className="group relative max-w-[70%] w-full">
+      <div className={`group relative max-w-[70%] ${editingMessage ? "w-full" : ""}`}>
         {editingMessage ? (
           <div className="flex flex-col gap-3">
             <div className="w-full overflow-y-scroll">
@@ -136,7 +136,7 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
               </Collapsible>
             ) : null}
 
-            <MarkdownRenderer>{message.message}</MarkdownRenderer>
+            <MarkdownRenderer>{retryMessage.variables ?? message.message}</MarkdownRenderer>
 
             {message.finish_reason && message.finish_reason !== "stop" ? (
               <Alert variant="destructive">
@@ -168,7 +168,7 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant={"ghost"} onClick={() => retryMessage.mutate()}>
+                  <Button variant={"ghost"} onClick={() => retryMessage.mutate(editMessage)}>
                     <Check className="size-3" />
                   </Button>
                 </TooltipTrigger>
@@ -191,7 +191,7 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant={"ghost"} onClick={() => retryMessage.mutate()}>
+                  <Button variant={"ghost"} onClick={() => retryMessage.mutate(undefined)}>
                     <RefreshCw className="size-3" />
                   </Button>
                 </TooltipTrigger>
