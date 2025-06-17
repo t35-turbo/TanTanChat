@@ -280,18 +280,22 @@ export async function userEventWsHandler(userId: string, ws: WSContext<ServerWeb
 }
 
 export async function wsMessageSubscriber(msgId: string, ws: WSContext<ServerWebSocket<undefined>>) {
-  for await (const chunk of msgSubscribe(msgId)) {
-    if (ws.readyState === 1) {
-      ws.send(
-        JSON.stringify({
-          jsonrpc: "2.0",
-          method: "chunk",
-          params: chunk,
-          id: msgId,
-        }),
-      );
-    } else {
-      break;
+  try {
+    for await (const chunk of msgSubscribe(msgId)) {
+      if (ws.readyState === 1) {
+        ws.send(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            method: "chunk",
+            params: chunk,
+            id: msgId,
+          }),
+        );
+      } else {
+        break;
+      }
     }
+  } catch (error) {
+    console.error(error);
   }
 }
