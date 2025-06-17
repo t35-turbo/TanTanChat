@@ -200,7 +200,7 @@ chatsApp.post("/:id/new", async (c) => {
 chatsApp.post("/:id/retry", async (c) => {
   const session = c.get("session");
   const user = c.get("user");
-  const { opts } = await c.req.json();
+  const { message, opts } = await c.req.json();
   const chatId = c.req.param("id");
   const msgId = c.req.query("msgId");
 
@@ -223,7 +223,11 @@ chatsApp.post("/:id/retry", async (c) => {
       } else if (cur.id === msgId) {
         console.log(cur);
         if (cur.role === "user") {
-          return { arr: [...prev.arr, cur], delArr: [], flag: true };
+          let userMsg = cur;
+          if (message && typeof message === "string") {
+            userMsg.message = message;
+          }
+          return { arr: [...prev.arr, userMsg], delArr: [], flag: true };
         } else {
           return { arr: prev.arr, delArr: [cur.id], flag: true };
         }

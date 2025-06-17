@@ -2,12 +2,12 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-function Textarea({ 
-  className, 
-  value, 
+function Textarea({
+  className,
+  value,
   defaultValue,
   onChange,
-  ...props 
+  ...props
 }: React.ComponentProps<"textarea">) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
 
@@ -18,7 +18,7 @@ function Textarea({
       const newHeight = Math.max(textarea.scrollHeight, 64)
       const maxHeight = 200 // 200px max height
       textarea.style.height = `${Math.min(newHeight, maxHeight)}px`
-      
+
       // Show scrollbar if content exceeds max height
       textarea.style.overflowY = newHeight > maxHeight ? 'auto' : 'hidden'
     }
