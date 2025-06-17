@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Button } from "./ui/button";
-import { ChevronDownIcon, Globe } from "lucide-react";
+import { ChevronDownIcon } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { useORKey } from "@/hooks/use-or-key";
 import { toast } from "sonner";
@@ -10,13 +10,12 @@ import { type Models, useModel } from "@/hooks/use-model";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Toggle } from "./ui/toggle";
-import { useTools } from "@/hooks/use-tools";
+// import { Toggle } from "./ui/toggle";
+// import { useTools } from "@/hooks/use-tools";
 
 export const defaultModels: Models = {
   "google/gemini-2.5-pro-preview": { name: "Gemini 2.5 Pro", id: "google/gemini-2.5-pro-preview", thinking: false },
@@ -78,8 +77,8 @@ export default function ModelSelector() {
   const model = useModel((state) => state.model);
   const setModel = useModel((state) => state.setModel);
 
-  const webSearch = useTools(state => state.web_search);
-  const setWebSearch = useTools(state => state.setWebSearch);
+  // const webSearch = useTools(state => state.web_search);
+  // const setWebSearch = useTools(state => state.setWebSearch);
 
   const or_key = useORKey((state) => state.key);
   const openModal = useKeyInput((state) => state.open);
