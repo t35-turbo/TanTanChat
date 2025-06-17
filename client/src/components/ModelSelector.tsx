@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 // import { Toggle } from "./ui/toggle";
-import { useTools } from "@/hooks/use-tools";
+// import { useTools } from "@/hooks/use-tools";
 
 export const defaultModels: Models = {
   "google/gemini-2.5-pro-preview": { name: "Gemini 2.5 Pro", id: "google/gemini-2.5-pro-preview", thinking: false },
