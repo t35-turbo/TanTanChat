@@ -1,5 +1,6 @@
-import { pgTable, text, timestamp, boolean, index, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, index, pgEnum, integer } from "drizzle-orm/pg-core";
 import { desc } from "drizzle-orm";
+import { int } from "drizzle-orm/mysql-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -129,4 +130,23 @@ export const systemSettings = pgTable(
       .notNull(),
   },
   (table) => [index("idx_system_settings_key").on(table.key)],
+);
+
+export const files = pgTable(
+  "files",
+  {
+    "id": text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    "filename": text("filename").notNull(),
+    "size": integer("size").notNull(),
+    "hash": text("hash").notNull(),
+    "ownedBy": text("owned_by").notNull().references(() => user.id, { onDelete: "cascade" }),
+    "onS3": boolean("on_s3")
+      .$defaultFn(() => false)
+      .notNull(),  
+    "filePath": text("file_path").notNull(),
+    "createdAt": timestamp("created_at")
+      .$defaultFn(() => /* @__PURE__ */ new Date())
+      .notNull(),
+      
+  }
 );

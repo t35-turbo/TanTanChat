@@ -1,16 +1,42 @@
 import { Hono } from "hono";
 import { auth } from "./lib/auth";
 import { db } from "./db";
-import { chats, chatMessages, userSettings } from "./db/schema";
+import { chats, files, chatMessages, userSettings } from "./db/schema";
 import { eq, desc, and, asc } from "drizzle-orm";
 import * as sync from "./sync";
 import { z } from "zod";
 import { createBunWebSocket } from "hono/bun";
 import type { ServerWebSocket } from "bun";
+import { mkdir, readdir } from "node:fs/promises";
+import * as crypto from 'crypto';
+import mime from 'mime';
+import { error } from "node:console";
+import { except } from "drizzle-orm/gel-core";
+
 
 const PORT = process.env.PORT || 3001;
 
 const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
+
+
+// INIT FUNCTIONS --------------------------------------------------------------------
+
+if (process.env.USE_S3 === "false") {
+  let exists = false;
+  try {
+    readdir("./tmp");
+    exists = true;
+  } catch { /* Create local store directory for attachments */
+    // check if env variable is set
+    if (!process.env.LOCAL_FILE_STORE_PATH) {
+      throw new Error("LOCAL_FILE_STORE_PATH is not set but USE_S3 is not true!");
+    }
+    mkdir(process.env.LOCAL_FILE_STORE_PATH + "/store", { recursive: true });
+  }
+}
+
+// END INIT FUNCTIONS --------------------------------------------------------------------
+
 
 const app = new Hono<{
   Variables: {
@@ -292,7 +318,124 @@ app.put("/api/user/settings/:key", async (c) => {
 
     return c.json({ message: "Setting updated successfully" }, 200);
   } catch (error) {
+    console.error("Error updating user setting:", error);
     return c.json({ error: "Failed to update setting" }, 500);
+  }
+});
+
+app.post("/api/files/upload", async (c) => {
+
+  // TODO: S3 support
+
+  const session = c.get("session");
+  const user = c.get("user");
+  const formData = await c.req.formData();
+  const file = formData.get("file");
+
+  if (!session || !user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  if (!file || !(file instanceof Blob)) {
+    return c.json({ error: "Invalid file" }, 400);
+  }
+
+  if (process.env.USE_S3 === "true") {
+    throw new Error("File uploads are not supported when USE_S3 is true");
+  }
+
+  const fileId = crypto.randomUUID();
+  const filePath = `${fileId}`;
+  const arrayBuffer = await file.arrayBuffer();
+
+  await Bun.write(filePath, arrayBuffer);
+  
+  const fileName = file.name || `${fileId}`;
+  const fileSize = file.size || arrayBuffer.byteLength;
+  const fileHash = crypto.createHash('md5').update(new Uint8Array(arrayBuffer)).digest('hex');
+
+  const fileData = {
+    id: fileId,
+    filename: fileName,
+    size: fileSize,
+    hash: fileHash,
+    ownedBy: user.id,
+    onS3: process.env.USE_S3 === "true",
+    filePath: filePath,
+    createdAt: new Date(),
+  };
+
+  await db.insert(files).values(fileData);
+  return c.json({ fileId: fileId, fileName: fileName, fileSize: fileSize, fileHash: fileHash }, 201);
+
+});
+
+app.get("/api/files/:id", async (c) => {
+  const session = c.get("session");
+  const user = c.get("user");
+  const fileId = c.req.param("id");
+  if (!session || !user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  if (!fileId || typeof fileId !== "string") {
+    return c.json({ error: "Invalid file ID" }, 400);
+  }
+
+  const file = await db.select().from(files).where(eq(files.id, fileId)).limit(1);
+
+  if (file.length === 0) {
+    return c.json({ error: "File not found" }, 404);
+  }
+
+  if (user.id !== file[0].ownedBy) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  if (process.env.USE_S3 === "true") {
+    throw new Error("File downloads are not supported when USE_S3 is true currently");
+  }
+
+  let fileData;
+  try {
+    fileData = Bun.file(`${file[0].filePath}`);
+  } catch (error) {
+    console.error("Error retrieving file:", error);
+    console.log("Trying to read file from ENV local store path");
+    fileData = Bun.file(`${process.env.LOCAL_FILE_STORE_PATH}/${fileId}`);
+  }
+
+  const filetype = mime.getType(file[0].filename) || "application/octet-stream";
+
+  c.header("Content-Type", filetype);
+
+  return c.body(await fileData.arrayBuffer(), 200, {
+    "Content-Disposition": `attachment; filename="${file[0].filename}"`,
+  });
+});
+
+app.delete("/api/files/:id", async (c) => {
+  const session = c.get("session");
+  const user = c.get("user");
+  const fileId = c.req.param("id");
+  if (!session || !user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  if (!fileId || typeof fileId !== "string") {
+    return c.json({ error: "Invalid file ID" }, 400);
+  }
+  const file = await db.select().from(files).where(eq(files.id, fileId)).limit(1);
+  if (file.length === 0) {
+    return c.json({ error: "File not found" }, 404);
+  }
+  if (user.id !== file[0].ownedBy) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  try {
+    // Delete the file from the local store
+    await Bun.file(`${file[0].filePath}`).delete();
+  } catch (error) {
+    console.error("Error deleting file:", error);
+    return c.json({ error: "Failed to delete file" }, 500);
   }
 });
 
