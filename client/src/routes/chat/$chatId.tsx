@@ -353,7 +353,7 @@ export function ChatUI() {
             </Button>
           </div>
           {user_sess.data ? null : (
-            <div className="text-sm text-center">
+            <div className="text-sm text-center mt-2">
               Wanna save your chats???{" "}
               <Link to="/login" className="underline">
                 Log in
