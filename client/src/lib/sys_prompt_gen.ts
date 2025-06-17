@@ -1,7 +1,7 @@
 export interface UserSettings {
-  name?: string;
-  selfAttr?: string;
-  traits?: string;
+  name?: string | null;
+  selfAttr?: string | null;
+  traits?: string | null;
 }
 
 export function generateSystemPrompt(settings: UserSettings): string {

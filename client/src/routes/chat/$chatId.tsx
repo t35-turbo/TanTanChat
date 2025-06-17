@@ -79,7 +79,6 @@ export function ChatUI() {
     queryFn: () => getUserSetting("self-attr", user_sess?.data?.user?.id),
     enabled: !user_sess.isPending && !user_sess.error,
   });
-  ;
   const traitsQ = useQuery({
     queryKey: ["traits", user_sess?.data?.user?.id],
     queryFn: () => getUserSetting("traits", user_sess?.data?.user?.id),
@@ -356,7 +355,7 @@ export function ChatUI() {
             <Button
               className="ml-auto p-0 cursor-pointer"
               onClick={sendQuery}
-              disabled={!!activeMessageId || !nameQ.isSuccess || !selfAttrQ.isSuccess || !traitsQ.isSuccess}
+              disabled={!!activeMessageId && input.trim() === ""}
             >
               {!activeMessageId ? <ArrowUpIcon /> : <SquareIcon className="fill-background" />}
             </Button>
