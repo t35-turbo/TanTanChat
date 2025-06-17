@@ -210,18 +210,6 @@ The person's date and time is ${(new Date()).toLocaleDateString()}`,
   }
 
   if (activeMessageId) {
-    const currentAccumulatedContent = activeMessage.reduce((prev, cur) => prev + cur.content, "");
-    const isToolResponseStream = activeMessage.length > 0 && activeMessage.some(chunk => chunk.finish_reason === "tool_response");
-    const isCallingToolStream = !isToolResponseStream && currentAccumulatedContent.includes("<WEB_SEARCH_TOOL>") && currentAccumulatedContent.includes("</WEB_SEARCH_TOOL>");
-
-    let displayMessage = currentAccumulatedContent;
-
-    if (isToolResponseStream) {
-      displayMessage = `${model.id} is searching the web...`;
-    } else if (isCallingToolStream) {
-      displayMessage = "Calling web search...";
-    }
-
     messagesForRenderer.push({
       id: "assistant_pending",
       role: "assistant",
