@@ -243,9 +243,21 @@ chatsApp.post("/:id/retry", async (c) => {
   }
 
   // Delete messages after the specified message
-  await db
-    .delete(chatMessages)
-    .where(inArray(chatMessages.id, newMsgs.delArr));
+  const operations = [];
+
+  if (newMsgs.delArr.length > 0) {
+    operations.push(
+      db.delete(chatMessages).where(inArray(chatMessages.id, newMsgs.delArr))
+    );
+  }
+
+  if (message) {
+    operations.push(
+      db.update(chatMessages).set({ message }).where(eq(chatMessages.id, msgId))
+    );
+  }
+
+  await Promise.all(operations);
 
   let messages: sync.Messages = newMsgs.arr;
   return c.json({ msgId: await sync.newMessage(chatId, messages, opts) }, 201);

@@ -1,7 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import { PrismAsyncLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Check, ChevronDown, ChevronRight, Copy, Cross, RefreshCw, SquarePen, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Copy, RefreshCw, SquarePen, X } from "lucide-react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Message } from "@/lib/db";
@@ -79,7 +79,11 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
         }),
       });
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["messages"] }),
+    onSettled: () => {
+      setEditMessage("");
+      setEditingMessage(false);
+      return queryClient.invalidateQueries({ queryKey: ["messages"] });
+    },
   });
 
   function textareaShortcutHandler(evt: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -89,6 +93,11 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
         setEditMessage("");
         evt.preventDefault();
         break;
+      case "Enter":
+        if (!evt.shiftKey && !evt.metaKey && !evt.ctrlKey && !evt.altKey) {
+          retryMessage.mutate();
+          evt.preventDefault();
+        }
     }
   }
 
