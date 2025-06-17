@@ -62,11 +62,9 @@ export function ChatUI() {
   }) ?? { chatId: undefined };
 
   const [activeMessage, setActiveMessage] = React.useState<WSModelStreamResponse[]>([]);
-  const [followActiveMessage, setFollowActiveMessage] = React.useState(true);
   const [activeMessageId, setActiveMessageId] = React.useState<string | null>(null);
   const model = useModel((state) => state.model);
   const [input, setInput] = React.useState("");
-  const scrollPosRef = React.useRef(0);
 
   const nameQ = useQuery({
     queryKey: ["name", user_sess?.data?.user?.id],
@@ -85,6 +83,7 @@ export function ChatUI() {
     enabled: !user_sess.isPending && !user_sess.error,
   });
 
+  // TODO: implement scroll
   const messagePages = useInfiniteQuery({
     queryKey: ["messages", chatId],
     queryFn: async ({ pageParam: cursor }) => {
@@ -183,53 +182,6 @@ The person's date and time is ${(new Date()).toLocaleDateString()}`,
     },
   });
 
-  let messagesForRenderer: Message[] = [];
-
-  // Process historical messages
-  if (messagePages.data) {
-    const historicalMessages = messagePages.data.pages.flatMap((page) => page.messages);
-    messagesForRenderer = historicalMessages.map(msg => {
-      if (msg.senderId === "assistant_tool_response") {
-        return { ...msg, message: "Web search results processed." };
-      }
-      return msg;
-    });
-  }
-
-  if (sendMessage.isPending) {
-    messagesForRenderer.push({
-      id: "pending",
-      role: "user",
-      senderId: user_sess?.data?.user?.id || "pending_user",
-      chatId: chatId || "",
-      message: sendMessage.variables,
-      reasoning: null,
-      finish_reason: null,
-      createdAt: new Date(),
-    });
-  }
-
-  if (activeMessageId) {
-    messagesForRenderer.push({
-      id: "assistant_pending",
-      role: "assistant",
-      senderId: "assistant_pending",
-      chatId: chatId || "",
-      message: displayMessage,
-      reasoning: activeMessage.reduce((prev, cur) => prev + cur.reasoning, ""),
-      finish_reason: activeMessage.reduce((prev: string | null, cur) => cur.finish_reason || prev, null),
-      createdAt: new Date(),
-    });
-  }
-
-  React.useEffect(() => {
-    // auto scroll to the bottom when a new message is added
-    if (scrollContainerRef.current && followActiveMessage) {
-      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-      scrollPosRef.current = scrollContainerRef.current.scrollTop;
-    }
-  }, [activeMessage, messagePages.data])
-
   // ~~websocketless~~ websocketed :( event notifier
   React.useEffect(() => {
     let ws: WebSocket | null = null;
@@ -297,19 +249,8 @@ The person's date and time is ${(new Date()).toLocaleDateString()}`,
       sendMessage.mutate(input);
       setInput("");
       if (scrollContainerRef.current) {
-        const handleScroll = () => {
-          if (scrollContainerRef.current && scrollContainerRef.current.scrollTop < scrollPosRef.current) {
-            setFollowActiveMessage(false);
-            console.log("Scroll event detected, disabling auto-scroll");
-          }
-
-          scrollPosRef.current = scrollContainerRef.current.scrollTop;
-        };
-
         scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-        scrollContainerRef.current.addEventListener('scroll', handleScroll);
       }
-      setFollowActiveMessage(true);
     } else {
       toast.error("Please select a model");
     }
@@ -356,7 +297,7 @@ The person's date and time is ${(new Date()).toLocaleDateString()}`,
         transition={{ duration: 0.2 }}
         className="flex flex-col w-full items-center overflow-y-auto"
       >
-        <MessageRenderer messages={messagesForRenderer} />
+        <MessageRenderer messages={messages} />
         {sendMessage.isPending || activeMessageId ? (
           <div
             className={`w-full ${chatId ? "flex" : "hidden"} flex-col ${sendMessage.isPending ? "items-end" : "items-start"}`}
