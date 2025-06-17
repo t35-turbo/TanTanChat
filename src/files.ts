@@ -11,7 +11,7 @@ import env from "./lib/env";
 if (env.USE_S3 === false) {
   let exists = false;
   try {
-    readdirSync("./tmp");
+    readdirSync(env.LOCAL_FILE_STORE_PATH + "/store");
     exists = true;
   } catch { /* Create local store directory for attachments */
     // check if env variable is set
@@ -47,7 +47,7 @@ filesApp.post("/upload", async (c) => {
   }
 
   const fileId = crypto.randomUUID();
-  const filePath = `${fileId}`;
+  const filePath = `${env.LOCAL_FILE_STORE_PATH}/store/${fileId}`;
   const arrayBuffer = await file.arrayBuffer();
 
   await Bun.write(filePath, arrayBuffer);
