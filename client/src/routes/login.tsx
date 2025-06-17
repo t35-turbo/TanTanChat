@@ -41,7 +41,7 @@ function RouteComponent() {
 
     console.log(data, error);
     if (data) {
-      navigate({ to: "/chat" });
+      navigate({ to: "/" });
     } else if (error) {
       setError(error.message ?? error.statusText);
     }

@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowUpIcon, LoaderCircle, SquareIcon } from "lucide-react";
 import { motion } from "framer-motion";
-import React from "react";
+import React, { useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/routes/__root";
 import { z } from "zod/v4-mini";
 import ky, { HTTPError } from "ky";
-import { db, Message } from "@/lib/db";
+import { Message } from "@/lib/db";
 import { toast } from "sonner";
 import { useORKey } from "@/hooks/use-or-key";
 import { useModel } from "@/hooks/use-model";
@@ -86,6 +86,16 @@ export function ChatUI() {
     enabled: !user_sess.isPending && !user_sess.error,
   });
 
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await authClient.getSession();
+
+      if (!data && !error) {
+        navigate({ to: "/login" });
+      }
+    })();
+  }, []);
+
   // TODO: implement scroll
   const messagePages = useInfiniteQuery({
     queryKey: ["messages", chatId],
@@ -109,13 +119,6 @@ export function ChatUI() {
           }
           let messages = await messageResponse.json();
           return z.object({ messages: z.array(Message), cursor: z.number() }).parse(messages);
-        } else if (!user_sess.error && !user_sess.isPending) {
-          let chat = await db.chats.get(chatId);
-          if (!chat) {
-            toast.error("Chat not found");
-            navigate({ to: "/chat" });
-          }
-          return { messages: z.array(Message).parse(chat), cursor: cursor };
         } else {
           throw new Error("User Session is erroring");
         }
@@ -131,39 +134,28 @@ export function ChatUI() {
   const sendMessage = useMutation({
     // mutationKey: ["addMessages", chatId],
     mutationFn: async (message: string) => {
-      // TODO: add add message mutation
-      let id = chatId;
-      if (!chatId) {
-        if (user_sess.data) {
-          id = z.object({ uuid: z.uuidv4() }).parse(
-            await ky
-              .post("/api/chats/new", {
-                body: JSON.stringify({
-                  message: message,
-                  opts: {
-                    apiKey: or_key,
-                    model: "openai/gpt-4.1-mini",
-                  },
-                }),
-              })
-              .json(),
-          ).uuid;
-        } else {
-          id = crypto.randomUUID();
-          await db.chats.add({
-            id,
-            title: "New Chat",
-            lastUpdated: new Date(),
-            messages: [],
-          });
-        }
+      let newChatId = chatId;
+      if (!newChatId) {
+        newChatId = z.object({ uuid: z.uuidv4() }).parse(
+          await ky
+            .post("/api/chats/new", {
+              body: JSON.stringify({
+                message: message,
+                opts: {
+                  apiKey: or_key,
+                  model: "openai/gpt-4.1-mini",
+                },
+              }),
+            })
+            .json(),
+        ).uuid;
 
         queryClient.invalidateQueries({ queryKey: ["chats"] });
       }
 
       z.object({ msgId: z.string() }).parse(
         await ky
-          .post(`/api/chats/${id}/new`, {
+          .post(`/api/chats/${newChatId}/new`, {
             body: JSON.stringify({
               message: message,
               opts: {
@@ -175,7 +167,7 @@ export function ChatUI() {
                   traits: traitsQ.data,
                 }),
                 tools: {
-                  web_search
+                  web_search,
                 },
               },
             }),
@@ -185,8 +177,8 @@ export function ChatUI() {
 
       await queryClient.invalidateQueries({ queryKey: ["messages"] });
 
-      if (!chatId && id) {
-        navigate({ to: "/chat/$chatId", params: { chatId: id } });
+      if (!newChatId && newChatId) {
+        navigate({ to: "/chat/$chatId", params: { chatId: newChatId } });
       }
     },
   });
@@ -292,14 +284,31 @@ export function ChatUI() {
     });
   }
 
+  if (user_sess.isPending) {
+    return (
+      <div className="flex flex-col grow items-center w-full h-screen justify-center p-2">
+        <div className="bg-border rounded-full size-10 motion-safe:animate-pulse"></div>
+      </div>
+    );
+  }
+
+  if (user_sess.error) {
+    console.log(user_sess.error);
+    return (
+      <div className="flex flex-col grow items-center w-full h-screen justify-center p-2">
+        <div>
+          Error Loading User Sessions{" "}
+          <Button onClick={() => window.location.reload()} variant={"link"}>
+            Reload?
+          </Button>
+        </div>
+        <div>{user_sess.error.message || user_sess.error.statusText}</div>
+      </div>
+    );
+  }
+
   return (
     <div className={`flex flex-col grow items-center w-full h-screen justify-center p-2 relative`}>
-      {/* {!chatId && (
-        <Link to="/settings" className="fixed top-2 right-2 z-10">
-          <SettingsIcon size={14} />
-        </Link>
-      )} */}
-
       <motion.div
         ref={scrollContainerRef}
         animate={{ height: chatId ? "100%" : "auto" }}
@@ -352,18 +361,6 @@ export function ChatUI() {
               {!activeMessageId ? <ArrowUpIcon /> : <SquareIcon className="fill-background" />}
             </Button>
           </div>
-          {user_sess.data ? null : (
-            <div className="text-sm text-center mt-2">
-              Wanna save your chats???{" "}
-              <Link to="/login" className="underline">
-                Log in
-              </Link>{" "}
-              or{" "}
-              <Link to="/signup" className="underline">
-                Sign up
-              </Link>
-            </div>
-          )}
         </motion.div>
       </motion.div>
     </div>

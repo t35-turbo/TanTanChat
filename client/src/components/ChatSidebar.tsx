@@ -9,10 +9,11 @@ import { Input } from "./ui/input";
 import { authClient } from "@/lib/auth-client";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useMutation, useQuery, type UseMutationResult } from "@tanstack/react-query";
-import { Chat, Chats, db } from "@/lib/db";
+
 import { z } from "zod/v4-mini";
 import ky from "ky";
 import { queryClient } from "@/routes/__root";
+import { Chat, Chats } from "@/lib/db";
 
 export default function ChatSidebar() {
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -28,13 +29,7 @@ export default function ChatSidebar() {
   const chats = useQuery({
     queryKey: ["chats", user_sess.data?.user.id],
     queryFn: async () => {
-      const userId = user_sess.data?.user.id;
-      if (userId) {
-        return z.object({ chats: Chats }).parse(await ky.get("/api/chats").json()).chats;
-      } else {
-        // we are not logged in, use idb
-        return Chats.parse(await db.chats.toCollection().keys());
-      }
+      return z.object({ chats: Chats }).parse(await ky.get("/api/chats").json()).chats;
     },
   });
   const deleteChat = useMutation({

@@ -33,6 +33,10 @@ function RouteComponent() {
   const navigate = useNavigate();
   const router = useRouter();
 
+  if (!user_sess.data && !user_sess.isPending && !user_sess.error) {
+    navigate({ to: "/login" });
+  }
+
   return (
     <div className="flex flex-col gap-2 p-4">
       <Button
