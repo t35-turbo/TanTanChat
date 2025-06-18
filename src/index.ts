@@ -16,6 +16,15 @@ const PORT = process.env.PORT || 3001;
 
 const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
 
+console.log("[DEBUG] Discord environment variables:");
+console.log("[DEBUG] DISCORD_CLIENT_ID:", process.env.DISCORD_CLIENT_ID);
+console.log("[DEBUG] DISCORD_CLIENT_SECRET:", process.env.DISCORD_CLIENT_SECRET);
+console.log("[DEBUG] REDIS_URL:", process.env.REDIS_URL);
+console.log("[DEBUG] REDIS_PASSWORD:", process.env.REDIS_PASSWORD);
+console.log("[DEBUG] PORT:", PORT);
+console.log("[DEBUG] DATABASE_URL:", process.env.DATABASE_URL);
+console.log("[DEBUG] AUTH_SECRET:", process.env.AUTH_SECRET);
+
 const app = new Hono<{
   Variables: {
     user: typeof auth.$Infer.Session.user | null;
