@@ -109,7 +109,7 @@ function AccountCard() {
             variant="outline"
             onClick={async () => {
               await authClient.signOut();
-              navigate({ to: "/" });
+              navigate({ to: "/login" });
             }}
             className="w-full flex items-center gap-2"
           >
