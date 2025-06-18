@@ -194,7 +194,9 @@ export function ChatUI() {
   React.useEffect(() => {
     let ws: WebSocket | null = null;
     if (chatId) {
-      ws = new WebSocket(`ws://${window.location.host}/api/chats/${chatId}/ws`);
+      const isDev = import.meta.env.MODE === "development";
+      const protocol = isDev ? "ws" : "wss";
+      ws = new WebSocket(`${protocol}://${window.location.host}/api/chats/${chatId}/ws`);
 
       ws.onmessage = (event) => {
         try {
