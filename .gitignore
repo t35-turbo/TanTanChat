@@ -3,7 +3,6 @@ file_store/
 
 # deps
 node_modules/
-drizzle/
 client/node_modules/
 
 # Environment variables
