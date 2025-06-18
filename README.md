@@ -4,8 +4,7 @@ Ergonomic Chat for Humans
 TanTan Chat is a modern, ergonomic AI chat application designed to enhance user experience and productivity. It offers a clean and intuitive interface, ensuring that users can focus on their conversations without distractions.
 
 ![Screenshot](screenshot.png)
-*Note: No Humans used in the backend*^*^*
-
+*Note: No Humans used in the backend*<sup>\*</sup>
 
 # Setup with Docker Compose
 ```sh
@@ -16,3 +15,4 @@ mv .env.example .env
 docker compose up --build -d
 # Visit port 3111
 ```
+\*: *Backend may contain trace quantities of interns*
