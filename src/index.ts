@@ -3,7 +3,7 @@ import { auth } from "./lib/auth";
 import { db } from "./db";
 import { chats, chatMessages, userSettings } from "./db/schema";
 import { eq, desc, and, asc } from "drizzle-orm";
-import * as sync from "./sync";
+import * sync from "./sync";
 import { z } from "zod";
 import { createBunWebSocket } from "hono/bun";
 import type { ServerWebSocket } from "bun";
@@ -25,6 +25,39 @@ const app = new Hono<{
 
 app.get("/", (c) => {
   return c.text("nyanya");
+});
+
+// Health check endpoint for readiness and liveness probes
+app.get("/health", async (c) => {
+  try {
+    // Check database connectivity
+    await db.select().from(userSettings).limit(1);
+
+    // You can add more health checks here if needed:
+    // - Redis connectivity
+    // - File system access
+    // - External service dependencies
+
+    return c.json(
+      {
+        status: "healthy",
+        timestamp: new Date().toISOString(),
+        service: "backend",
+      },
+      200,
+    );
+  } catch (error) {
+    console.error("Health check failed:", error);
+    return c.json(
+      {
+        status: "unhealthy",
+        error: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
+        service: "backend",
+      },
+      503,
+    );
+  }
 });
 
 app.use("*", async (c, next) => {
