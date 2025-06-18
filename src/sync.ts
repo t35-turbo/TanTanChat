@@ -108,20 +108,22 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
       filePath: string;
       createdAt: Date;
     };
-  }): Promise<{ type: "image_url"; image_url: { url: string } } | { type: "text"; text: string } | undefined> => {
+  }): Promise<
+    | { type: "image_url"; image_url: { url: string } }
+    | { type: "text"; text: string }
+    | { type: "file"; file: { filename: string; file_data: string } }
+    | undefined
+  > => {
     const arrayBuffer = await file.data.arrayBuffer();
     if (file.metadata.mime === "application/pdf") {
-      const str = String.fromCharCode(...new Uint8Array(arrayBuffer));
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const url = `data:${file.metadata.mime};base64,${base64}`;
       return {
-        type: "text" as const,
-        text: `person uploaded a PDF file.
-<filename>
-${file.metadata.filename}
-</filename>
-<file_contents type="${file.metadata.mime}">
-${str}
-</file_contents>
-`,
+        type: "file" as const,
+        file: {
+          filename: file.metadata.filename,
+          file_data: url,
+        },
       };
     } else if (file.metadata.mime.includes("image")) {
       const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
@@ -158,9 +160,12 @@ ${str}
       ...(await Promise.all(
         messages.map(async (m) => {
           if (m.role === "user") {
-            const fileContents = m.files && m.files.length > 0
-              ? (await Promise.all(m.files.map(fileMsgGenerator))).filter((item): item is NonNullable<typeof item> => item !== undefined)
-              : [];
+            const fileContents =
+              m.files && m.files.length > 0
+                ? (await Promise.all(m.files.map(fileMsgGenerator))).filter(
+                    (item): item is NonNullable<typeof item> => item !== undefined,
+                  )
+                : [];
 
             return {
               role: "user" as const,
