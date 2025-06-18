@@ -12,6 +12,7 @@ export const Message = z.object({
   role: z.enum(["system", "user", "assistant"]),
   senderId: z.string(),
   chatId: z.string(),
+  files: z.nullable(z.array(z.string())),
   reasoning: z.nullable(z.string()),
   message: z.string(),
   finish_reason: z.nullable(z.string()),

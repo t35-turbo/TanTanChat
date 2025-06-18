@@ -1,7 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import { PrismAsyncLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Check, ChevronDown, ChevronRight, Copy, RefreshCw, SquarePen, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Copy, Paperclip, RefreshCw, SquarePen, Trash2, X } from "lucide-react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Message } from "@/lib/db";
@@ -21,6 +21,7 @@ import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
 import { authClient } from "@/lib/auth-client";
 import { getUserSetting } from "@/routes/settings";
 import { Textarea } from "./ui/textarea";
+import { z } from "zod/v4-mini";
 
 interface MessageRendererProps {
   messages: Message[];
@@ -61,6 +62,19 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
     enabled: !user_sess.isPending && !user_sess.error,
   });
 
+  const files = useQuery({
+    queryKey: ["files", message.files],
+    queryFn: async () => {
+      if (message.files) {
+        return z
+          .array(z.object({ fileId: z.string(), fileName: z.string() }))
+          .parse(await Promise.all(message.files.map((file) => ky.get(`/api/files/${file}/metadata`).json())));
+      } else {
+        return [];
+      }
+    },
+  });
+
   const retryMessage = useMutation({
     mutationFn: async (newMessage?: string) => {
       return await ky.post(`/api/chats/${message.chatId}/retry?msgId=${message.id}`, {
@@ -86,6 +100,15 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
     },
   });
 
+  const deleteFile = useMutation({
+    mutationFn: async (fileId: string) => {
+      return await ky.delete(`/api/chats/${message.chatId}/file?msgId=${message.id}&fileId=${fileId}`);
+    },
+    onSettled: () => {
+      return queryClient.invalidateQueries({ queryKey: ["messages"] });
+    },
+  });
+
   function textareaShortcutHandler(evt: React.KeyboardEvent<HTMLTextAreaElement>) {
     switch (evt.code) {
       case "Escape":
@@ -103,9 +126,23 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
 
   return (
     <div
-      className={`w-full flex ${last ? "min-h-[calc(100vh-20rem)]" : ""} ${message.role === "user" ? "justify-end" : "justify-start"}`}
+      className={`w-full flex flex-col gap-1 ${last ? "min-h-[calc(100vh-20rem)]" : ""} ${message.role === "user" ? "items-end" : "items-start"}`}
       key={message.id}
     >
+      {files.data && files.data.length > 0
+        ? files.data.map((file) => (
+            <div key={file.fileId} className="text-sm border rounded-lg italic p-1 flex items-center group cursor-default relative">
+              <Paperclip className="size-3" />
+              {file.fileName}
+              <button
+                className="absolute -bottom-1 -left-1 hidden group-hover:block text-destructive-foreground rounded-full p-0.5 hover:bg-destructive/80"
+                onClick={() => deleteFile.mutate(file.fileId)}
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+          ))
+        : null}
       <div className={`group relative max-w-[70%] ${editingMessage ? "w-full" : ""}`}>
         {editingMessage ? (
           <div className="flex flex-col gap-3">

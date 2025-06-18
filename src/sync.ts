@@ -5,7 +5,7 @@ import { chatMessages, chats } from "./db/schema";
 import { eq } from "drizzle-orm";
 import * as vk from "./db/redis";
 import { WSContext } from "hono/ws";
-import { ServerWebSocket } from "bun";
+import { BunFile, ServerWebSocket } from "bun";
 import Exa from "exa-js";
 import { default_prompt } from "./lib/sys_prompts";
 import env from "./lib/env";
@@ -17,6 +17,20 @@ export type Messages = {
   senderId: string;
   message: string;
   createdAt: Date;
+  files: {
+    data: BunFile;
+    metadata: {
+      id: string;
+      filename: string;
+      size: number;
+      hash: string;
+      mime: string;
+      ownedBy: string;
+      onS3: boolean;
+      filePath: string;
+      createdAt: Date;
+    };
+  }[];
 }[];
 
 export type Options = {
@@ -80,42 +94,131 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
     },
   });
 
-  const stream = await oai_client.chat.completions.create({
-    model: opts.model,
-    messages: [
+  // Helper function to convert file to base64 data URL
+  const fileMsgGenerator = async (file: {
+    data: BunFile;
+    metadata: {
+      id: string;
+      filename: string;
+      size: number;
+      hash: string;
+      mime: string;
+      ownedBy: string;
+      onS3: boolean;
+      filePath: string;
+      createdAt: Date;
+    };
+  }): Promise<{ type: "image_url"; image_url: { url: string } } | { type: "text"; text: string } | undefined> => {
+    const arrayBuffer = await file.data.arrayBuffer();
+    if (file.metadata.mime === "application/pdf") {
+      const str = String.fromCharCode(...new Uint8Array(arrayBuffer));
+      return {
+        type: "text" as const,
+        text: `person uploaded a PDF file.
+<filename>
+${file.metadata.filename}
+</filename>
+<file_contents type="${file.metadata.mime}">
+${str}
+</file_contents>
+`,
+      };
+    } else if (file.metadata.mime.includes("image")) {
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const url = `data:${file.metadata.mime};base64,${base64}`;
+      return {
+        type: "image_url" as const,
+        image_url: {
+          url,
+        },
+      };
+    } else if (file.metadata.mime.includes("text")) {
+      const str = String.fromCharCode(...new Uint8Array(arrayBuffer));
+      return {
+        type: "text" as const,
+        text: `person uploaded a file.
+<filename>
+${file.metadata.filename}
+</filename>
+<file_contents type="${file.metadata.mime}">
+${str}
+</file_contents>
+`,
+      };
+    }
+    return undefined;
+  };
+
+  try {
+    const msgs = [
       {
-        role: "system",
+        role: "system" as const,
         content: default_prompt(opts.model.split("/")[0], opts.model.split("/")[0]) + "\n" + opts.system_prompt,
       },
-      ...messages.map((m) => ({
-        role: m.role,
-        content: m.message,
-      })),
-    ],
-    reasoning_effort: opts.reasoning_effort,
-    stream: true,
-    stream_options: {
-      include_usage: true,
-    },
-  });
+      ...(await Promise.all(
+        messages.map(async (m) => {
+          if (m.role === "user") {
+            const fileContents = m.files && m.files.length > 0 
+              ? (await Promise.all(m.files.map(fileMsgGenerator))).filter((item): item is NonNullable<typeof item> => item !== undefined)
+              : [];
+            
+            return {
+              role: "user" as const,
+              content: [
+                {
+                  type: "text" as const,
+                  text: m.message,
+                },
+                ...fileContents,
+              ],
+            };
+          } else {
+            return {
+              role: m.role as "system" | "assistant",
+              content: m.message,
+            };
+          }
+        }),
+      )),
+    ];
+    console.log(JSON.stringify(msgs));
+    const stream = await oai_client.chat.completions.create({
+      model: opts.model,
+      messages: msgs,
+      reasoning_effort: opts.reasoning_effort,
+      stream: true,
+      stream_options: {
+        include_usage: true,
+      },
+    });
 
-  // Stream the original response
-  for await (const chunk of stream) {
-    const choice = chunk.choices?.[0];
-    if (!choice) {
-      continue;
+    // Stream the original response
+    for await (const chunk of stream) {
+      console.log(chunk);
+      const choice = chunk.choices?.[0];
+      if (!choice) {
+        continue;
+      }
+
+      const contentChunk = choice.delta?.content || "";
+
+      accumulatedContent += contentChunk;
+
+      await vk_client.xAdd(`msg:${id}`, "*", {
+        finish_reason: choice.finish_reason || "",
+        reasoning: (choice.delta as any).reasoning || "",
+        content: contentChunk,
+        refusal: choice.delta?.refusal || "",
+        tool_calls: JSON.stringify(choice.delta?.tool_calls || null),
+      });
     }
-
-    const contentChunk = choice.delta?.content || "";
-
-    accumulatedContent += contentChunk;
-
+  } catch (err: any) {
     await vk_client.xAdd(`msg:${id}`, "*", {
-      finish_reason: choice.finish_reason || "",
-      reasoning: (choice.delta as any).reasoning || "",
-      content: contentChunk,
-      refusal: choice.delta?.refusal || "",
-      tool_calls: JSON.stringify(choice.delta?.tool_calls || null),
+      finish_reason: err.message || err.statusCode || err.toString(),
+      reasoning: "",
+      content: "",
+      refusal: "",
+      tool_calls: JSON.stringify(null),
     });
   }
 }

@@ -18,6 +18,8 @@ import { useModel } from "@/hooks/use-model";
 import { getUserSetting } from "../settings";
 import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
 import { useTools } from "@/hooks/use-tools";
+import FileDisplay from "@/components/FileDisplay";
+import { useFiles } from "@/hooks/use-files";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
@@ -68,6 +70,9 @@ export function ChatUI() {
   const [activeMessageId, setActiveMessageId] = React.useState<string | null>(null);
   const model = useModel((state) => state.model);
   const [input, setInput] = React.useState("");
+  const files = useFiles((state) => state.files);
+  const clearFiles = useFiles((state) => state.clearFiles);
+
 
   const nameQ = useQuery({
     queryKey: ["name", user_sess?.data?.user?.id],
@@ -169,10 +174,13 @@ export function ChatUI() {
                   web_search,
                 },
               },
+              files: files.map(file => file.id),
             }),
           })
           .json(),
       ).msgId;
+
+      clearFiles();
 
       await queryClient.invalidateQueries({ queryKey: ["messages"] });
 
@@ -265,6 +273,7 @@ export function ChatUI() {
       chatId: chatId || "",
       message: sendMessage.variables,
       reasoning: null,
+      files: null,
       finish_reason: null,
       createdAt: new Date(),
     });
@@ -279,6 +288,7 @@ export function ChatUI() {
       message: activeMessage.reduce((prev, cur) => prev + cur.content, ""),
       reasoning: activeMessage.reduce((prev, cur) => prev + cur.reasoning, ""),
       finish_reason: activeMessage.reduce((prev: string | null, cur) => (prev ? prev : cur.finish_reason), null),
+      files: null,
       createdAt: new Date(),
     });
   }
@@ -312,10 +322,11 @@ export function ChatUI() {
         ref={scrollContainerRef}
         animate={{ height: chatId ? "100%" : "auto" }}
         transition={{ duration: 0.2 }}
-        className="flex flex-col w-full items-center overflow-y-auto"
+        className="flex flex-col w-full items-center overflow-y-scroll"
       >
-        <MessageRenderer messages={messages} />
-        <div className="mb-auto"></div>
+        <div className="mb-auto w-full">
+          <MessageRenderer messages={messages} />
+        </div>
         {messagePages.isPending ? (
           <div className="flex space-x-2 p-10">
             <div className="bg-border rounded-full h-8 w-8 motion-safe:animate-pulse"></div>
@@ -338,6 +349,7 @@ export function ChatUI() {
               <LoaderCircle className="animate-spin size-4" />
             </div>
           ) : null}
+          <FileDisplay />
           <Textarea
             placeholder={chatId ? loadingFlavorText : blankFlavorText}
             onKeyDown={(evt) => {
@@ -349,13 +361,16 @@ export function ChatUI() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
           />
-          <div className="flex mt-2 gap-2">
+          <div className="flex mt-2 gap-1">
             <ModelSelector />
 
             <Button
               className="ml-auto p-0 cursor-pointer"
               onClick={sendQuery}
-              disabled={!!activeMessageId && input.trim() === ""}
+              disabled={
+                (!!activeMessageId && input.trim() === "") ||
+                files.reduce((prev, cur) => (prev ? prev : !cur.uploaded), false)
+              }
             >
               {!activeMessageId ? <ArrowUpIcon /> : <SquareIcon className="fill-background" />}
             </Button>

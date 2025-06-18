@@ -6,6 +6,7 @@ import { eq, desc, and, asc, gte, inArray } from "drizzle-orm";
 import * as sync from "./sync";
 import { z } from "zod";
 import * as crypto from "crypto";
+import { getFile } from "./files";
 
 const chatsApp = new Hono<{
   Variables: {
@@ -50,6 +51,7 @@ type Message = {
   senderId: string;
   role: "user" | "system" | "assistant";
   message: string;
+  files: string[];
   createdAt: Date;
 };
 
@@ -81,8 +83,28 @@ chatsApp.post("/new", async (c) => {
   return c.json({ uuid: newChat.id }, 201);
 });
 
-function getChatMessages(chatId: string) {
-  return db.select().from(chatMessages).where(eq(chatMessages.chatId, chatId)).orderBy(asc(chatMessages.createdAt));
+async function getChatMessages(chatId: string): Promise<sync.Messages> {
+  let msgs = await db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.chatId, chatId))
+    .orderBy(asc(chatMessages.createdAt));
+  let completions: sync.Messages = [];
+  for (const msg of msgs) {
+    if (msg.files && msg.files.length > 0) {
+      let files = await Promise.all(msg.files.map((file) => getFile(file)));
+      completions.push({
+        ...msg,
+        files: files.filter((file) => !!file),
+      });
+    } else {
+      completions.push({ ...msg, files: [] });
+    }
+  }
+
+  console.log(completions);
+
+  return completions;
 }
 
 async function checkChatExists(chatId: string, userId: string) {
@@ -188,7 +210,7 @@ chatsApp.put("/:id/rename", async (c) => {
 chatsApp.post("/:id/new", async (c) => {
   const session = c.get("session");
   const user = c.get("user");
-  const { message, opts } = await c.req.json();
+  const { message, opts, files } = await c.req.json();
   const chatId = c.req.param("id");
 
   if (!session || !user) {
@@ -203,7 +225,6 @@ chatsApp.post("/:id/new", async (c) => {
   if (!(await checkChatExists(chatId, user.id))) {
     return c.json({ error: "Not Found" }, 404);
   }
-
   if (await sync.getActiveMessage(chatId)) {
     return c.json({ error: "Chat is Busy" }, 409);
   }
@@ -214,6 +235,7 @@ chatsApp.post("/:id/new", async (c) => {
     senderId: user.id,
     role: "user",
     message: message,
+    files: files ?? [],
     createdAt: new Date(),
   };
 
@@ -222,6 +244,49 @@ chatsApp.post("/:id/new", async (c) => {
   sync.broadcastNewMessage(chatId);
 
   return c.json({ msgId: await sync.newMessage(chatId, messages, opts) }, 201);
+});
+
+chatsApp.delete("/:id/file", async (c) => {
+  const session = c.get("session");
+  const user = c.get("user");
+  const chatId = c.req.param("id");
+  const msgId = c.req.query("msgId");
+  const fileId = c.req.query("fileId");
+
+  if (!session || !user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  if (!chatId || !msgId || !fileId) {
+    return c.json({ error: "Bad Request" }, 400);
+  }
+
+  if (!(await checkChatExists(chatId, user.id))) {
+    return c.json({ error: "Not Found" }, 404);
+  }
+
+  // Get the message to check if it exists and belongs to this chat
+  const message = await db
+    .select()
+    .from(chatMessages)
+    .where(and(eq(chatMessages.id, msgId), eq(chatMessages.chatId, chatId)))
+    .limit(1);
+
+  if (!message[0]) {
+    return c.json({ error: "Message not found" }, 404);
+  }
+
+  // Remove the file from the files array
+  const currentFiles = message[0].files || [];
+  const updatedFiles = currentFiles.filter(file => file !== fileId);
+
+  // Update the message with the new files array
+  await db
+    .update(chatMessages)
+    .set({ files: updatedFiles })
+    .where(eq(chatMessages.id, msgId));
+
+  return c.json({ message: "File removed successfully" }, 200);
 });
 
 chatsApp.post("/:id/retry", async (c) => {
@@ -244,7 +309,7 @@ chatsApp.post("/:id/retry", async (c) => {
   }
 
   const newMsgs = (await getChatMessages(chatId)).reduce(
-    (prev: { arr: Message[]; delArr: string[]; flag: boolean }, cur: Message) => {
+    (prev: { arr: sync.Messages; delArr: string[]; flag: boolean }, cur: sync.Messages[number]) => {
       if (prev.flag) {
         return { ...prev, delArr: [...prev.delArr, cur.id] };
       } else if (cur.id === msgId) {

@@ -84,6 +84,7 @@ export const chatMessages = pgTable(
     message: text("content").notNull(),
     reasoning: text("reasoning"),
     finish_reason: text("finish_reason"),
+    files: text("files").array(),
     createdAt: timestamp("created_at")
       .$defaultFn(() => /* @__PURE__ */ new Date())
       .notNull(),
@@ -139,14 +140,15 @@ export const files = pgTable(
     "filename": text("filename").notNull(),
     "size": integer("size").notNull(),
     "hash": text("hash").notNull(),
+    "mime": text("mime").notNull(),
     "ownedBy": text("owned_by").notNull().references(() => user.id, { onDelete: "cascade" }),
     "onS3": boolean("on_s3")
       .$defaultFn(() => false)
-      .notNull(),  
+      .notNull(),
     "filePath": text("file_path").notNull(),
     "createdAt": timestamp("created_at")
       .$defaultFn(() => /* @__PURE__ */ new Date())
       .notNull(),
-      
+
   }
 );
