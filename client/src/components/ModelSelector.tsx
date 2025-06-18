@@ -112,7 +112,7 @@ export default function ModelSelector() {
       }
 
       for (const file of evt.target.files) {
-        if (file.size < 30000) {
+        if (file.size < 30_000_000) {
           addFiles([
             {
               id: "pending",

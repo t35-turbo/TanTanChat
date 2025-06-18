@@ -6,6 +6,10 @@ TanTan Chat is a modern, ergonomic AI chat application designed to enhance user 
 ![Screenshot](screenshot.png)
 *Note: No Humans used in the backend*<sup>\*</sup>
 
+# Use
+Visit a live instance here:
+https://tantan.konkon.pablonara.com/
+
 # Features
 ## File Uploads
 ![File Uploads](showcase_fileuploads.mov)
