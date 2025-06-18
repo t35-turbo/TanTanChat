@@ -18,9 +18,7 @@ import { queryClient } from "./__root";
 
 export const getUserSetting = async (key: string, userId?: string) => {
   if (!userId) return ""; // TODO: Dexie Db for logged out users
-  return z
-    .object({ value: z.nullable(z.string()) })
-    .parse(await ky.get(`/api/user/settings/${key}`).json())?.value;
+  return z.object({ value: z.nullable(z.string()) }).parse(await ky.get(`/api/user/settings/${key}`).json())?.value;
 };
 
 export const Route = createFileRoute("/settings")({
@@ -72,6 +70,7 @@ function AccountCard() {
   const user_sess = authClient.useSession();
   const keySet = useORKey((state) => !!state.key);
   const openKeyInput = useKeyInput((state) => state.open);
+  const navigate = useNavigate();
 
   return (
     <Card>
@@ -110,6 +109,7 @@ function AccountCard() {
             variant="outline"
             onClick={async () => {
               await authClient.signOut();
+              navigate({ to: "/" });
             }}
             className="w-full flex items-center gap-2"
           >
