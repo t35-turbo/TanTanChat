@@ -38,7 +38,6 @@ function RouteComponent() {
       password,
     });
 
-    console.log(data, error);
     if (data) {
       navigate({ to: "/" });
     } else if (error) {
@@ -96,13 +95,13 @@ function RouteComponent() {
             Login
           </Button>
 
-          <div className="text-center text-sm text-muted-foreground">
+          {/* TODO: ADD THIS BACK WITH A PROPER SETTINGS API <div className="text-center text-sm text-muted-foreground">
             or...
           </div>
 
           <Button variant="outline" className="w-full" onClick={signIn}>
             Login with Discord
-          </Button>
+          </Button> */}
 
           <CardAction className="text-center w-full">
             <span className="text-sm">Not Registered? </span>

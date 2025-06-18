@@ -21,59 +21,73 @@ import { useFiles } from "@/hooks/use-files";
 // import { useTools } from "@/hooks/use-tools";
 
 export const defaultModels: Models = {
-  "google/gemini-2.5-pro-preview": { name: "Gemini 2.5 Pro", id: "google/gemini-2.5-pro-preview", thinking: false },
+  "google/gemini-2.5-pro-preview": {
+    name: "Gemini 2.5 Pro",
+    id: "google/gemini-2.5-pro-preview",
+    thinking: false,
+    vision: true,
+  },
   "google/gemini-2.5-flash-preview": {
     name: "Gemini 2.5 Flash",
     id: "google/gemini-2.5-flash-preview",
     thinking: false,
+    vision: true,
   },
   "google/gemini-2.5-flash-preview:thinking": {
     name: "Gemini 2.5 Flash (Thinking)",
     id: "google/gemini-2.5-flash-preview:thinking",
     thinking: true,
     thinkingEffort: "medium",
+    vision: true,
   },
   "openai/gpt-4.1-nano-2025-04-14": {
     name: "GPT-4.1 Nano",
     id: "openai/gpt-4.1-nano-2025-04-14",
     thinking: false,
+    vision: false,
   },
   "openai/gpt-4.1-mini": {
     name: "GPT-4.1 mini",
     id: "openai/gpt-4.1-mini",
     thinking: false,
+    vision: true,
   },
-  "openai/gpt-4.1": { name: "GPT-4.1", id: "openai/gpt-4.1", thinking: false },
-  "openai/o4-mini": { name: "o4 Mini", id: "openai/o4-mini", thinking: true, thinkingEffort: "medium" },
+  "openai/gpt-4.1": { name: "GPT-4.1", id: "openai/gpt-4.1", thinking: false, vision: true },
+  "openai/o4-mini": { name: "o4 Mini", id: "openai/o4-mini", thinking: true, thinkingEffort: "medium", vision: true },
   "anthropic/claude-sonnet-4": {
     name: "Claude Sonnet 4",
     id: "anthropic/claude-sonnet-4",
     thinking: true,
     thinkingEffort: "low",
+    vision: true,
   },
   "deepseek/deepseek-r1-0528-qwen3-8b:free": {
     name: "Deepseek R1 Qwen3 8B (Free)",
     id: "deepseek/deepseek-r1-0528-qwen3-8b:free",
     thinking: true,
     thinkingEffort: "medium",
+    vision: false,
   },
   "deepseek/deepseek-r1-0528:free": {
     name: "Deepseek R1 (Free)",
     id: "deepseek/deepseek-r1-0528:free",
     thinking: true,
     thinkingEffort: "medium",
+    vision: false,
   },
   "deepseek/deepseek-r1-0528": {
     name: "Deepseek R1",
     id: "deepseek/deepseek-r1-0528",
     thinking: true,
     thinkingEffort: "medium",
+    vision: false,
   },
   "qwen/qwq-32b:free": {
     name: "Qwen QWQ-32B (Free)",
     id: "qwen/qwq-32b:free",
     thinking: true,
     thinkingEffort: "high",
+    vision: false,
   },
 };
 
@@ -88,27 +102,27 @@ export default function ModelSelector() {
   const or_key = useORKey((state) => state.key);
   const openModal = useKeyInput((state) => state.open);
 
-  const files = useFiles(state => state.files);
-  const addFiles = useFiles(state => state.addFiles);
+  const files = useFiles((state) => state.files);
+  const addFiles = useFiles((state) => state.addFiles);
 
   function handleNewFiles(evt: React.ChangeEvent<HTMLInputElement>) {
     if (evt.target.files) {
-
       if (files.length + (evt.target.files?.length || 0) > 10) {
-        toast.error("You can only upload up to a max of 10 files.")
+        toast.error("You can only upload up to a max of 10 files.");
       }
 
       for (const file of evt.target.files) {
         if (file.size < 30000) {
-          console.log(file.size);
-          addFiles([{
-            id: "pending",
-            name: file.name,
-            file: file,
-            uploaded: false
-          }]);
+          addFiles([
+            {
+              id: "pending",
+              name: file.name,
+              file: file,
+              uploaded: false,
+            },
+          ]);
         } else {
-          toast.error(`Only uploads up to 30MB are supported. File ${file.name} is oversize.`)
+          toast.error(`Only uploads up to 30MB are supported. File ${file.name} is oversize.`);
         }
       }
     }
@@ -206,7 +220,8 @@ export default function ModelSelector() {
         name="attachments"
         id="attachments"
         className="hidden"
-        accept=".txt,.js,.jsx,.ts,.tsx,.json,.md,.yaml,.yml,.xml,.html,.css,.csv,.log,.py,.java,.cpp,.c,.h,.php,.rb,.go,.rs,.sh,.bat,.sql,.ini,.cfg,.conf,.env,.gitignore,.dockerfile,text/*,image/png,image/jpeg,image/webp,application/pdf"
+        // the fuck???
+        accept={`.txt,.js,.jsx,.ts,.tsx,.json,.md,.yaml,.yml,.xml,.html,.css,.csv,.log,.py,.java,.cpp,.c,.h,.php,.rb,.go,.rs,.sh,.bat,.sql,.ini,.cfg,.conf,.env,.gitignore,.dockerfile,text/*,application/pdf${model?.vision ? ",image/png,image/jpeg,image/webp" : ""}`}
         onChange={handleNewFiles}
         multiple
       />

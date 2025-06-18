@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import ModelSelector from "@/components/ModelSelector";
 import MessageRenderer from "@/components/MessageRenderer";
 import { Button } from "@/components/ui/button";
@@ -20,10 +20,10 @@ import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
 import { useTools } from "@/hooks/use-tools";
 import FileDisplay from "@/components/FileDisplay";
 import { useFiles } from "@/hooks/use-files";
+import Onboarding from "@/components/Onboarding";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
-  // TODO: Add the loader
 });
 
 const WSModelStreamResponse = z.object({
@@ -72,7 +72,6 @@ export function ChatUI() {
   const [input, setInput] = React.useState("");
   const files = useFiles((state) => state.files);
   const clearFiles = useFiles((state) => state.clearFiles);
-
 
   const nameQ = useQuery({
     queryKey: ["name", user_sess?.data?.user?.id],
@@ -174,7 +173,7 @@ export function ChatUI() {
                   web_search,
                 },
               },
-              files: files.map(file => file.id),
+              files: files.map((file) => file.id),
             }),
           })
           .json(),
@@ -255,14 +254,18 @@ export function ChatUI() {
   }, [chatId]);
 
   function sendQuery() {
-    if (model.id) {
-      sendMessage.mutate(input);
-      setInput("");
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    if (or_key) {
+      if (model.id) {
+        sendMessage.mutate(input);
+        setInput("");
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        }
+      } else {
+        toast.error("Please select a model");
       }
     } else {
-      toast.error("Please select a model");
+      toast.error("Please set your OpenRouter key in settings.");
     }
   }
 
@@ -304,7 +307,6 @@ export function ChatUI() {
   }
 
   if (user_sess.error) {
-    console.log(user_sess.error);
     return (
       <div className="flex flex-col grow items-center w-full h-screen justify-center p-2">
         <div>
@@ -319,66 +321,71 @@ export function ChatUI() {
   }
 
   return (
-    <div className={`flex flex-col grow items-center w-full h-screen justify-center p-2 relative`}>
-      <motion.div
-        ref={scrollContainerRef}
-        animate={{ height: chatId ? "100%" : "auto" }}
-        transition={{ duration: 0.2 }}
-        className="flex flex-col w-full items-center overflow-y-scroll"
-      >
-        <div className="mb-auto w-full">
-          <MessageRenderer messages={messages} />
-        </div>
-        {messagePages.isPending ? (
-          <div className="flex space-x-2 p-10">
-            <div className="bg-border rounded-full h-8 w-8 motion-safe:animate-pulse"></div>
-          </div>
-        ) : null}
-        {messagePages.isError ? <div>Failed to load message history</div> : null}
-        <h1 className={`font-bold text-2xl md:text-4xl ${chatId ? "opacity-0" : "opacity-100"}`}>CLONE CLONE CLONE</h1>
+    <>
+      <div className={`flex flex-col grow items-center w-full h-screen justify-center p-2 relative`}>
         <motion.div
-          className={`w-full ${chatId ? "" : "md:w-1/2"} sticky bottom-0 bg-background`}
-          animate={{
-            width: chatId ? "100%" : undefined,
-          }}
+          ref={scrollContainerRef}
+          animate={{ height: chatId ? "100%" : "auto" }}
           transition={{ duration: 0.2 }}
+          className="flex flex-col w-full items-center overflow-y-scroll"
         >
-          {sendMessage.isPending || activeMessageId ? (
-            <div
-              className={`w-full ${chatId ? "flex" : "hidden"} justify-end p-2 ${sendMessage.isPending ? "items-end" : "items-start"}`}
-              key={sendMessage.variables}
-            >
-              <LoaderCircle className="animate-spin size-4" />
+          <div className="mb-auto w-full">
+            <MessageRenderer messages={messages} />
+          </div>
+          {messagePages.isPending ? (
+            <div className="flex space-x-2 p-10">
+              <div className="bg-border rounded-full h-8 w-8 motion-safe:animate-pulse"></div>
             </div>
           ) : null}
-          <FileDisplay />
-          <Textarea
-            placeholder={chatId ? loadingFlavorText : blankFlavorText}
-            onKeyDown={(evt) => {
-              if (evt.code === "Enter" && !evt.shiftKey) {
-                evt.preventDefault();
-                sendQuery();
-              }
+          {messagePages.isError ? <div>Failed to load message history</div> : null}
+          <h1 className={`font-bold text-2xl md:text-4xl ${chatId ? "opacity-0" : "opacity-100"}`}>
+            CLONE CLONE CLONE
+          </h1>
+          <motion.div
+            className={`w-full ${chatId ? "" : "md:w-1/2"} sticky bottom-0 bg-background`}
+            animate={{
+              width: chatId ? "100%" : undefined,
             }}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-          />
-          <div className="flex mt-2 gap-1">
-            <ModelSelector />
+            transition={{ duration: 0.2 }}
+          >
+            {sendMessage.isPending || activeMessageId ? (
+              <div
+                className={`w-full ${chatId ? "flex" : "hidden"} justify-end p-2 ${sendMessage.isPending ? "items-end" : "items-start"}`}
+                key={sendMessage.variables}
+              >
+                <LoaderCircle className="animate-spin size-4" />
+              </div>
+            ) : null}
+            <FileDisplay />
+            <Textarea
+              placeholder={chatId ? loadingFlavorText : blankFlavorText}
+              onKeyDown={(evt) => {
+                if (evt.code === "Enter" && !evt.shiftKey) {
+                  evt.preventDefault();
+                  sendQuery();
+                }
+              }}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+            />
+            <div className="flex mt-2 gap-1">
+              <ModelSelector />
 
-            <Button
-              className="ml-auto p-0 cursor-pointer"
-              onClick={sendQuery}
-              disabled={
-                (!!activeMessageId && input.trim() === "") ||
-                files.reduce((prev, cur) => (prev ? prev : !cur.uploaded), false)
-              }
-            >
-              {!activeMessageId ? <ArrowUpIcon /> : <SquareIcon className="fill-background" />}
-            </Button>
-          </div>
+              <Button
+                className="ml-auto p-0 cursor-pointer"
+                onClick={sendQuery}
+                disabled={
+                  (!!activeMessageId && input.trim() === "") ||
+                  files.reduce((prev, cur) => (prev ? prev : !cur.uploaded), false)
+                }
+              >
+                {!activeMessageId ? <ArrowUpIcon /> : <SquareIcon className="fill-background" />}
+              </Button>
+            </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
-    </div>
+      </div>
+      {location.search.includes("onboarding=true") ? <Onboarding /> : null}
+    </>
   );
 }

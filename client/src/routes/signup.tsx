@@ -1,17 +1,10 @@
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardFooter,
-  CardAction,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardAction } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 import { Label } from "@radix-ui/react-label";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, retainSearchParams, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 export const Route = createFileRoute("/signup")({
@@ -41,9 +34,8 @@ function RouteComponent() {
       name: username,
     });
 
-    console.log(data, error);
     if (data) {
-      navigate({ to: "/chat" });
+      navigate({ to: "/chat", search: { onboarding: true } });
     } else if (error) {
       setError(error.message ?? error.statusText);
     }

@@ -102,7 +102,6 @@ async function getChatMessages(chatId: string): Promise<sync.Messages> {
     }
   }
 
-  console.log(completions);
 
   return completions;
 }
@@ -313,7 +312,6 @@ chatsApp.post("/:id/retry", async (c) => {
       if (prev.flag) {
         return { ...prev, delArr: [...prev.delArr, cur.id] };
       } else if (cur.id === msgId) {
-        console.log(cur);
         if (cur.role === "user") {
           let userMsg = cur;
           if (message && typeof message === "string") {

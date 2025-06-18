@@ -32,7 +32,7 @@ export default function KeyInputModal() {
         </DialogHeader>
 
         <Button onClick={or_pkce}>
-          Automatically Log in with OpenRouter
+          Log in with OpenRouter
         </Button>
 
         <form

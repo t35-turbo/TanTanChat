@@ -1,9 +1,5 @@
 import { useKeyInput } from "@/hooks/use-key-input";
-import {
-  createFileRoute,
-  useLocation,
-  useNavigate,
-} from "@tanstack/react-router";
+import { createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import React from "react";
 import { toast } from "sonner";
 import ky from "ky";
@@ -18,8 +14,11 @@ function RouteComponent() {
   const navigate = useNavigate();
   const open = useKeyInput((state) => state.open);
   const setKey = useORKey((state) => state.setKey);
+  const hasExchanged = React.useRef(false); // jank
 
   React.useEffect(() => {
+    if (hasExchanged.current) return;
+
     const params = new URLSearchParams(location.search);
     const code = params.get("code");
     const pkce_sec = localStorage.getItem("pkce_sec");
@@ -28,7 +27,10 @@ function RouteComponent() {
       toast.error("Error while Logging In: No Code Provided");
       open();
       navigate({ to: "/" });
+      return;
     }
+
+    hasExchanged.current = true;
 
     async function pkce_exchange() {
       try {
@@ -36,7 +38,6 @@ function RouteComponent() {
           .post("https://openrouter.ai/api/v1/auth/keys", {
             headers: {
               "Content-Type": "application/json",
-              "X-Title": "TanTan Chat"
             },
             body: JSON.stringify({
               code: code,
@@ -53,7 +54,7 @@ function RouteComponent() {
       } catch (error) {
         toast.error("Error during PKCE exchange");
         open();
-        navigate({ to: "/" });
+        navigate({ to: "/chat" });
         throw error;
       }
     }

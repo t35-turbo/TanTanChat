@@ -10,7 +10,7 @@ export type UseModelState = {
 export const useModel = create<UseModelState>()(
   persist(
     (set) => ({
-      model: { name: "GPT 4.1", id: "openai/gpt-4.1", thinking: false },
+      model: { name: "GPT 4.1", id: "openai/gpt-4.1", thinking: false, vision: true },
       setModel: (model: Model) => set({ model }),
     }),
     {
@@ -23,6 +23,7 @@ export const Model = z.object({
   id: z.string(),
   thinking: z.boolean(),
   thinkingEffort: z.optional(z.enum(["low", "medium", "high"])),
+  vision: z.boolean(),
 });
 export type Model = z.infer<typeof Model>;
 export const Models = z.record(z.string(), Model);
