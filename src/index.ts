@@ -45,6 +45,10 @@ const app = new Hono<{
 
   // Test Redis connection
   try {
+    console.log("[INFO] Testing Redis connection...");
+    console.log("[INFO] Redis URL:", env.REDIS_URL);
+    console.log("[INFO] Redis authentication:", env.REDIS_PASSWORD ? "✅ Password configured" : "❌ No password configured");
+    
     const redisTest = await testRedisConnection();
     if (redisTest.success) {
       console.log("✅ Redis connection successful");
