@@ -13,13 +13,13 @@ export const EnvZod = z.object({
 
   // BetterAuth Configuration
   BETTER_AUTH_SECRET: z.string(),
+  BETTER_AUTH_URL: z.string(),
   DISCORD_CLIENT_ID: z.string().optional(),
   DISCORD_CLIENT_SECRET: z.string().optional(),
 
   // Server Configuration
   SERVER_PORT: z.coerce.number().default(3000),
   NODE_ENV: z.enum(["development", "production"]).default("development"),
-  PRODUCTION_DOMAIN: z.string().optional(),
 
   // Database Connection URLs
   DATABASE_URL: z.string(),
