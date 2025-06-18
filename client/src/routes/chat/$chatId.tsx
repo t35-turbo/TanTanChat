@@ -194,7 +194,7 @@ export function ChatUI() {
     let ws: WebSocket | null = null;
     if (chatId) {
       const isDev = import.meta.env.MODE === "development";
-      const protocol = isDev ? "ws" : "wss";
+      const protocol = isDev || window.location.protocol === "http:" ? "ws" : "wss";
       ws = new WebSocket(`${protocol}://${window.location.host}/api/chats/${chatId}/ws`);
 
       ws.onmessage = (event) => {
