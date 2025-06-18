@@ -6,6 +6,10 @@ TanTan Chat is a modern, ergonomic AI chat application designed to enhance user 
 ![Screenshot](screenshot.png)
 *Note: No Humans used in the backend*<sup>\*</sup>
 
+# Features
+## File Uploads
+![File Uploads](showcase_fileuploads.mov)
+
 # Setup with Docker Compose
 ```sh
 git clone https://github.com/t35-turbo/TanTanChat.git
