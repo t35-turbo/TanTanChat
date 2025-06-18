@@ -69,6 +69,7 @@ function RouteComponent() {
 function AccountCard() {
   const user_sess = authClient.useSession();
   const keySet = useORKey((state) => !!state.key);
+  const setKey = useORKey(state => state.setKey);
   const openKeyInput = useKeyInput((state) => state.open);
   const navigate = useNavigate();
 
@@ -108,8 +109,14 @@ function AccountCard() {
           <Button
             variant="outline"
             onClick={async () => {
-              await authClient.signOut();
-              navigate({ to: "/login" });
+              await authClient.signOut({
+                fetchOptions: {
+                  onSuccess: () => {
+                    navigate({ to: "/login" });
+                  }
+                }
+              });
+              setKey(null);
             }}
             className="w-full flex items-center gap-2"
           >
