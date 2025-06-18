@@ -3,7 +3,7 @@ import { auth } from "./lib/auth";
 import { db } from "./db";
 import { chats, chatMessages, userSettings } from "./db/schema";
 import { eq, desc, and, asc } from "drizzle-orm";
-import * sync from "./sync";
+import sync from "./sync"; // Remove the asterisk
 import { z } from "zod";
 import { createBunWebSocket } from "hono/bun";
 import type { ServerWebSocket } from "bun";
