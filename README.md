@@ -29,4 +29,23 @@ docker compose up --build -d
 We use Kubernetes for our production website.
 OSS GitOps WIP
 
+## Nix
+Low-Priority WIP
+
+# FAQ
+<details>
+<summary>Add Custom Models</summary>
+Custom models can currently be added in the ModelSelector Client component. In the future we will add them to user settings (synced across clients).
+</details>
+
+<details>
+<summary>Server-Stored Keys?</summary>
+We will add server-stored Keys with the introduction of an admin panel.
+</details>
+
+<details>
+<summary>Image Gen?</summary>
+No
+</details>
+
 \*: *Backend may contain trace quantities of interns*
