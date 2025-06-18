@@ -73,10 +73,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - dockerfile: ./Dockerfile
+          - dockerfile: ./k8s/dockerfiles/server/Dockerfile
             image: ${{ github.repository }}/backend
             context: .
-          - dockerfile: ./client/Dockerfile
+          - dockerfile: ./k8s/dockerfiles/client/Dockerfile
             image: ${{ github.repository }}/frontend
             context: .
     steps:
