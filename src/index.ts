@@ -154,6 +154,21 @@ app.route("/api/files", filesApp);
 
 app.use("/*", serveStatic({ root: "./client/dist" }));
 
+// SPA fallback - serve index.html for non-API 404s
+app.notFound(async (c) => {
+  // If the request is for an API route, return 404
+  if (c.req.path.startsWith('/api/')) {
+    return c.json({ error: 'Not Found' }, 404);
+  }
+  
+  // For all other routes, serve index.html (SPA routing)
+  const file = Bun.file('./client/dist/index.html');
+  const content = await file.text();
+  return new Response(content, {
+    headers: { 'Content-Type': 'text/html' },
+  });
+});
+
 // TODO: add one for general non-chat window
 app.get(
   "/api/chats/:id/ws",
