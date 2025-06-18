@@ -186,7 +186,12 @@ jobs:
             
             # Show what was updated
             echo "📄 Updated backend image line:"
-            grep "image: ghcr.io" manifests/backend/deployment.yaml
+            if grep "image: ghcr.io" manifests/backend/deployment.yaml; then
+              echo "✅ Found updated image line"
+            else
+              echo "⚠️  No image line found matching pattern. Showing full file content:"
+              cat manifests/backend/deployment.yaml
+            fi
           else
             echo "⚠️  manifests/backend/deployment.yaml not found"
           fi
