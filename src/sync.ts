@@ -158,10 +158,10 @@ ${str}
       ...(await Promise.all(
         messages.map(async (m) => {
           if (m.role === "user") {
-            const fileContents = m.files && m.files.length > 0 
+            const fileContents = m.files && m.files.length > 0
               ? (await Promise.all(m.files.map(fileMsgGenerator))).filter((item): item is NonNullable<typeof item> => item !== undefined)
               : [];
-            
+
             return {
               role: "user" as const,
               content: [
@@ -181,7 +181,6 @@ ${str}
         }),
       )),
     ];
-    console.log(JSON.stringify(msgs));
     const stream = await oai_client.chat.completions.create({
       model: opts.model,
       messages: msgs,
@@ -194,7 +193,6 @@ ${str}
 
     // Stream the original response
     for await (const chunk of stream) {
-      console.log(chunk);
       const choice = chunk.choices?.[0];
       if (!choice) {
         continue;

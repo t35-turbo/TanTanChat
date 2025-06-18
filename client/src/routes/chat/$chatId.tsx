@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useLocation, useNavigate, useParams } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import ModelSelector from "@/components/ModelSelector";
 import MessageRenderer from "@/components/MessageRenderer";
 import { Button } from "@/components/ui/button";
@@ -223,6 +223,9 @@ export function ChatUI() {
                     id: payload.params,
                   }),
                 );
+                if (scrollContainerRef.current) {
+                  scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+                }
               } else {
                 setActiveMessageId(null);
                 setActiveMessage([]);

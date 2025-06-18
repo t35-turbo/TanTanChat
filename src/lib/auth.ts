@@ -4,7 +4,7 @@ import { db } from "../db";
 import env from "./env";
 
 export const auth = betterAuth({
-  trustedOrigins: env.NODE_ENV == "development" ? ["http://localhost:3000"] : ["https://production-domain"],
+  trustedOrigins: ["http://localhost:*", ...(env.PRODUCTION_DOMAIN ? [env.PRODUCTION_DOMAIN] : [])],
   emailAndPassword: {
     enabled: true,
     // autoSignIn: true, // defaults to true, set to false if you want to explicitly sign in after signup
