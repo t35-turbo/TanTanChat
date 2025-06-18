@@ -3,8 +3,12 @@ Ergonomic Chat for Humans
 
 TanTan Chat is a modern, ergonomic AI chat application designed to enhance user experience and productivity. It offers a clean and intuitive interface, ensuring that users can focus on their conversations without distractions.
 
+We follow the weird OpenAI naming scheme, hence the name :p
+
+
 ![Screenshot](screenshot.png)
 *Note: No Humans used in the backend*<sup>\*</sup>
+
 
 # Use
 Visit a live instance here:
