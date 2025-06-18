@@ -14,7 +14,8 @@ https://tantan.konkon.pablonara.com/
 ## File Uploads
 ![File Uploads](showcase_fileuploads.mov)
 
-# Setup with Docker Compose
+# Hosting & Setup
+## Setup with Docker Compose
 ```sh
 git clone https://github.com/t35-turbo/TanTanChat.git
 cd TanTanChat
@@ -23,4 +24,9 @@ mv .env.example .env
 docker compose up --build -d
 # Visit port 3111
 ```
+
+## Higher Availability with Kubernetes
+We use Kubernetes for our production website.
+OSS GitOps WIP
+
 \*: *Backend may contain trace quantities of interns*
