@@ -10,6 +10,7 @@ import type { ServerWebSocket } from "bun";
 import { filesApp } from "./files";
 import chatsApp from "./chats";
 import env from "./lib/env";
+import { testConnection as testRedisConnection } from "./db/redis";
 
 const PORT = 3001;
 
@@ -41,6 +42,20 @@ const app = new Hono<{
     console.error("❌ Database connection failed:", error);
     process.exit(1);
   }
+
+  // Test Redis connection
+  try {
+    const redisTest = await testRedisConnection();
+    if (redisTest.success) {
+      console.log("✅ Redis connection successful");
+    } else {
+      console.error("❌ Redis connection failed:", redisTest.error);
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error("❌ Redis connection test failed:", error);
+    process.exit(1);
+  }
 })();
 
 app.get("/health", async (c) => {
@@ -48,11 +63,21 @@ app.get("/health", async (c) => {
     // Check database connectivity
     await db.select().from(userSettings).limit(1);
 
+    // Check Redis connectivity
+    const redisTest = await testRedisConnection();
+    if (!redisTest.success) {
+      throw new Error(`Redis connection failed: ${redisTest.error}`);
+    }
+
     return c.json(
       {
         status: "healthy",
         timestamp: new Date().toISOString(),
         service: "backend",
+        checks: {
+          database: "✅ Connected",
+          redis: "✅ Connected"
+        }
       },
       200,
     );
