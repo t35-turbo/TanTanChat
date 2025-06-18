@@ -438,12 +438,17 @@ function AboutCard() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p>© 2025 - {new Date().getFullYear()} 0x41*32 and Cocogoatmain. Made freely available via the MIT License.</p>
+        <p>© 2025 - {new Date().getFullYear()} 0x41*32 and Cocogoatmain/Pablonara. Made freely available via the MIT License.</p>
         <p>Clone Clone Clone &lt;3</p>
         <p>Shiroha Best Girl</p>
         <p>
           <a href="https://x4132.dev" className="underline">
             https://x4132.dev
+          </a>
+        </p>
+        <p>
+          <a href="https://archlinux.org/mirrors/pablonara.com" className="underline">
+            https://archlinux.org/mirrors/pablonara.com
           </a>
         </p>
       </CardContent>
