@@ -179,18 +179,17 @@ jobs:
           # Update backend deployment manifest
           if [ -f "manifests/backend/deployment.yaml" ]; then
             echo "🔄 Updating backend deployment manifest..."
-            # More specific regex to match the full image line
-            sed -i "s|image: ghcr\.io/[^/]*/[^/]*/backend:[^[:space:]]*|image: ghcr.io/${{ github.repository }}/backend:$NEW_TAG|g" manifests/backend/deployment.yaml
+            # Fixed regex to match the actual lowercase image name
+            sed -i "s|image: *ghcr\.io/t35-turbo/tantanchat/backend:[^[:space:]]*|image: ghcr.io/t35-turbo/tantanchat/backend:$NEW_TAG|g" manifests/backend/deployment.yaml
             
             echo "✅ Updated backend deployment with tag: $NEW_TAG"
             
             # Show what was updated
             echo "📄 Updated backend image line:"
-            if grep "image: ghcr.io" manifests/backend/deployment.yaml; then
+            if grep "image: *ghcr.io/t35-turbo/tantanchat/backend" manifests/backend/deployment.yaml; then
               echo "✅ Found updated image line"
             else
-              echo "⚠️  No image line found matching pattern. Showing full file content:"
-              cat manifests/backend/deployment.yaml
+              echo "⚠️  No image line found matching pattern"
             fi
           else
             echo "⚠️  manifests/backend/deployment.yaml not found"
@@ -199,14 +198,18 @@ jobs:
           # Update frontend deployment manifest
           if [ -f "manifests/frontend/deployment.yaml" ]; then
             echo "🔄 Updating frontend deployment manifest..."
-            # More specific regex to match the full image line
-            sed -i "s|image: ghcr\.io/[^/]*/[^/]*/frontend:[^[:space:]]*|image: ghcr.io/${{ github.repository }}/frontend:$NEW_TAG|g" manifests/frontend/deployment.yaml
+            # Fixed regex to match the actual lowercase image name
+            sed -i "s|image: *ghcr\.io/t35-turbo/tantanchat/frontend:[^[:space:]]*|image: ghcr.io/t35-turbo/tantanchat/frontend:$NEW_TAG|g" manifests/frontend/deployment.yaml
             
             echo "✅ Updated frontend deployment with tag: $NEW_TAG"
             
             # Show what was updated
             echo "📄 Updated frontend image line:"
-            grep "image: ghcr.io" manifests/frontend/deployment.yaml
+            if grep "image: *ghcr.io/t35-turbo/tantanchat/frontend" manifests/frontend/deployment.yaml; then
+              echo "✅ Found updated image line"
+            else
+              echo "⚠️  No image line found matching pattern"
+            fi
           else
             echo "⚠️  manifests/frontend/deployment.yaml not found"
           fi
