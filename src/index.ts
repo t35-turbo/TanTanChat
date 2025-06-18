@@ -33,6 +33,16 @@ const app = new Hono<{
   };
 }>();
 
+(async () => {
+  try {
+    await db.select().from(userSettings).limit(1);
+    console.log("✅ Database connection successful");
+  } catch (error) {
+    console.error("❌ Database connection failed:", error);
+    process.exit(1);
+  }
+})();
+
 app.get("/health", async (c) => {
   try {
     // Check database connectivity
