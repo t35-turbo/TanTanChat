@@ -21,6 +21,9 @@ CREATE TABLE "chat_messages" (
 	"chat_id" text NOT NULL,
 	"sender_id" text NOT NULL,
 	"content" text NOT NULL,
+	"reasoning" text,
+	"finish_reason" text,
+	"files" text[],
 	"created_at" timestamp NOT NULL
 );
 --> statement-breakpoint
@@ -29,6 +32,18 @@ CREATE TABLE "chats" (
 	"user_id" text NOT NULL,
 	"title" text NOT NULL,
 	"last_updated" timestamp NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "files" (
+	"id" text PRIMARY KEY NOT NULL,
+	"filename" text NOT NULL,
+	"size" integer NOT NULL,
+	"hash" text NOT NULL,
+	"mime" text NOT NULL,
+	"owned_by" text NOT NULL,
+	"on_s3" boolean NOT NULL,
+	"file_path" text NOT NULL,
+	"created_at" timestamp NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "session" (
@@ -43,9 +58,8 @@ CREATE TABLE "session" (
 	CONSTRAINT "session_token_unique" UNIQUE("token")
 );
 --> statement-breakpoint
-CREATE TABLE "settings" (
+CREATE TABLE "system_settings" (
 	"id" text PRIMARY KEY NOT NULL,
-	"user_id" text NOT NULL,
 	"key" text NOT NULL,
 	"value" text NOT NULL,
 	"created_at" timestamp NOT NULL,
@@ -63,6 +77,15 @@ CREATE TABLE "user" (
 	CONSTRAINT "user_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
+CREATE TABLE "user_settings" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"key" text NOT NULL,
+	"value" text NOT NULL,
+	"created_at" timestamp NOT NULL,
+	"updated_at" timestamp NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "verification" (
 	"id" text PRIMARY KEY NOT NULL,
 	"identifier" text NOT NULL,
@@ -75,7 +98,9 @@ CREATE TABLE "verification" (
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "chat_messages" ADD CONSTRAINT "chat_messages_chat_id_chats_id_fk" FOREIGN KEY ("chat_id") REFERENCES "public"."chats"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "chats" ADD CONSTRAINT "chats_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "files" ADD CONSTRAINT "files_owned_by_user_id_fk" FOREIGN KEY ("owned_by") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "settings" ADD CONSTRAINT "settings_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "idx_messages_chat_id_created_at" ON "chat_messages" USING btree ("chat_id","created_at" desc);--> statement-breakpoint
-CREATE INDEX "idx_settings_user_id_key" ON "settings" USING btree ("user_id","key");
+CREATE INDEX "idx_system_settings_key" ON "system_settings" USING btree ("key");--> statement-breakpoint
+CREATE INDEX "idx_settings_user_id_key" ON "user_settings" USING btree ("user_id","key");

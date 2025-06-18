@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1749704622874,
-      "tag": "0000_yellow_senator_kelly",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1749704747451,
-      "tag": "0001_awesome_loners",
+      "when": 1750267871981,
+      "tag": "0000_normal_proteus",
       "breakpoints": true
     }
   ]
