@@ -237,7 +237,7 @@ chatsApp.post("/:id/new", async (c) => {
     files: files ?? [],
     createdAt: new Date(),
   };
-
+  console.log("Creating new message for chat:", chatId, "with message:", message);
   await db.insert(chatMessages).values(newMessage);
   let messages: sync.Messages = await getChatMessages(chatId);
   sync.broadcastNewMessage(chatId);
