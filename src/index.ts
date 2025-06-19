@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { auth } from "./lib/auth";
 import { db } from "./db";
-import { userSettings } from "./db/schema";
+import { userSettings, sharedChats } from "./db/schema";
 import { eq, and } from "drizzle-orm";
 import * as sync from "./sync";
 import { z } from "zod";
@@ -11,6 +11,7 @@ import { filesApp } from "./files";
 import chatsApp from "./chats";
 import env from "./lib/env";
 import { testConnection as testRedisConnection } from "./db/redis";
+import { fa } from "zod/v4/locales";
 
 const PORT = 3001;
 
@@ -48,7 +49,7 @@ const app = new Hono<{
     console.log("[INFO] Testing Redis connection...");
     console.log("[INFO] Redis URL:", env.REDIS_URL);
     console.log("[INFO] Redis authentication:", env.REDIS_PASSWORD ? "✅ Password configured" : "❌ No password configured");
-    
+
     const redisTest = await testRedisConnection();
     if (redisTest.success) {
       console.log("✅ Redis connection successful");
@@ -199,7 +200,7 @@ app.notFound(async (c) => {
   if (c.req.path.startsWith('/api/')) {
     return c.json({ error: 'Not Found' }, 404);
   }
-  
+
   // For all other routes, serve index.html (SPA routing)
   const file = Bun.file('./client/dist/index.html');
   const content = await file.text();
@@ -211,23 +212,42 @@ app.notFound(async (c) => {
 // TODO: add one for general non-chat window
 app.get(
   "/api/chats/:id/ws",
-  upgradeWebSocket((c) => {
+  upgradeWebSocket(async (c) => {
     const session = c.get("session");
     const user = c.get("user");
     const chatId = c.req.param("id");
 
-    // If session or user is not available, throw an error for now. TODO: use proper middleware  (e.g. the route you see intercepting requests bound to *)
-    if (!session || !user) {
-      throw new Error("Unauthorized, you must log in to use this feature");
-    }
     if (!chatId || typeof chatId !== "string") {
       throw new Error("No Chat ID");
+    }
+    // check if shared chat
+    const isSharedChat = !!(await db.query.sharedChats.findFirst({
+      where: and(
+        eq(sharedChats.id, chatId),
+        eq(sharedChats.everyoneCanUpdate, false),
+        eq(sharedChats.followsUpdatesFromOriginal, true),
+      ),
+    }));
+
+    console.log("Client requested chat websocket: ", chatId, "which is shared:", isSharedChat);
+
+    if ((!session || !user) && !isSharedChat) {
+      throw new Error("Unauthorized, you must log in to use this feature");
     }
 
     return {
       onOpen(_evt, ws) {
         sync.chatEventWsHandler(chatId, ws);
-        sync.userEventWsHandler(user.id, ws);
+        if (isSharedChat && user && user.id) {
+          // If it's a shared chat and user is authenticated we send them their own events and the events for this shared chat
+          // sync.(chatId, ws);
+          sync.userEventWsHandler(user.id, ws);
+        } else if (user && user.id) {
+          sync.userEventWsHandler(user.id, ws);
+        } else {
+          // If it's a shared chat and user is not authenticated we send them the events for this shared chat
+          sync.chatEventWsHandler(chatId, ws);
+        }
       },
 
       onMessage(evt, ws) {
