@@ -48,7 +48,7 @@ mv .env.example .env
 # Optional: Set some secure random passwords!!!! as well as the port in .env
 npm i
 npm run dev
-# (In another console: )
+# (In another console...)
 cd TanTanChat/client
 npm i
 npm run dev
