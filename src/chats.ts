@@ -1,12 +1,13 @@
 import { Hono } from "hono";
 import { auth } from "./lib/auth";
 import { db } from "./db";
-import { chats, chatMessages } from "./db/schema";
+import { chats, chatMessages, sharedChats, sharedChatMessages } from "./db/schema";
 import { eq, desc, and, asc, gte, inArray } from "drizzle-orm";
 import * as sync from "./sync";
 import { z } from "zod";
 import * as crypto from "crypto";
 import { getFile } from "./files";
+import { read } from "fs";
 
 const chatsApp = new Hono<{
   Variables: {
@@ -118,14 +119,38 @@ async function checkChatExists(chatId: string, userId: string) {
 chatsApp.get("/:id", async (c) => {
   const session = c.get("session");
   const user = c.get("user");
-  const chatId = c.req.param("id");
+  let chatId = c.req.param("id");
 
   // Get query parameters from URL
   const CHUNK_RANGE = 100;
   const cursor = parseInt(c.req.query("cursor") ?? "0");
   const descending = c.req.query("descending") === "true";
 
-  if (!session || !user) {
+  const isSharedChat = !!(await db.query.sharedChats.findFirst({
+    where: and(
+      eq(sharedChats.id, chatId),
+      eq(sharedChats.everyoneCanUpdate, false),
+      eq(sharedChats.followsUpdatesFromOriginal, true)
+    ),
+  }));
+
+  console.log("Client requested chat: ", chatId, "which is shared:", isSharedChat);
+
+  if (isSharedChat) {
+    // If it's a shared chat, we need to get the chatId from the sharedChats table
+    const sharedChat = await db.query.sharedChats.findFirst({
+      where: eq(sharedChats.id, chatId),
+      columns: { chatId: true },
+    });
+    if (sharedChat) {
+      chatId = sharedChat.chatId;
+    } else {
+      return c.json({ error: "Shared chat not found" }, 404);
+    }
+  }
+
+
+  if ((!session || !user) && !isSharedChat) {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
@@ -133,7 +158,7 @@ chatsApp.get("/:id", async (c) => {
     return c.json({ error: "Invalid chat ID" }, 400);
   }
 
-  if (!(await checkChatExists(chatId, user.id))) {
+  if (!isSharedChat && (!user || !(await checkChatExists(chatId, user.id)))) {
     return c.json({ error: "Not Found" }, 404);
   }
 
@@ -347,6 +372,74 @@ chatsApp.post("/:id/retry", async (c) => {
 
   let messages: sync.Messages = newMsgs.arr;
   return c.json({ msgId: await sync.newMessage(chatId, messages, opts) }, 201);
+});
+
+chatsApp.post("/:id/share/existingChat", async (c) => {
+  const session = c.get("session");
+  const user = c.get("user");
+  const chatId = c.req.param("id");
+  const everyoneCanUpdate = c.req.query("everyoneCanUpdate") === "true";
+  const readOnly = c.req.query("readOnly") === "true";
+  const followsUpdatesFromOriginal = c.req.query("followsUpdatesFromOriginal") === "true";
+  if (!session || !user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  if (!chatId || typeof chatId !== "string") {
+    return c.json({ error: "Invalid chat ID" }, 400);
+  }
+  // if (!(await checkChatExists(chatId, user.id))) {
+  //   return c.json({ error: "Not Found" }, 404);
+  // }
+
+  const chat = await db
+    .select()
+    .from(chats)
+    .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)))
+    .limit(1);
+  if (!chat[0]) {
+    return c.json({ error: "Chat not found or you are not the owner" }, 404);
+  }
+
+  // Clone the chat byy copying the chat and its messages
+  const newChat = {
+    id: crypto.randomUUID(),
+    userId: user.id,
+    chatId: chatId,
+    title: "(Shared) " + chat[0].title,
+    lastUpdated: new Date(),
+    followsUpdatesFromOriginal: followsUpdatesFromOriginal,
+    everyoneCanUpdate: everyoneCanUpdate,
+    readOnly: readOnly,
+  };
+
+  await db.insert(sharedChats).values(newChat);
+
+  if (followsUpdatesFromOriginal) {
+    // if the shared chat follows updates from the original no need to copy messages
+    return c.json({ chatId: newChat.id }, 201);
+  }
+  // If it doesn't follow updates, we need to copy the messages
+
+  const messages = await db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.chatId, chatId))
+    .orderBy(asc(chatMessages.createdAt));
+
+  const sharedMessages = messages.map((msg) => ({
+    id: crypto.randomUUID(),
+    chatId: newChat.id,
+    senderId: msg.senderId,
+    role: msg.role,
+    message: msg.message,
+    files: msg.files || [],
+    reasoning: msg.reasoning,
+    finish_reason: msg.finish_reason,
+    createdAt: msg.createdAt,
+  }));
+  await db.insert(sharedChatMessages).values(sharedMessages);
+  // sync.broadcastNewSharedChat(newChat.id, newChat.title, user.id);
+  return c.json({ chatId: newChat.id }, 201);
 });
 
 export default chatsApp;

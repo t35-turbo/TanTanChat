@@ -1,6 +1,8 @@
 import { pgTable, text, timestamp, boolean, index, pgEnum, integer } from "drizzle-orm/pg-core";
 import { desc } from "drizzle-orm";
 import { int } from "drizzle-orm/mysql-core";
+import { read } from "fs";
+import { every } from "hono/combine";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -68,6 +70,52 @@ export const chats = pgTable("chats", {
     .$defaultFn(() => /* @__PURE__ */ new Date())
     .notNull(),
 });
+
+export const sharedChats = pgTable(
+  "shared_chats",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => chats.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    lastUpdated: timestamp("last_updated")
+      .$defaultFn(() => /* @__PURE__ */ new Date())
+      .notNull(),
+    readOnly: boolean("read_only")
+      .$defaultFn(() => false)
+      .notNull(),
+    everyoneCanUpdate: boolean("everyone_can_update")
+      .$defaultFn(() => false)
+      .notNull(),
+    followsUpdatesFromOriginal: boolean("follows_updates_from_original")
+      .$defaultFn(() => false)
+      .notNull(),
+});
+
+export const sharedChatMessages = pgTable(`shared_chat_messages`, {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  role: text("role").notNull(),
+  chatId: text("chat_id")
+    .notNull()
+    .references(() => sharedChats.id, { onDelete: "cascade" }),
+  senderId: text("sender_id").notNull(),
+  message: text("content").notNull(),
+  reasoning: text("reasoning"),
+  finish_reason: text("finish_reason"),
+  files: text("files").array(),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+}, (table) => ({
+  chatIdCreatedAtIndex: index("idx_shared_messages_chat_id_created_at").on(table.chatId, desc(table.createdAt)),
+}));
 
 export const roleEnum = pgEnum("role", ["system", "assistant", "user"]);
 export const chatMessages = pgTable(
