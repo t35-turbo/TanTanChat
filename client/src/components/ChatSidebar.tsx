@@ -167,14 +167,14 @@ export default function ChatSidebar() {
           {chats.isError ? "Error Loading Chats" : null}
           {chats.isPending ? "Loading Chats..." : null}
         </SidebarContent>
-        <SidebarFooter className="flex flex-row items-center mb-4">
+        <SidebarFooter className="flex flex-row items-center mb-4 w-full">
           {user_sess.data ? (
-            <Button variant="ghost" className="grow text-left justify-start items-center p-4 text-md">
-              <Avatar>
+            <Button variant="ghost" className="text-left justify-start items-center p-4 text-md flex-1 min-w-0">
+              <Avatar className="flex-shrink-0">
                 {user_sess.data.user.image ? <AvatarImage src={user_sess.data.user.image} /> : null}
                 <AvatarFallback>{user_sess.data.user.name[0]}</AvatarFallback>
               </Avatar>
-              <div>{user_sess.data.user.name}</div>
+              <div className="truncate ml-2">{user_sess.data.user.name}</div>
             </Button>
           ) : (
             <Button variant={"ghost"} className="grow text-left justify-start items-center p-4 text-md" asChild>
