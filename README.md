@@ -39,6 +39,22 @@ Clone this repository for CICD (GitHub Actions container builds) and check out t
 ## Nix
 Low-Priority WIP
 
+# Contributing
+Clone and setup (base metal dev environment)
+```sh
+git clone https://github.com/t35-turbo/TanTanChat.git
+cd TanTanChat
+mv .env.example .env
+# Optional: Set some secure random passwords!!!! as well as the port in .env
+npm i
+npm run dev
+# (In another console: )
+cd TanTanChat/client
+npm i
+npm run dev
+# Visit port 3000
+```
+
 # FAQ
 <details>
 <summary>Add Custom Models</summary>
