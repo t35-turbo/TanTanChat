@@ -19,7 +19,7 @@ https://tantan.konkon.pablonara.com/
 ![File Uploads](showcase_fileuploads.mov)
 
 ## Real time chat sync
-![Real time chat sync](showcase_realtime.mov)
+![Real time chat sync](showcase_realtime-sync.mov)
 
 # Hosting & Setup
 ## Setup with Docker Compose
