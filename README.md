@@ -31,7 +31,7 @@ docker compose up --build -d
 
 ## Higher Availability with Kubernetes
 We use Kubernetes for our production website.
-OSS GitOps WIP
+~~OSS GitOps WIP~~ Clone this repository for CICD (GitHub Actions container builds) and check out the public GitOps repository for the Kubernetes manifests [here](https://github.com/t35-turbo/TanTanChat-GitOps-Public).
 
 ## Nix
 Low-Priority WIP
