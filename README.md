@@ -7,7 +7,7 @@ We follow the weird OpenAI naming scheme, hence the org name :p
 
 
 ![Screenshot](screenshot.png)
-*Note: No Humans used in the backend*<sup>\*</sup>
+*Note: No Humans used in the backend unlike a certain company*<sup>\*</sup>
 
 
 # Use
