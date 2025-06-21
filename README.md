@@ -15,11 +15,11 @@ Visit a live instance here:
 https://tantan.konkon.pablonara.com/
 
 # Features
-## File Uploads
-![File Uploads](showcase_fileuploads.mov)
-
-## Real time chat sync
-![Real time chat sync](showcase_realtime-sync.mov)
+- Resumable Streams
+- Real time Sync
+- File Uploads
+- Multiplayer (WIP)
+- Web Search (WIP)
 
 # Hosting & Setup
 ## Setup with Docker Compose
