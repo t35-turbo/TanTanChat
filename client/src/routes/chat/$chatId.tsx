@@ -195,7 +195,6 @@ export function ChatUI() {
     if (chatId) {
       const isDev = import.meta.env.MODE === "development";
       const protocol = isDev || window.location.protocol === "http:" ? "ws" : "wss";
-      console.log(protocol);
       ws = new WebSocket(`${protocol}://${window.location.host}/api/chats/${chatId}/ws`);
 
       ws.onmessage = (event) => {
@@ -224,9 +223,6 @@ export function ChatUI() {
                     id: payload.params,
                   }),
                 );
-                if (scrollContainerRef.current) {
-                  scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-                }
               } else {
                 setActiveMessageId(null);
                 setActiveMessage([]);

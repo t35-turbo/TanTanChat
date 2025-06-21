@@ -403,3 +403,7 @@ export async function wsMessageSubscriber(msgId: string, ws: WSContext<ServerWeb
     console.error("error", error);
   }
 }
+
+export async function invalidateCache(userId: string, key: string) {
+  vk_client.publish(`user:${userId}:events`, `invalidate ${key}`);
+}

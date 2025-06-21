@@ -344,6 +344,7 @@ chatsApp.post("/:id/retry", async (c) => {
   }
 
   await Promise.all(operations);
+  sync.invalidateCache(user.id, "messages");
 
   let messages: sync.Messages = newMsgs.arr;
   return c.json({ msgId: await sync.newMessage(chatId, messages, opts) }, 201);

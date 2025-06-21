@@ -69,7 +69,7 @@ function RouteComponent() {
 function AccountCard() {
   const user_sess = authClient.useSession();
   const keySet = useORKey((state) => !!state.key);
-  const setKey = useORKey(state => state.setKey);
+  const setKey = useORKey((state) => state.setKey);
   const openKeyInput = useKeyInput((state) => state.open);
   const navigate = useNavigate();
 
@@ -113,8 +113,8 @@ function AccountCard() {
                 fetchOptions: {
                   onSuccess: () => {
                     navigate({ to: "/login" });
-                  }
-                }
+                  },
+                },
               });
               setKey(null);
             }}
@@ -309,45 +309,33 @@ function SystemPromptCard() {
 
   const nameMut = useMutation({
     mutationFn: async (newName: string) => {
-      if (user_sess.data) {
-        return await ky
-          .put(`/api/user/settings/name`, {
-            json: { value: newName },
-          })
-          .json();
-      } else if (!user_sess.isPending && !user_sess.error) {
-        // TODO: dexie db
-      }
+      return await ky
+        .put(`/api/user/settings/name`, {
+          json: { value: newName },
+        })
+        .json();
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["name"] }),
   });
 
   const selfAttrMut = useMutation({
     mutationFn: async (newSelfAttr: string) => {
-      if (user_sess.data) {
-        return await ky
-          .put(`/api/user/settings/self-attr`, {
-            json: { value: newSelfAttr },
-          })
-          .json();
-      } else if (!user_sess.isPending && !user_sess.error) {
-        // dexie db
-      }
+      return await ky
+        .put(`/api/user/settings/self-attr`, {
+          json: { value: newSelfAttr },
+        })
+        .json();
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["self-attr"] }),
   });
 
   const traitsMut = useMutation({
     mutationFn: async (newTraits: string) => {
-      if (user_sess.data) {
-        return await ky
-          .put(`/api/user/settings/traits`, {
-            json: { value: newTraits },
-          })
-          .json();
-      } else if (!user_sess.isPending && !user_sess.error) {
-        // dexie db
-      }
+      return await ky
+        .put(`/api/user/settings/traits`, {
+          json: { value: newTraits },
+        })
+        .json();
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["traits"] }),
   });
@@ -438,7 +426,10 @@ function AboutCard() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p>© 2025 - {new Date().getFullYear()} 0x41*32 and Cocogoatmain/Pablonara. Made freely available via the MIT License.</p>
+        <p>
+          © 2025 - {new Date().getFullYear()} 0x41*32 and Cocogoatmain/Pablonara. Made freely available via the MIT
+          License.
+        </p>
         <p>Clone Clone Clone &lt;3</p>
         <p>Shiroha Best Girl</p>
         <p>
