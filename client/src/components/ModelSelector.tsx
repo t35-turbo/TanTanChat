@@ -91,7 +91,7 @@ export const defaultModels: Models = {
     vision: false,
   },
   "deepseek/deepseek-v3": {
-    name: "Deepseek R1",
+    name: "Deepseek V3",
     id: "deepseek/deepseek-chat-v3-0324",
     thinking: false,
     vision: false,
