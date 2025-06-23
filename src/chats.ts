@@ -307,26 +307,32 @@ chatsApp.post("/:id/retry", async (c) => {
     return c.json({ error: "Not Found" }, 404);
   }
 
-  const newMsgs = (await getChatMessages(chatId)).reduce(
-    (prev: { arr: sync.Messages; delArr: string[]; flag: boolean }, cur: sync.Messages[number]) => {
-      if (prev.flag) {
-        return { ...prev, delArr: [...prev.delArr, cur.id] };
-      } else if (cur.id === msgId) {
-        if (cur.role === "user") {
-          let userMsg = cur;
-          if (message && typeof message === "string") {
-            userMsg.message = message;
-          }
-          return { arr: [...prev.arr, userMsg], delArr: [], flag: true };
-        } else {
-          return { arr: prev.arr, delArr: [cur.id], flag: true };
-        }
-      } else {
-        return { arr: [...prev.arr, cur], delArr: [], flag: false };
+  // search for the message in the messages
+  const allMessages = await getChatMessages(chatId);
+  const messageIndex = allMessages.findIndex((msg) => msg.id === msgId);
+
+  let newMsgs: { arr: sync.Messages; delArr: string[] };
+
+  if (messageIndex === -1) { // message not found
+    newMsgs = { arr: allMessages, delArr: [] };
+  } else {
+    const targetMessage = allMessages[messageIndex];
+    if (targetMessage.role === "user") { // message to retry/edit is user message
+      if (message && typeof message === "string") {
+        targetMessage.message = message;
       }
-    },
-    { arr: [], delArr: [], flag: false },
-  );
+      newMsgs = { // keep all messages up to and including this one.
+        arr: allMessages.slice(0, messageIndex + 1),
+        delArr: allMessages.slice(messageIndex + 1).map((m) => m.id),
+      };
+    } else {
+      // If the target is not a user message, we delete it and all subsequent messages.
+      newMsgs = {
+        arr: allMessages.slice(0, messageIndex),
+        delArr: allMessages.slice(messageIndex).map((m) => m.id),
+      };
+    }
+  }
 
   if (await sync.getActiveMessage(chatId)) {
     return c.json({ error: "Chat is Busy" }, 409);
@@ -346,7 +352,7 @@ chatsApp.post("/:id/retry", async (c) => {
   await Promise.all(operations);
   sync.invalidateCache(user.id, "messages");
 
-  let messages: sync.Messages = newMsgs.arr;
+  const messages: sync.Messages = newMsgs.arr;
   return c.json({ msgId: await sync.newMessage(chatId, messages, opts) }, 201);
 });
 
