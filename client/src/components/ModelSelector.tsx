@@ -47,16 +47,24 @@ export const defaultModels: Models = {
     vision: false,
   },
   "openai/gpt-4.1-mini": {
-    name: "GPT-4.1 mini",
+    name: "GPT-4.1 Mini",
     id: "openai/gpt-4.1-mini",
     thinking: false,
     vision: true,
   },
   "openai/gpt-4.1": { name: "GPT-4.1", id: "openai/gpt-4.1", thinking: false, vision: true },
   "openai/o4-mini": { name: "o4 Mini", id: "openai/o4-mini", thinking: true, thinkingEffort: "medium", vision: true },
+  "openai/o3": { name: "o3", id: "openai/o3", thinking: true, thinkingEffort: "medium", vision: true },
   "anthropic/claude-sonnet-4": {
     name: "Claude Sonnet 4",
     id: "anthropic/claude-sonnet-4",
+    thinking: true,
+    thinkingEffort: "low",
+    vision: true,
+  },
+  "anthropoic/claude-opus-4": {
+    name: "Claude Opus 4",
+    id: "anthropic/claude-opus-4",
     thinking: true,
     thinkingEffort: "low",
     vision: true,
@@ -82,12 +90,25 @@ export const defaultModels: Models = {
     thinkingEffort: "medium",
     vision: false,
   },
+  "deepseek/deepseek-v3": {
+    name: "Deepseek R1",
+    id: "deepseek/deepseek-chat-v3-0324",
+    thinking: false,
+    vision: false,
+  },
   "qwen/qwq-32b:free": {
     name: "Qwen QWQ-32B (Free)",
     id: "qwen/qwq-32b:free",
     thinking: true,
     thinkingEffort: "high",
     vision: false,
+  },
+  "x-ai/grok-3-mini": {
+    name: "gork 3 mini",
+    id: "x-ai/grok-3-mini",
+    thinking: true,
+    thinkingEffort: "medium",
+    vision: true,
   },
 };
 
