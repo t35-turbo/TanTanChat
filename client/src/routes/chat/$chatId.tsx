@@ -338,7 +338,7 @@ export function ChatUI() {
             </div>
           ) : null}
           {messagePages.isError ? <div>Failed to load message history</div> : null}
-          <h1 className={`font-bold text-2xl md:text-4xl ${chatId ? "opacity-0" : "opacity-100"}`}>Can I plz has prompt?</h1>
+          <h1 className={`font-bold text-2xl md:text-4xl ${chatId ? "opacity-0" : "opacity-100"}`}>7o</h1>
           <motion.div
             className={`w-full ${chatId ? "" : "md:w-1/2"} sticky bottom-0 bg-background`}
             animate={{
