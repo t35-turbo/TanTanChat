@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowUpIcon, LoaderCircle, SquareIcon } from "lucide-react";
 import { motion } from "framer-motion";
-import React, { useEffect } from "react";
+import React from "react";
 import { authClient } from "@/lib/auth-client";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/routes/__root";
@@ -52,7 +52,12 @@ export function ChatUI() {
     return options[Math.floor(Math.random() * options.length)];
   }, []);
   const loadingFlavorText = React.useMemo(() => {
-    const options = ["Our Bioneural Networks are busy at work", "nice prompt bro", "Remember to say thank you!", "If you say please i'll be more helpful"];
+    const options = [
+      "Our Bioneural Networks are busy at work",
+      "nice prompt bro",
+      "Remember to say thank you!",
+      "If you say please i'll be more helpful",
+    ];
     return options[Math.floor(Math.random() * options.length)];
   }, []);
 
@@ -89,23 +94,19 @@ export function ChatUI() {
     enabled: !user_sess.isPending && !user_sess.error,
   });
 
-  useEffect(() => {
-    (async () => {
-      const { data, error } = await authClient.getSession();
+  React.useEffect(() => {
+    if (!user_sess.isPending && !user_sess.data && !user_sess.error) {
+      navigate({ to: "/login" });
+    }
+  }, [user_sess]);
 
-      if (!data && !error) {
-        navigate({ to: "/login" });
-      }
-    })();
-  }, []);
-
-  // TODO: implement scroll
+  // HACK: do we really need inf. query? it has been disabled for now
   const messagePages = useInfiniteQuery({
     queryKey: ["messages", chatId],
     queryFn: async ({ pageParam: cursor }) => {
-      if (chatId) {
-        // TODO: get messages
-        if (user_sess.data) {
+      if (user_sess.data) {
+        if (chatId) {
+          // TODO: get messages
           let messageResponse;
           try {
             messageResponse = await ky.get(`/api/chats/${chatId}?cursor=${cursor}`);
@@ -121,20 +122,28 @@ export function ChatUI() {
             throw new Error("Failed to fetch messages");
           }
           let messages = await messageResponse.json();
-          return z.object({ messages: z.array(Message), cursor: z.number() }).parse(messages);
+          return z.object({ messages: z.array(Message) }).parse(messages);
         } else {
-          throw new Error("User Session is erroring");
+          return { messages: [], cursor: 0 };
         }
       } else {
-        return { messages: [], cursor: 0 };
+        throw new Error("User Session is erroring");
       }
     },
     initialPageParam: 0,
-    getNextPageParam: (lastPage) => lastPage.cursor + 1,
+    getNextPageParam: () => 0,
     enabled: !user_sess.isPending,
   });
 
-  const sendMessage = useMutation({
+  React.useEffect(() => {
+    if (messagePages.data && !messagePages.isPending && scrollContainerRef.current) {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      }
+    }
+  }, [messagePages.data, messagePages.isPending]);
+
+  const sendMessageMut = useMutation({
     // mutationKey: ["addMessages", chatId],
     mutationFn: async (message: string) => {
       let newChatId = chatId;
@@ -179,11 +188,12 @@ export function ChatUI() {
           .json(),
       ).msgId;
 
-      clearFiles();
+      clearFiles(); // remove files from input
 
       await queryClient.invalidateQueries({ queryKey: ["messages"] });
 
       if (!chatId && newChatId) {
+        // go to the new chatid thread if it's the first message in a chat
         navigate({ to: "/chat/$chatId", params: { chatId: newChatId } });
       }
     },
@@ -253,10 +263,10 @@ export function ChatUI() {
     };
   }, [chatId]);
 
-  function sendQuery() {
+  function sendMessage() {
     if (or_key) {
       if (model.id) {
-        sendMessage.mutate(input);
+        sendMessageMut.mutate(input);
         setInput("");
         if (scrollContainerRef.current) {
           scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
@@ -270,13 +280,13 @@ export function ChatUI() {
   }
 
   let messages = messagePages.data ? messagePages.data.pages.flatMap((page) => page.messages) : [];
-  if (sendMessage.isPending) {
+  if (sendMessageMut.isPending) {
     messages.push({
       id: "pending",
       role: "user",
       senderId: "pending",
       chatId: chatId || "",
-      message: sendMessage.variables,
+      message: sendMessageMut.variables,
       reasoning: null,
       files: null,
       finish_reason: null,
@@ -299,11 +309,8 @@ export function ChatUI() {
   }
 
   if (user_sess.isPending) {
-    return (
-      <div className="flex flex-col grow items-center w-full h-screen justify-center p-2">
-        <div className="bg-border rounded-full size-10 motion-safe:animate-pulse"></div>
-      </div>
-    );
+    // empty loading page if loading user
+    return <EmptyLoadingScreen />;
   }
 
   if (user_sess.error) {
@@ -346,10 +353,10 @@ export function ChatUI() {
             }}
             transition={{ duration: 0.2 }}
           >
-            {sendMessage.isPending || activeMessageId ? (
+            {sendMessageMut.isPending || activeMessageId ? (
               <div
-                className={`w-full ${chatId ? "flex" : "hidden"} justify-end p-2 ${sendMessage.isPending ? "items-end" : "items-start"}`}
-                key={sendMessage.variables}
+                className={`w-full ${chatId ? "flex" : "hidden"} justify-end p-2 ${sendMessageMut.isPending ? "items-end" : "items-start"}`}
+                key={sendMessageMut.variables}
               >
                 <LoaderCircle className="animate-spin size-4" />
               </div>
@@ -360,7 +367,7 @@ export function ChatUI() {
               onKeyDown={(evt) => {
                 if (evt.code === "Enter" && !evt.shiftKey) {
                   evt.preventDefault();
-                  sendQuery();
+                  sendMessage();
                 }
               }}
               value={input}
@@ -371,9 +378,10 @@ export function ChatUI() {
 
               <Button
                 className="ml-auto p-0 cursor-pointer"
-                onClick={sendQuery}
+                onClick={sendMessage}
                 disabled={
-                  (!!activeMessageId && input.trim() === "") ||
+                  !!activeMessageId ||
+                  input.trim() === "" ||
                   files.reduce((prev, cur) => (prev ? prev : !cur.uploaded), false)
                 }
               >
@@ -385,5 +393,13 @@ export function ChatUI() {
       </div>
       {location.search.includes("onboarding=true") ? <Onboarding /> : null}
     </>
+  );
+}
+
+function EmptyLoadingScreen() {
+  return (
+    <div className="flex flex-col grow items-center w-full h-screen justify-center p-2">
+      <div className="bg-border rounded-full size-10 motion-safe:animate-pulse"></div>
+    </div>
   );
 }

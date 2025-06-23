@@ -102,7 +102,6 @@ async function getChatMessages(chatId: string): Promise<sync.Messages> {
     }
   }
 
-
   return completions;
 }
 
@@ -120,11 +119,6 @@ chatsApp.get("/:id", async (c) => {
   const user = c.get("user");
   const chatId = c.req.param("id");
 
-  // Get query parameters from URL
-  const CHUNK_RANGE = 100;
-  const cursor = parseInt(c.req.query("cursor") ?? "0");
-  const descending = c.req.query("descending") === "true";
-
   if (!session || !user) {
     return c.json({ error: "Unauthorized" }, 401);
   }
@@ -137,23 +131,13 @@ chatsApp.get("/:id", async (c) => {
     return c.json({ error: "Not Found" }, 404);
   }
 
-  if (isNaN(cursor)) {
-    return c.json({ error: "Invalid Cursor" }, 400);
-  }
-
-  let messages;
-  const offsetValue = cursor * CHUNK_RANGE;
-  const limitValue = (cursor + 1) * CHUNK_RANGE - offsetValue;
-
-  messages = await db
+  let messages = await db
     .select()
     .from(chatMessages)
     .where(eq(chatMessages.chatId, chatId))
-    .orderBy(descending ? desc(chatMessages.createdAt) : asc(chatMessages.createdAt))
-    .offset(offsetValue)
-    .limit(limitValue);
+    .orderBy(asc(chatMessages.createdAt));
 
-  return c.json({ messages, cursor: cursor }, 200);
+  return c.json({ messages }, 200);
 });
 
 chatsApp.delete("/:id", async (c) => {
@@ -277,13 +261,10 @@ chatsApp.delete("/:id/file", async (c) => {
 
   // Remove the file from the files array
   const currentFiles = message[0].files || [];
-  const updatedFiles = currentFiles.filter(file => file !== fileId);
+  const updatedFiles = currentFiles.filter((file) => file !== fileId);
 
   // Update the message with the new files array
-  await db
-    .update(chatMessages)
-    .set({ files: updatedFiles })
-    .where(eq(chatMessages.id, msgId));
+  await db.update(chatMessages).set({ files: updatedFiles }).where(eq(chatMessages.id, msgId));
 
   return c.json({ message: "File removed successfully" }, 200);
 });
@@ -313,15 +294,18 @@ chatsApp.post("/:id/retry", async (c) => {
 
   let newMsgs: { arr: sync.Messages; delArr: string[] };
 
-  if (messageIndex === -1) { // message not found
+  if (messageIndex === -1) {
+    // message not found
     newMsgs = { arr: allMessages, delArr: [] };
   } else {
     const targetMessage = allMessages[messageIndex];
-    if (targetMessage.role === "user") { // message to retry/edit is user message
+    if (targetMessage.role === "user") {
+      // message to retry/edit is user message
       if (message && typeof message === "string") {
         targetMessage.message = message;
       }
-      newMsgs = { // keep all messages up to and including this one.
+      newMsgs = {
+        // keep all messages up to and including this one.
         arr: allMessages.slice(0, messageIndex + 1),
         delArr: allMessages.slice(messageIndex + 1).map((m) => m.id),
       };
