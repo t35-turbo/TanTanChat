@@ -52,7 +52,7 @@ export function ChatUI() {
     return options[Math.floor(Math.random() * options.length)];
   }, []);
   const loadingFlavorText = React.useMemo(() => {
-    const options = ["Our Bioneural Networks are busy at work", "nice prompt bro", "Remember to say thank you!"];
+    const options = ["Our Bioneural Networks are busy at work", "nice prompt bro", "Remember to say thank you!", "If you say please i'll be more helpful"];
     return options[Math.floor(Math.random() * options.length)];
   }, []);
 
