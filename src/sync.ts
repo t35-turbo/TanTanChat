@@ -115,8 +115,10 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
     | undefined
   > => {
     const arrayBuffer = await file.data.arrayBuffer();
+    // Use Buffer for base64 encoding to handle large files
+    const buffer = Buffer.from(arrayBuffer);
     if (file.metadata.mime === "application/pdf") {
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const base64 = buffer.toString("base64");
       const url = `data:${file.metadata.mime};base64,${base64}`;
       return {
         type: "file" as const,
@@ -126,7 +128,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
         },
       };
     } else if (file.metadata.mime.includes("image")) {
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const base64 = buffer.toString("base64");
       const url = `data:${file.metadata.mime};base64,${base64}`;
       return {
         type: "image_url" as const,
@@ -135,17 +137,10 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
         },
       };
     } else if (file.metadata.mime.includes("text")) {
-      const str = String.fromCharCode(...new Uint8Array(arrayBuffer));
+      const str = buffer.toString();
       return {
         type: "text" as const,
-        text: `person uploaded a file.
-<filename>
-${file.metadata.filename}
-</filename>
-<file_contents type="${file.metadata.mime}">
-${str}
-</file_contents>
-`,
+        text: `person uploaded a file.\n<filename>\n${file.metadata.filename}\n</filename>\n<file_contents type="${file.metadata.mime}">\n${str}\n</file_contents>\n`,
       };
     }
     return undefined;
@@ -163,8 +158,8 @@ ${str}
             const fileContents =
               m.files && m.files.length > 0
                 ? (await Promise.all(m.files.map(fileMsgGenerator))).filter(
-                    (item): item is NonNullable<typeof item> => item !== undefined,
-                  )
+                  (item): item is NonNullable<typeof item> => item !== undefined,
+                )
                 : [];
 
             return {
