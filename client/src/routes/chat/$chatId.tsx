@@ -94,12 +94,6 @@ export function ChatUI() {
     enabled: !user_sess.isPending && !user_sess.error,
   });
 
-  React.useEffect(() => {
-    if (!user_sess.isPending && !user_sess.data && !user_sess.error) {
-      navigate({ to: "/login" });
-    }
-  }, [user_sess]);
-
   // HACK: do we really need inf. query? it has been disabled for now
   const messagePages = useInfiniteQuery({
     queryKey: ["messages", chatId],

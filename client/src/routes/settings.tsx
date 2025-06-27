@@ -15,6 +15,7 @@ import ky from "ky";
 import { ArrowLeftIcon, Info, KeyIcon, LogIn, LogOut, Palette, User, Wrench } from "lucide-react";
 import { z } from "zod/v4-mini";
 import { queryClient } from "./__root";
+import { useEffect } from "react";
 
 export const getUserSetting = async (key: string, userId?: string) => {
   if (!userId) return ""; // TODO: Dexie Db for logged out users
@@ -31,8 +32,28 @@ function RouteComponent() {
   const navigate = useNavigate();
   const router = useRouter();
 
-  if (!user_sess.data && !user_sess.isPending && !user_sess.error) {
-    navigate({ to: "/login" });
+  useEffect(() => {
+    // Only redirect if the session has finished loading and there's no authenticated user
+    if (!user_sess.isPending && !user_sess.data && !user_sess.error) {
+      navigate({ to: "/login" });
+    }
+  }, [user_sess.isPending, user_sess.data, user_sess.error, navigate]);
+
+  // Show loading state while session is being determined
+  if (user_sess.isPending) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render the settings UI if not authenticated
+  if (!user_sess.data && !user_sess.error) {
+    return null; // Will redirect to login
   }
 
   return (
@@ -44,7 +65,7 @@ function RouteComponent() {
           if (canGoBack) {
             router.history.back();
           } else {
-            navigate({ to: "/" });
+            navigate({ to: "/chat" });
           }
         }}
       >

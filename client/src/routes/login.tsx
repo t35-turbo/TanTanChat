@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 
@@ -30,6 +30,13 @@ function RouteComponent() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const userSession = authClient.useSession();
+
+  useEffect(() => {
+    if (!userSession.isPending && userSession.data) {
+      navigate({ to: "/chat" });
+    }
+  }, [userSession.isPending, userSession.data, navigate]);
 
   async function login() {
     setError("");
@@ -39,10 +46,14 @@ function RouteComponent() {
     });
 
     if (data) {
-      navigate({ to: "/" });
+      navigate({ to: "/chat" });
     } else if (error) {
       setError(error.message ?? error.statusText);
     }
+  }
+
+  if (userSession.isPending) {
+    return <LoginLoadingScreen />;
   }
 
   return (
@@ -112,5 +123,13 @@ function RouteComponent() {
         </CardFooter>
       </Card>
     </form>
+  );
+}
+
+function LoginLoadingScreen() {
+  return (
+    <div className="flex flex-col grow items-center w-full h-screen justify-center p-2">
+      <div className="bg-border rounded-full size-10 motion-safe:animate-pulse"></div>
+    </div>
   );
 }
