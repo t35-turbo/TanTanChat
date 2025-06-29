@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 import { Alert, AlertTitle } from "@/components/ui/alert";
+import { LoginLoadingScreen } from "@/components/LoadingScreen";
 
 
 export const Route = createFileRoute("/login")({
@@ -126,10 +127,3 @@ function RouteComponent() {
   );
 }
 
-function LoginLoadingScreen() {
-  return (
-    <div className="flex flex-col grow items-center w-full h-screen justify-center p-2">
-      <div className="bg-border rounded-full size-10 motion-safe:animate-pulse"></div>
-    </div>
-  );
-}

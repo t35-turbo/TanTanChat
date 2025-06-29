@@ -13,6 +13,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useCanGoBack, useNavigate, useRouter } from "@tanstack/react-router";
 import ky from "ky";
 import { ArrowLeftIcon, Info, KeyIcon, LogIn, LogOut, Palette, User, Wrench } from "lucide-react";
+import { SessionLoadingScreen } from "@/components/LoadingScreen";
 import { z } from "zod/v4-mini";
 import { queryClient } from "./__root";
 import { useEffect } from "react";
@@ -41,14 +42,7 @@ function RouteComponent() {
 
   // Show loading state while session is being determined
   if (user_sess.isPending) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
+    return <SessionLoadingScreen />;
   }
 
   // Don't render the settings UI if not authenticated

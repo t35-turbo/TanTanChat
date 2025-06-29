@@ -3,6 +3,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 import { useEffect } from "react";
+import { SessionLoadingScreen } from "@/components/LoadingScreen";
 
 export const Route = createFileRoute("/chat")({
   component: RouteComponent,
@@ -21,14 +22,7 @@ function RouteComponent() {
 
   // Show loading state while session is being determined
   if (userSession.isPending) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
+    return <SessionLoadingScreen />;
   }
 
   // Don't render the chat UI if not authenticated
