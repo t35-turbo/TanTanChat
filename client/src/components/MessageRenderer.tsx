@@ -40,7 +40,7 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
   // Use useMutationState to access the sendMessage mutation state
   const sendMessageVariables = useMutationState<string | null>({
     filters: { mutationKey: ["sendMessage", chatId], status: "pending" },
-    select: (mutation) => z.string().parse(mutation.state.variables),
+    select: (mutation) => z.string().parse(mutation.state.variables ?? ""),
   })[0];
 
   // HACK: do we really need inf. query? it has been disabled for now
