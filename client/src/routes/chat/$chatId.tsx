@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
-import ModelSelector from "@/components/ModelSelector";
 import MessageRenderer from "@/components/MessageRenderer";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -20,22 +19,13 @@ import { useFiles } from "@/hooks/use-files";
 import Onboarding from "@/components/Onboarding";
 import { EmptyLoadingScreen } from "@/components/LoadingScreen";
 import MessageInput from "@/components/MessageInput";
+import { ChunkData, useActiveId, useActiveMessage } from "@/components/WSManager";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
 });
 
-const WSModelStreamResponse = z.object({
-  finish_reason: z.nullable(z.string()),
-  reasoning: z.string(),
-  content: z.string(),
-  refusal: z.string(),
-  tool_calls: z.nullable(z.any()),
-});
-type WSModelStreamResponse = z.infer<typeof WSModelStreamResponse>;
-
 // TODO: when the new chat is created, the input ui loses focus
-// pure scuff
 export function ChatUI() {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -49,8 +39,10 @@ export function ChatUI() {
     shouldThrow: false,
   }) ?? { chatId: undefined };
 
-  const [activeMessage, setActiveMessage] = React.useState<WSModelStreamResponse[]>([]);
-  const [activeMessageId, setActiveMessageId] = React.useState<string | null>(null);
+  // const [activeMessage, setActiveMessage] = React.useState<ChunkData[]>([]);
+  // const [activeMessageId, setActiveMessageId] = React.useState<string | null>(null);
+  const activeMessage = useActiveMessage();
+  const activeMessageId = useActiveId();
   const model = useModel((state) => state.model);
 
   const files = useFiles((state) => state.files);
@@ -129,68 +121,68 @@ export function ChatUI() {
   });
 
   // ~~websocketless~~ websocketed :( event notifier
-  React.useEffect(() => {
-    let ws: WebSocket | null = null;
-    if (chatId) {
-      const isDev = import.meta.env.MODE === "development";
-      const protocol = isDev || window.location.protocol === "http:" ? "ws" : "wss";
-      ws = new WebSocket(`${protocol}://${window.location.host}/api/chats/${chatId}/ws`);
+  // React.useEffect(() => {
+  //   let ws: WebSocket | null = null;
+  //   if (chatId) {
+  //     const isDev = import.meta.env.MODE === "development";
+  //     const protocol = isDev || window.location.protocol === "http:" ? "ws" : "wss";
+  //     ws = new WebSocket(`${protocol}://${window.location.host}/api/chats/${chatId}/ws`);
 
-      ws.onmessage = (event) => {
-        try {
-          const payload = z
-            .object({
-              jsonrpc: z.literal("2.0"),
-              method: z.string(),
-              params: z.any(),
-              id: z.optional(z.union([z.number(), z.string()])),
-            })
-            .parse(JSON.parse(event.data));
+  //     ws.onmessage = (event) => {
+  //       try {
+  //         const payload = z
+  //           .object({
+  //             jsonrpc: z.literal("2.0"),
+  //             method: z.string(),
+  //             params: z.any(),
+  //             id: z.optional(z.union([z.number(), z.string()])),
+  //           })
+  //           .parse(JSON.parse(event.data));
 
-          switch (payload.method) {
-            case "invalidate":
-              queryClient.invalidateQueries({ queryKey: [z.string().parse(payload.params)] });
-              break;
-            case "activeMessage":
-              if (payload.params) {
-                setActiveMessageId(payload.params);
-                ws!.send(
-                  JSON.stringify({
-                    jsonrpc: "2.0",
-                    method: "subscribe",
-                    params: payload.params,
-                    id: payload.params,
-                  }),
-                );
-              } else {
-                setActiveMessageId(null);
-                setActiveMessage([]);
-              }
-              break;
-            case "chunk":
-              const data = WSModelStreamResponse.safeParse(payload.params);
-              if (data.success) {
-                setActiveMessage((prev) => [...prev, data.data]);
-              } else {
-                console.error(data.error);
-              }
-              break;
-            default:
-              console.log(`Received event: ${payload.method} with data: ${payload.params}`);
-          }
-        } catch (err) {
-          console.error("Failed parsing message:", event.data);
-        }
-      };
-    }
+  //         switch (payload.method) {
+  //           case "invalidate":
+  //             queryClient.invalidateQueries({ queryKey: [z.string().parse(payload.params)] });
+  //             break;
+  //           case "activeMessage":
+  //             if (payload.params) {
+  //               setActiveMessageId(payload.params);
+  //               ws!.send(
+  //                 JSON.stringify({
+  //                   jsonrpc: "2.0",
+  //                   method: "subscribe",
+  //                   params: payload.params,
+  //                   id: payload.params,
+  //                 }),
+  //               );
+  //             } else {
+  //               setActiveMessageId(null);
+  //               setActiveMessage([]);
+  //             }
+  //             break;
+  //           case "chunk":
+  //             const data = ChunkData.safeParse(payload.params);
+  //             if (data.success) {
+  //               setActiveMessage((prev) => [...prev, data.data]);
+  //             } else {
+  //               console.error(data.error);
+  //             }
+  //             break;
+  //           default:
+  //             console.log(`Received event: ${payload.method} with data: ${payload.params}`);
+  //         }
+  //       } catch (err) {
+  //         console.error("Failed parsing message:", event.data);
+  //       }
+  //     };
+  //   }
 
-    return () => {
-      if (ws) {
-        ws.onmessage = null;
-        ws.close();
-      }
-    };
-  }, [chatId]);
+  //   return () => {
+  //     if (ws) {
+  //       ws.onmessage = null;
+  //       ws.close();
+  //     }
+  //   };
+  // }, [chatId]);
 
   function sendMessage(message: string) {
     if (or_key) {
@@ -206,8 +198,6 @@ export function ChatUI() {
       toast.error("Please set your OpenRouter key in settings.");
     }
   }
-
-
 
   if (user_sess.isPending) {
     // empty loading page if loading user
@@ -238,11 +228,7 @@ export function ChatUI() {
           ref={scrollContainerRef}
         >
           <div className="mb-auto w-full">
-            <MessageRenderer
-              chatId={chatId}
-              activeMessage={activeMessage}
-              activeMessageId={activeMessageId}
-            />
+            <MessageRenderer chatId={chatId} activeMessage={activeMessage} activeMessageId={activeMessageId} />
           </div>
           <h1 className={`font-bold text-2xl md:text-4xl ${chatId ? "opacity-0" : "opacity-100"}`}>7o</h1>
           <MessageInput
@@ -257,5 +243,3 @@ export function ChatUI() {
     </>
   );
 }
-
-
