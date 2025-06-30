@@ -66,7 +66,9 @@ class WSClient extends EventTarget {
     this.ws = new WebSocket(this.url);
 
     this.ws.onopen = () => {
-      console.log("event ws opened", this.url);
+      if (import.meta.env.MODE === "development") {
+        console.log("event ws opened", this.url);
+      }
       this.reconnectAttempts = 0;
     };
 
