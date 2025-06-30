@@ -7,3 +7,5 @@ client/node_modules/
 
 # Environment variables
 .env
+
+.opencode

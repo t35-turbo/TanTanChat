@@ -6,12 +6,12 @@ import React from "react";
 import ModelSelector from "@/components/ModelSelector";
 import FileDisplay from "@/components/FileDisplay";
 import { useFiles } from "@/hooks/use-files";
+import { useActiveId } from "./WSManager";
 
 interface MessageInputProps {
   chatId?: string;
   sendMessage: (message: string) => void;
   isPending: boolean;
-  activeMessageId: string | null;
   pendingVariables?: string;
 }
 
@@ -19,11 +19,12 @@ export default function MessageInput({
   chatId,
   sendMessage,
   isPending,
-  activeMessageId,
   pendingVariables,
 }: MessageInputProps) {
   const [input, setInput] = React.useState("");
   const files = useFiles((state) => state.files);
+
+  const activeId = useActiveId();
 
   const blankFlavorText = React.useMemo(() => {
     const options = [
@@ -69,7 +70,7 @@ export default function MessageInput({
       animate={animateProps}
       transition={transitionProps}
     >
-      {isPending || activeMessageId ? (
+      {isPending || activeId ? (
         <div
           className={`w-full ${chatId ? "flex" : "hidden"} justify-end p-2 ${isPending ? "items-end" : "items-start"}`}
           key={pendingVariables}
@@ -96,12 +97,12 @@ export default function MessageInput({
           className="ml-auto p-0 cursor-pointer"
           onClick={handleSendMessage}
           disabled={
-            !!activeMessageId ||
+            !!activeId ||
             input.trim() === "" ||
             files.reduce((prev, cur) => (prev ? prev : !cur.uploaded), false)
           }
         >
-          {!activeMessageId ? <ArrowUpIcon /> : <SquareIcon className="fill-background" />}
+          {!activeId ? <ArrowUpIcon /> : <SquareIcon className="fill-background" />}
         </Button>
       </div>
     </motion.div>

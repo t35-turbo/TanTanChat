@@ -24,25 +24,23 @@ import { Textarea } from "./ui/textarea";
 import { z } from "zod/v4-mini";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { useActiveId, useActiveMessage } from "./WSManager";
 
 interface MessageRendererProps {
   chatId?: string;
-  activeMessage?: any[];
-  activeMessageId?: string | null;
 }
 
-export function MessageRenderer({
-  chatId,
-  activeMessage = [],
-  activeMessageId,
-}: MessageRendererProps) {
+export function MessageRenderer({ chatId }: MessageRendererProps) {
   const navigate = useNavigate();
   const user_sess = authClient.useSession();
+
+  const { chunks: activeMessage, setChunks: setActiveMessage } = useActiveMessage();
+  const activeId = useActiveId();
 
   // Use useMutationState to access the sendMessage mutation state
   const sendMessageVariables = useMutationState<string | null>({
     filters: { mutationKey: ["sendMessage", chatId], status: "pending" },
-    select: (mutation) => z.string().parse(mutation.state.variables)
+    select: (mutation) => z.string().parse(mutation.state.variables),
   })[0];
 
   // HACK: do we really need inf. query? it has been disabled for now
@@ -67,6 +65,10 @@ export function MessageRenderer({
             throw new Error("Failed to fetch messages");
           }
           let messages = await messageResponse.json();
+
+          if (!activeId && activeMessage.length > 0 && setActiveMessage) {
+            setActiveMessage([]);
+          }
           return z.object({ messages: z.array(Message) }).parse(messages);
         } else {
           return { messages: [], cursor: 0 };
@@ -96,7 +98,7 @@ export function MessageRenderer({
     });
   }
 
-  if (activeMessageId && activeMessage) {
+  if (activeMessage.length > 0) {
     messages.push({
       id: "assistant_pending",
       role: "assistant",
@@ -122,20 +124,29 @@ export function MessageRenderer({
     return <div>Failed to load message history</div>;
   }
 
-
-
-
-
   return (
     <>
       {messages.map((message, idex) => (
-        <RenderedMsg message={message} key={message.id} last={idex === messages.length - 1} />
+        <RenderedMsg
+          message={message}
+          key={message.id}
+          last={idex === messages.length - 1}
+          setActiveMessage={setActiveMessage}
+        />
       ))}
     </>
   );
 }
 
-function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
+function RenderedMsg({
+  message,
+  last,
+  setActiveMessage,
+}: {
+  message: Message;
+  last: boolean;
+  setActiveMessage?: (chunks: any[]) => void;
+}) {
   const [showThink, setShowThink] = React.useState(false);
   const or_key = useORKey((state) => state.key);
   const model = useModel((state) => state.model);
@@ -229,7 +240,10 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
     >
       {files.data && files.data.length > 0
         ? files.data.map((file) => (
-            <div key={file.fileId} className="text-sm border rounded-lg italic p-1 flex items-center group cursor-default relative">
+            <div
+              key={file.fileId}
+              className="text-sm border rounded-lg italic p-1 flex items-center group cursor-default relative"
+            >
               <Paperclip className="size-3" />
               {file.fileName}
               <button

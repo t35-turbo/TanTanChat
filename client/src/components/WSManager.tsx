@@ -59,16 +59,21 @@ class WSClient extends EventTarget {
   }
 
   private connect() {
+    if (this.ws) {
+      this.close();
+    }
+
     this.ws = new WebSocket(this.url);
 
     this.ws.onopen = () => {
-      console.log("event ws opened");
+      console.log("event ws opened", this.url);
       this.reconnectAttempts = 0;
     };
 
     this.ws.onclose = (event) => {
       console.log("event ws closed", event.code, event.reason);
-      if (event.code !== 1000) { // Not a normal closure
+      if (event.code !== 1000) {
+        // Not a normal closure
         this.attemptReconnect();
       }
     };
@@ -89,17 +94,17 @@ class WSClient extends EventTarget {
             this.subscribe(msg.params);
           }
           event = new CustomEvent("activeMessage", {
-            detail: { messageId: msg.params }
+            detail: { messageId: msg.params },
           });
           break;
         case "invalidate":
           event = new CustomEvent("invalidate", {
-            detail: { cacheKey: msg.params }
+            detail: { cacheKey: msg.params },
           });
           break;
         case "chunk":
           event = new CustomEvent("chunk", {
-            detail: { chunk: msg.params, id: String(msg.id) }
+            detail: { chunk: msg.params, id: String(msg.id) },
           });
           break;
       }
@@ -110,10 +115,7 @@ class WSClient extends EventTarget {
 
   private attemptReconnect() {
     this.reconnectAttempts++;
-    const delay = Math.min(
-      this.maxReconnectDelay,
-      this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
-    );
+    const delay = Math.min(this.maxReconnectDelay, this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1));
     console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
 
     setTimeout(() => {
@@ -124,8 +126,25 @@ class WSClient extends EventTarget {
   /**
    * Gracefully close the underlying WebSocket.
    */
-  public close(code?: number, reason?: string) {
+  public close(code: number = 1000, reason: string = "close") {
     this.ws.close(code, reason);
+  }
+
+  /**
+   * Disconnect from current WebSocket and connect to a new chat endpoint.
+   */
+  public reconnectTo(newChatId?: string) {
+    this.chatId = newChatId;
+    const isDev = import.meta.env.MODE === "development";
+    const protocol = isDev || window.location.protocol === "http:" ? "ws" : "wss";
+    this.url = `${protocol}://${window.location.host}/api/chats/${newChatId}/ws`;
+
+    // Close existing connection
+    this.ws.close(1000, "Switching chat");
+    this.reconnectAttempts = 0;
+
+    // Connect to new endpoint
+    this.connect();
   }
 
   public subscribe(msgId: string) {
@@ -142,11 +161,12 @@ class WSClient extends EventTarget {
 
 export const WSEventProvider = createContext<WSClient | null>(null);
 export function WSProvider({ children, chatId }: { children: React.ReactNode; chatId?: string }) {
-  const clientRef = useRef<WSClient | null>(null);
+  const clientRef = useRef<WSClient>(new WSClient(chatId));
 
-  if (!clientRef.current) {
-    clientRef.current = new WSClient(chatId);
-  }
+  // Handle chatId changes by reconnecting to new endpoint
+  useEffect(() => {
+    clientRef.current.reconnectTo(chatId);
+  }, [chatId]);
 
   useEffect(() => {
     const invalidator = (evt: Event) => {
@@ -157,6 +177,7 @@ export function WSProvider({ children, chatId }: { children: React.ReactNode; ch
     clientRef.current.addEventListener("invalidate", invalidator);
 
     return () => {
+      console.log("closing ws");
       clientRef.current?.removeEventListener("invalidate", invalidator);
       clientRef.current?.close();
     };
@@ -184,6 +205,12 @@ export function useActiveId() {
     };
   }, [context]);
 
+  useEffect(() => {
+    if (!activeId) {
+      queryClient.invalidateQueries({ queryKey: ["messages"] });
+    }
+  }, [activeId]);
+
   return activeId;
 }
 
@@ -193,7 +220,8 @@ export function useActiveMessage() {
   const context = useContext(WSEventProvider);
 
   useEffect(() => {
-    setTimeout(() => setChunks([])); // TODO: dont reset this and let the fetch reset this instead
+    // we don't want to reset this anymore, we want to reset it when the history has been fetched and will rerender
+    // setTimeout(() => setChunks([]));
   }, [activeId]);
 
   useEffect(() => {
@@ -213,5 +241,5 @@ export function useActiveMessage() {
     };
   }, [context, activeId]);
 
-  return chunks;
+  return { chunks, setChunks };
 }

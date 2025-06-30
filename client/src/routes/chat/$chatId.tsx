@@ -39,10 +39,6 @@ export function ChatUI() {
     shouldThrow: false,
   }) ?? { chatId: undefined };
 
-  // const [activeMessage, setActiveMessage] = React.useState<ChunkData[]>([]);
-  // const [activeMessageId, setActiveMessageId] = React.useState<string | null>(null);
-  const activeMessage = useActiveMessage();
-  const activeMessageId = useActiveId();
   const model = useModel((state) => state.model);
 
   const files = useFiles((state) => state.files);
@@ -228,14 +224,13 @@ export function ChatUI() {
           ref={scrollContainerRef}
         >
           <div className="mb-auto w-full">
-            <MessageRenderer chatId={chatId} activeMessage={activeMessage} activeMessageId={activeMessageId} />
+            <MessageRenderer chatId={chatId} />
           </div>
           <h1 className={`font-bold text-2xl md:text-4xl ${chatId ? "opacity-0" : "opacity-100"}`}>7o</h1>
           <MessageInput
             chatId={chatId}
             sendMessage={sendMessage}
             isPending={sendMessageMut.isPending}
-            activeMessageId={activeMessageId}
           />
         </motion.div>
       </div>
