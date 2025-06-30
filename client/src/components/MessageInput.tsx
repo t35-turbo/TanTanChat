@@ -55,13 +55,19 @@ export default function MessageInput({
     }
   };
 
+  const animateProps = React.useMemo(
+    () => ({ width: chatId ? "100%" : undefined }),
+    [chatId]
+  );
+  const transitionProps = React.useMemo(
+    () => ({ duration: 0.2 }),
+    []
+  );
   return (
     <motion.div
       className={`w-full ${chatId ? "" : "md:w-1/2"} sticky bottom-0 bg-background`}
-      animate={{
-        width: chatId ? "100%" : undefined,
-      }}
-      transition={{ duration: 0.2 }}
+      animate={animateProps}
+      transition={transitionProps}
     >
       {isPending || activeMessageId ? (
         <div

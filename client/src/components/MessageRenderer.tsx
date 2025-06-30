@@ -12,9 +12,9 @@ import "katex/dist/katex.min.css";
 import React, { useState } from "react";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { queryClient } from "@/routes/__root";
-import ky from "ky";
+import ky, { HTTPError } from "ky";
 import { useORKey } from "@/hooks/use-or-key";
 import { useModel } from "@/hooks/use-model";
 import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
@@ -22,12 +22,108 @@ import { authClient } from "@/lib/auth-client";
 import { getUserSetting } from "@/routes/settings";
 import { Textarea } from "./ui/textarea";
 import { z } from "zod/v4-mini";
+import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 
 interface MessageRendererProps {
-  messages: Message[];
+  chatId?: string;
+  activeMessage?: any[];
+  activeMessageId?: string | null;
+  sendMessageIsPending?: boolean;
+  sendMessageVariables?: string;
 }
 
-export function MessageRenderer({ messages }: MessageRendererProps) {
+export function MessageRenderer({ 
+  chatId, 
+  activeMessage = [], 
+  activeMessageId, 
+  sendMessageIsPending = false, 
+  sendMessageVariables,
+}: MessageRendererProps) {
+  const navigate = useNavigate();
+  const user_sess = authClient.useSession();
+
+  // HACK: do we really need inf. query? it has been disabled for now
+  const messagePages = useInfiniteQuery({
+    queryKey: ["messages", chatId],
+    queryFn: async ({ pageParam: cursor }) => {
+      if (user_sess.data) {
+        if (chatId) {
+          // TODO: get messages
+          let messageResponse;
+          try {
+            messageResponse = await ky.get(`/api/chats/${chatId}?cursor=${cursor}`);
+          } catch (err: any) {
+            if (err instanceof HTTPError && err.response.status === 404) {
+              toast.error("Chat not found");
+              navigate({ to: "/chat" });
+            } else {
+              throw err;
+            }
+          }
+          if (!messageResponse) {
+            throw new Error("Failed to fetch messages");
+          }
+          let messages = await messageResponse.json();
+          return z.object({ messages: z.array(Message) }).parse(messages);
+        } else {
+          return { messages: [], cursor: 0 };
+        }
+      } else {
+        throw new Error("User Session is erroring");
+      }
+    },
+    initialPageParam: 0,
+    getNextPageParam: () => 0,
+    enabled: !user_sess.isPending,
+  });
+
+  let messages = messagePages.data ? messagePages.data.pages.flatMap((page) => page.messages) : [];
+  
+  if (sendMessageIsPending && sendMessageVariables) {
+    messages.push({
+      id: "pending",
+      role: "user",
+      senderId: "pending",
+      chatId: chatId || "",
+      message: sendMessageVariables,
+      reasoning: null,
+      files: null,
+      finish_reason: null,
+      createdAt: new Date(),
+    });
+  }
+
+  if (activeMessageId && activeMessage) {
+    messages.push({
+      id: "assistant_pending",
+      role: "assistant",
+      senderId: "assistant_pending",
+      chatId: chatId || "",
+      message: activeMessage.reduce((prev, cur) => prev + cur.content, ""),
+      reasoning: activeMessage.reduce((prev, cur) => prev + cur.reasoning, ""),
+      finish_reason: activeMessage.reduce((prev: string | null, cur) => (prev ? prev : cur.finish_reason), null),
+      files: null,
+      createdAt: new Date(),
+    });
+  }
+
+  if (messagePages.isPending) {
+    return (
+      <div className="flex space-x-2 p-10">
+        <div className="bg-border rounded-full h-8 w-8 motion-safe:animate-pulse"></div>
+      </div>
+    );
+  }
+
+  if (messagePages.isError) {
+    return <div>Failed to load message history</div>;
+  }
+
+  
+
+
+
   return (
     <>
       {messages.map((message, idex) => (

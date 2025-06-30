@@ -18,10 +18,10 @@ export function generateSystemPrompt(settings: UserSettings): string {
   }
 
   if (traits) {
-    prompt += `The person perfers the assistant to act in this way: ${traits}`;
+    prompt += `The person prefers the assistant to act in this way: ${traits}`;
   }
 
-  prompt += `\nThe person's date and time is ${new Date().toLocaleString()}. This will always be current to the exact time the person sends a message.`;
+  prompt += `\nThe person's current locale date and time is ${new Date().toLocaleString()}. This will always be current to the exact time the person sends a message.`;
 
   return prompt;
 }

@@ -2,16 +2,14 @@ import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import ModelSelector from "@/components/ModelSelector";
 import MessageRenderer from "@/components/MessageRenderer";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { ArrowUpIcon, LoaderCircle, SquareIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import React from "react";
 import { authClient } from "@/lib/auth-client";
-import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/routes/__root";
 import { z } from "zod/v4-mini";
-import ky, { HTTPError } from "ky";
-import { Message } from "@/lib/db";
+import ky from "ky";
+
 import { toast } from "sonner";
 import { useORKey } from "@/hooks/use-or-key";
 import { useModel } from "@/hooks/use-model";
@@ -74,51 +72,7 @@ export function ChatUI() {
     enabled: !user_sess.isPending && !user_sess.error,
   });
 
-  // HACK: do we really need inf. query? it has been disabled for now
-  const messagePages = useInfiniteQuery({
-    queryKey: ["messages", chatId],
-    queryFn: async ({ pageParam: cursor }) => {
-      if (user_sess.data) {
-        if (chatId) {
-          // TODO: get messages
-          let messageResponse;
-          try {
-            messageResponse = await ky.get(`/api/chats/${chatId}?cursor=${cursor}`);
-          } catch (err: any) {
-            if (err instanceof HTTPError && err.response.status === 404) {
-              toast.error("Chat not found");
-              navigate({ to: "/chat" });
-            } else {
-              throw err;
-            }
-          }
-          if (!messageResponse) {
-            throw new Error("Failed to fetch messages");
-          }
-          let messages = await messageResponse.json();
-          return z.object({ messages: z.array(Message) }).parse(messages);
-        } else {
-          return { messages: [], cursor: 0 };
-        }
-      } else {
-        throw new Error("User Session is erroring");
-      }
-    },
-    initialPageParam: 0,
-    getNextPageParam: () => 0,
-    enabled: !user_sess.isPending,
-  });
-
-  React.useEffect(() => {
-    if (messagePages.data && !messagePages.isPending && scrollContainerRef.current) {
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-      }
-    }
-  }, [messagePages.data, messagePages.isPending]);
-
   const sendMessageMut = useMutation({
-    // mutationKey: ["addMessages", chatId],
     mutationFn: async (message: string) => {
       let newChatId = chatId;
       if (!newChatId) {
@@ -252,34 +206,7 @@ export function ChatUI() {
     }
   }
 
-  let messages = messagePages.data ? messagePages.data.pages.flatMap((page) => page.messages) : [];
-  if (sendMessageMut.isPending) {
-    messages.push({
-      id: "pending",
-      role: "user",
-      senderId: "pending",
-      chatId: chatId || "",
-      message: sendMessageMut.variables,
-      reasoning: null,
-      files: null,
-      finish_reason: null,
-      createdAt: new Date(),
-    });
-  }
 
-  if (activeMessageId) {
-    messages.push({
-      id: "assistant_pending",
-      role: "assistant",
-      senderId: "assistant_pending",
-      chatId: chatId || "",
-      message: activeMessage.reduce((prev, cur) => prev + cur.content, ""),
-      reasoning: activeMessage.reduce((prev, cur) => prev + cur.reasoning, ""),
-      finish_reason: activeMessage.reduce((prev: string | null, cur) => (prev ? prev : cur.finish_reason), null),
-      files: null,
-      createdAt: new Date(),
-    });
-  }
 
   if (user_sess.isPending) {
     // empty loading page if loading user
@@ -304,20 +231,20 @@ export function ChatUI() {
     <>
       <div className={`flex flex-col grow items-center w-full h-screen justify-center p-2 relative`}>
         <motion.div
-          ref={scrollContainerRef}
           animate={{ height: chatId ? "100%" : "auto" }}
           transition={{ duration: 0.2 }}
           className="flex flex-col w-full items-center overflow-y-scroll"
+          ref={scrollContainerRef}
         >
           <div className="mb-auto w-full">
-            <MessageRenderer messages={messages} />
+            <MessageRenderer
+              chatId={chatId}
+              activeMessage={activeMessage}
+              activeMessageId={activeMessageId}
+              sendMessageIsPending={sendMessageMut.isPending}
+              sendMessageVariables={sendMessageMut.variables}
+            />
           </div>
-          {messagePages.isPending ? (
-            <div className="flex space-x-2 p-10">
-              <div className="bg-border rounded-full h-8 w-8 motion-safe:animate-pulse"></div>
-            </div>
-          ) : null}
-          {messagePages.isError ? <div>Failed to load message history</div> : null}
           <h1 className={`font-bold text-2xl md:text-4xl ${chatId ? "opacity-0" : "opacity-100"}`}>7o</h1>
           <MessageInput
             chatId={chatId}
