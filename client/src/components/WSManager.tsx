@@ -73,7 +73,9 @@ class WSClient extends EventTarget {
     };
 
     this.ws.onclose = (event) => {
-      console.log("event ws closed", event.code, event.reason);
+      if (import.meta.env.MODE === "development") {
+        console.log("event ws closed", event.code, event.reason);
+      }
       if (event.code !== 1000) {
         // Not a normal closure
         this.attemptReconnect();
@@ -118,7 +120,6 @@ class WSClient extends EventTarget {
   private attemptReconnect() {
     this.reconnectAttempts++;
     const delay = Math.min(this.maxReconnectDelay, this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1));
-    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
 
     setTimeout(() => {
       this.connect();
@@ -179,7 +180,6 @@ export function WSProvider({ children, chatId }: { children: React.ReactNode; ch
     clientRef.current.addEventListener("invalidate", invalidator);
 
     return () => {
-      console.log("closing ws");
       clientRef.current?.removeEventListener("invalidate", invalidator);
       clientRef.current?.close();
     };
