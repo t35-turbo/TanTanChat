@@ -12,7 +12,7 @@ import "katex/dist/katex.min.css";
 import React, { useState } from "react";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import { useMutation, useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useInfiniteQuery, useMutationState } from "@tanstack/react-query";
 import { queryClient } from "@/routes/__root";
 import ky, { HTTPError } from "ky";
 import { useORKey } from "@/hooks/use-or-key";
@@ -29,19 +29,21 @@ interface MessageRendererProps {
   chatId?: string;
   activeMessage?: any[];
   activeMessageId?: string | null;
-  sendMessageIsPending?: boolean;
-  sendMessageVariables?: string;
 }
 
-export function MessageRenderer({ 
-  chatId, 
-  activeMessage = [], 
-  activeMessageId, 
-  sendMessageIsPending = false, 
-  sendMessageVariables,
+export function MessageRenderer({
+  chatId,
+  activeMessage = [],
+  activeMessageId,
 }: MessageRendererProps) {
   const navigate = useNavigate();
   const user_sess = authClient.useSession();
+
+  // Use useMutationState to access the sendMessage mutation state
+  const sendMessageVariables = useMutationState<string | null>({
+    filters: { mutationKey: ["sendMessage", chatId], status: "pending" },
+    select: (mutation) => z.string().parse(mutation.state.variables)
+  })[0];
 
   // HACK: do we really need inf. query? it has been disabled for now
   const messagePages = useInfiniteQuery({
@@ -79,8 +81,8 @@ export function MessageRenderer({
   });
 
   let messages = messagePages.data ? messagePages.data.pages.flatMap((page) => page.messages) : [];
-  
-  if (sendMessageIsPending && sendMessageVariables) {
+
+  if (sendMessageVariables) {
     messages.push({
       id: "pending",
       role: "user",
@@ -120,7 +122,7 @@ export function MessageRenderer({
     return <div>Failed to load message history</div>;
   }
 
-  
+
 
 
 

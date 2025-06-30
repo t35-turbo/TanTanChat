@@ -73,6 +73,7 @@ export function ChatUI() {
   });
 
   const sendMessageMut = useMutation({
+    mutationKey: ["sendMessage", chatId],
     mutationFn: async (message: string) => {
       let newChatId = chatId;
       if (!newChatId) {
@@ -241,8 +242,6 @@ export function ChatUI() {
               chatId={chatId}
               activeMessage={activeMessage}
               activeMessageId={activeMessageId}
-              sendMessageIsPending={sendMessageMut.isPending}
-              sendMessageVariables={sendMessageMut.variables}
             />
           </div>
           <h1 className={`font-bold text-2xl md:text-4xl ${chatId ? "opacity-0" : "opacity-100"}`}>7o</h1>
@@ -251,7 +250,6 @@ export function ChatUI() {
             sendMessage={sendMessage}
             isPending={sendMessageMut.isPending}
             activeMessageId={activeMessageId}
-            pendingVariables={sendMessageMut.variables}
           />
         </motion.div>
       </div>
