@@ -1,17 +1,14 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
-import ModelSelector from "@/components/ModelSelector";
 import MessageRenderer from "@/components/MessageRenderer";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { ArrowUpIcon, LoaderCircle, SquareIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import React from "react";
 import { authClient } from "@/lib/auth-client";
-import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/routes/__root";
 import { z } from "zod/v4-mini";
-import ky, { HTTPError } from "ky";
-import { Message } from "@/lib/db";
+import ky from "ky";
+
 import { toast } from "sonner";
 import { useORKey } from "@/hooks/use-or-key";
 import { useModel } from "@/hooks/use-model";
@@ -22,22 +19,13 @@ import { useFiles } from "@/hooks/use-files";
 import Onboarding from "@/components/Onboarding";
 import { EmptyLoadingScreen } from "@/components/LoadingScreen";
 import MessageInput from "@/components/MessageInput";
+import { ChunkData, useActiveId, useActiveMessage } from "@/components/WSManager";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
 });
 
-const WSModelStreamResponse = z.object({
-  finish_reason: z.nullable(z.string()),
-  reasoning: z.string(),
-  content: z.string(),
-  refusal: z.string(),
-  tool_calls: z.nullable(z.any()),
-});
-type WSModelStreamResponse = z.infer<typeof WSModelStreamResponse>;
-
 // TODO: when the new chat is created, the input ui loses focus
-// pure scuff
 export function ChatUI() {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -51,8 +39,6 @@ export function ChatUI() {
     shouldThrow: false,
   }) ?? { chatId: undefined };
 
-  const [activeMessage, setActiveMessage] = React.useState<WSModelStreamResponse[]>([]);
-  const [activeMessageId, setActiveMessageId] = React.useState<string | null>(null);
   const model = useModel((state) => state.model);
 
   const files = useFiles((state) => state.files);
@@ -74,51 +60,8 @@ export function ChatUI() {
     enabled: !user_sess.isPending && !user_sess.error,
   });
 
-  // HACK: do we really need inf. query? it has been disabled for now
-  const messagePages = useInfiniteQuery({
-    queryKey: ["messages", chatId],
-    queryFn: async ({ pageParam: cursor }) => {
-      if (user_sess.data) {
-        if (chatId) {
-          // TODO: get messages
-          let messageResponse;
-          try {
-            messageResponse = await ky.get(`/api/chats/${chatId}?cursor=${cursor}`);
-          } catch (err: any) {
-            if (err instanceof HTTPError && err.response.status === 404) {
-              toast.error("Chat not found");
-              navigate({ to: "/chat" });
-            } else {
-              throw err;
-            }
-          }
-          if (!messageResponse) {
-            throw new Error("Failed to fetch messages");
-          }
-          let messages = await messageResponse.json();
-          return z.object({ messages: z.array(Message) }).parse(messages);
-        } else {
-          return { messages: [], cursor: 0 };
-        }
-      } else {
-        throw new Error("User Session is erroring");
-      }
-    },
-    initialPageParam: 0,
-    getNextPageParam: () => 0,
-    enabled: !user_sess.isPending,
-  });
-
-  React.useEffect(() => {
-    if (messagePages.data && !messagePages.isPending && scrollContainerRef.current) {
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-      }
-    }
-  }, [messagePages.data, messagePages.isPending]);
-
   const sendMessageMut = useMutation({
-    // mutationKey: ["addMessages", chatId],
+    mutationKey: ["sendMessage", chatId],
     mutationFn: async (message: string) => {
       let newChatId = chatId;
       if (!newChatId) {
@@ -173,70 +116,6 @@ export function ChatUI() {
     },
   });
 
-  // ~~websocketless~~ websocketed :( event notifier
-  React.useEffect(() => {
-    let ws: WebSocket | null = null;
-    if (chatId) {
-      const isDev = import.meta.env.MODE === "development";
-      const protocol = isDev || window.location.protocol === "http:" ? "ws" : "wss";
-      ws = new WebSocket(`${protocol}://${window.location.host}/api/chats/${chatId}/ws`);
-
-      ws.onmessage = (event) => {
-        try {
-          const payload = z
-            .object({
-              jsonrpc: z.literal("2.0"),
-              method: z.string(),
-              params: z.any(),
-              id: z.optional(z.union([z.number(), z.string()])),
-            })
-            .parse(JSON.parse(event.data));
-
-          switch (payload.method) {
-            case "invalidate":
-              queryClient.invalidateQueries({ queryKey: [z.string().parse(payload.params)] });
-              break;
-            case "activeMessage":
-              if (payload.params) {
-                setActiveMessageId(payload.params);
-                ws!.send(
-                  JSON.stringify({
-                    jsonrpc: "2.0",
-                    method: "subscribe",
-                    params: payload.params,
-                    id: payload.params,
-                  }),
-                );
-              } else {
-                setActiveMessageId(null);
-                setActiveMessage([]);
-              }
-              break;
-            case "chunk":
-              const data = WSModelStreamResponse.safeParse(payload.params);
-              if (data.success) {
-                setActiveMessage((prev) => [...prev, data.data]);
-              } else {
-                console.error(data.error);
-              }
-              break;
-            default:
-              console.log(`Received event: ${payload.method} with data: ${payload.params}`);
-          }
-        } catch (err) {
-          console.error("Failed parsing message:", event.data);
-        }
-      };
-    }
-
-    return () => {
-      if (ws) {
-        ws.onmessage = null;
-        ws.close();
-      }
-    };
-  }, [chatId]);
-
   function sendMessage(message: string) {
     if (or_key) {
       if (model.id) {
@@ -250,35 +129,6 @@ export function ChatUI() {
     } else {
       toast.error("Please set your OpenRouter key in settings.");
     }
-  }
-
-  let messages = messagePages.data ? messagePages.data.pages.flatMap((page) => page.messages) : [];
-  if (sendMessageMut.isPending) {
-    messages.push({
-      id: "pending",
-      role: "user",
-      senderId: "pending",
-      chatId: chatId || "",
-      message: sendMessageMut.variables,
-      reasoning: null,
-      files: null,
-      finish_reason: null,
-      createdAt: new Date(),
-    });
-  }
-
-  if (activeMessageId) {
-    messages.push({
-      id: "assistant_pending",
-      role: "assistant",
-      senderId: "assistant_pending",
-      chatId: chatId || "",
-      message: activeMessage.reduce((prev, cur) => prev + cur.content, ""),
-      reasoning: activeMessage.reduce((prev, cur) => prev + cur.reasoning, ""),
-      finish_reason: activeMessage.reduce((prev: string | null, cur) => (prev ? prev : cur.finish_reason), null),
-      files: null,
-      createdAt: new Date(),
-    });
   }
 
   if (user_sess.isPending) {
@@ -304,27 +154,19 @@ export function ChatUI() {
     <>
       <div className={`flex flex-col grow items-center w-full h-screen justify-center p-2 relative`}>
         <motion.div
-          ref={scrollContainerRef}
           animate={{ height: chatId ? "100%" : "auto" }}
           transition={{ duration: 0.2 }}
           className="flex flex-col w-full items-center overflow-y-scroll"
+          ref={scrollContainerRef}
         >
           <div className="mb-auto w-full">
-            <MessageRenderer messages={messages} />
+            <MessageRenderer chatId={chatId} />
           </div>
-          {messagePages.isPending ? (
-            <div className="flex space-x-2 p-10">
-              <div className="bg-border rounded-full h-8 w-8 motion-safe:animate-pulse"></div>
-            </div>
-          ) : null}
-          {messagePages.isError ? <div>Failed to load message history</div> : null}
           <h1 className={`font-bold text-2xl md:text-4xl ${chatId ? "opacity-0" : "opacity-100"}`}>7o</h1>
           <MessageInput
             chatId={chatId}
             sendMessage={sendMessage}
             isPending={sendMessageMut.isPending}
-            activeMessageId={activeMessageId}
-            pendingVariables={sendMessageMut.variables}
           />
         </motion.div>
       </div>
@@ -332,5 +174,3 @@ export function ChatUI() {
     </>
   );
 }
-
-

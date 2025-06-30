@@ -48,7 +48,7 @@ const app = new Hono<{
     console.log("[INFO] Testing Redis connection...");
     console.log("[INFO] Redis URL:", env.REDIS_URL);
     console.log("[INFO] Redis authentication:", env.REDIS_PASSWORD ? "✅ Password configured" : "❌ No password configured");
-    
+
     const redisTest = await testRedisConnection();
     if (redisTest.success) {
       console.log("✅ Redis connection successful");
@@ -199,7 +199,7 @@ app.notFound(async (c) => {
   if (c.req.path.startsWith('/api/')) {
     return c.json({ error: 'Not Found' }, 404);
   }
-  
+
   // For all other routes, serve index.html (SPA routing)
   const file = Bun.file('./client/dist/index.html');
   const content = await file.text();
@@ -216,7 +216,8 @@ app.get(
     const user = c.get("user");
     const chatId = c.req.param("id");
 
-    // If session or user is not available, throw an error for now. TODO: use proper middleware  (e.g. the route you see intercepting requests bound to *)
+    // If session or user is not available, throw an error for now.
+    // TODO: use proper middleware  (e.g. the route you see intercepting requests bound to *)
     if (!session || !user) {
       throw new Error("Unauthorized, you must log in to use this feature");
     }

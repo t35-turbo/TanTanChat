@@ -12,9 +12,9 @@ import "katex/dist/katex.min.css";
 import React, { useState } from "react";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useInfiniteQuery, useMutationState } from "@tanstack/react-query";
 import { queryClient } from "@/routes/__root";
-import ky from "ky";
+import ky, { HTTPError } from "ky";
 import { useORKey } from "@/hooks/use-or-key";
 import { useModel } from "@/hooks/use-model";
 import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
@@ -22,22 +22,131 @@ import { authClient } from "@/lib/auth-client";
 import { getUserSetting } from "@/routes/settings";
 import { Textarea } from "./ui/textarea";
 import { z } from "zod/v4-mini";
+import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
+import { useActiveId, useActiveMessage } from "./WSManager";
 
 interface MessageRendererProps {
-  messages: Message[];
+  chatId?: string;
 }
 
-export function MessageRenderer({ messages }: MessageRendererProps) {
+export function MessageRenderer({ chatId }: MessageRendererProps) {
+  const navigate = useNavigate();
+  const user_sess = authClient.useSession();
+
+  const { chunks: activeMessage, setChunks: setActiveMessage } = useActiveMessage();
+  const activeId = useActiveId();
+
+  // Use useMutationState to access the sendMessage mutation state
+  const sendMessageVariables = useMutationState<string | null>({
+    filters: { mutationKey: ["sendMessage", chatId], status: "pending" },
+    select: (mutation) => z.string().parse(mutation.state.variables ?? ""),
+  })[0];
+
+  // HACK: do we really need inf. query? it has been disabled for now
+  const messagePages = useInfiniteQuery({
+    queryKey: ["messages", chatId],
+    queryFn: async ({ pageParam: cursor }) => {
+      if (user_sess.data) {
+        if (chatId) {
+          // TODO: get messages
+          let messageResponse;
+          try {
+            messageResponse = await ky.get(`/api/chats/${chatId}?cursor=${cursor}`);
+          } catch (err: any) {
+            if (err instanceof HTTPError && err.response.status === 404) {
+              toast.error("Chat not found");
+              navigate({ to: "/chat" });
+            } else {
+              throw err;
+            }
+          }
+          if (!messageResponse) {
+            throw new Error("Failed to fetch messages");
+          }
+          let messages = await messageResponse.json();
+
+          if (!activeId && activeMessage.length > 0 && setActiveMessage) {
+            setActiveMessage([]);
+          }
+          return z.object({ messages: z.array(Message) }).parse(messages);
+        } else {
+          return { messages: [], cursor: 0 };
+        }
+      } else {
+        throw new Error("User Session is erroring");
+      }
+    },
+    initialPageParam: 0,
+    getNextPageParam: () => 0,
+    enabled: !user_sess.isPending,
+  });
+
+  let messages = messagePages.data ? messagePages.data.pages.flatMap((page) => page.messages) : [];
+
+  if (sendMessageVariables) {
+    messages.push({
+      id: "pending",
+      role: "user",
+      senderId: "pending",
+      chatId: chatId || "",
+      message: sendMessageVariables,
+      reasoning: null,
+      files: null,
+      finish_reason: null,
+      createdAt: new Date(),
+    });
+  }
+
+  if (activeMessage.length > 0) {
+    messages.push({
+      id: "assistant_pending",
+      role: "assistant",
+      senderId: "assistant_pending",
+      chatId: chatId || "",
+      message: activeMessage.reduce((prev, cur) => prev + cur.content, ""),
+      reasoning: activeMessage.reduce((prev, cur) => prev + cur.reasoning, ""),
+      finish_reason: activeMessage.reduce((prev: string | null, cur) => (prev ? prev : cur.finish_reason), null),
+      files: null,
+      createdAt: new Date(),
+    });
+  }
+
+  if (messagePages.isPending) {
+    return (
+      <div className="flex space-x-2 p-10">
+        <div className="bg-border rounded-full h-8 w-8 motion-safe:animate-pulse"></div>
+      </div>
+    );
+  }
+
+  if (messagePages.isError) {
+    return <div>Failed to load message history</div>;
+  }
+
   return (
     <>
       {messages.map((message, idex) => (
-        <RenderedMsg message={message} key={message.id} last={idex === messages.length - 1} />
+        <RenderedMsg
+          message={message}
+          key={message.id}
+          last={idex === messages.length - 1}
+          setActiveMessage={setActiveMessage}
+        />
       ))}
     </>
   );
 }
 
-function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
+function RenderedMsg({
+  message,
+  last,
+  setActiveMessage,
+}: {
+  message: Message;
+  last: boolean;
+  setActiveMessage?: (chunks: any[]) => void;
+}) {
   const [showThink, setShowThink] = React.useState(false);
   const or_key = useORKey((state) => state.key);
   const model = useModel((state) => state.model);
@@ -131,7 +240,10 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
     >
       {files.data && files.data.length > 0
         ? files.data.map((file) => (
-            <div key={file.fileId} className="text-sm border rounded-lg italic p-1 flex items-center group cursor-default relative">
+            <div
+              key={file.fileId}
+              className="text-sm border rounded-lg italic p-1 flex items-center group cursor-default relative"
+            >
               <Paperclip className="size-3" />
               {file.fileName}
               <button
