@@ -92,11 +92,6 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
               : (() => { throw new Error(`Invalid role: ${msg.role}`) })()
           })) || [];
 
-          console.log('Raw API response:', messages);
-          console.log('Parsed messages before Zod:', parsedMessages);
-          console.log('Sample message structure:', parsedMessages[0]);
-
-          // Now you can re-enable Zod parsing
           return { messages: z.array(Message).parse(parsedMessages) };
         } else {
           return { messages: [], cursor: 0 };
