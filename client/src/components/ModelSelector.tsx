@@ -5,8 +5,8 @@ import { ChevronDownIcon, Paperclip } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { useORKey } from "@/hooks/use-or-key";
 import { toast } from "sonner";
-import { useKeyInput } from "@/hooks/use-key-input";
 import { type Models, useModel } from "@/hooks/use-model";
+import { toastEnterAPIKey } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -121,7 +121,6 @@ export default function ModelSelector() {
   // const setWebSearch = useTools(state => state.setWebSearch);
 
   const or_key = useORKey((state) => state.key);
-  const openModal = useKeyInput((state) => state.open);
 
   const files = useFiles((state) => state.files);
   const addFiles = useFiles((state) => state.addFiles);
@@ -155,19 +154,9 @@ export default function ModelSelector() {
         open={open}
         onOpenChange={(open) => {
           if (!or_key) {
-            toast.error("Please set your OpenRouter Key first.", {
-              action: {
-                label: "Enter Key",
-                onClick: openModal,
-              },
-            });
+            toastEnterAPIKey();
           } else if (!or_key.startsWith("sk-or")) {
-            toast.error("Invalid OpenRouter Key.", {
-              action: {
-                label: "Re-Enter Key",
-                onClick: openModal,
-              },
-            });
+            toastEnterAPIKey("invalid");
           } else {
             setOpen(open);
           }

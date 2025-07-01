@@ -16,6 +16,7 @@ import { getUserSetting } from "../settings";
 import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
 import { useTools } from "@/hooks/use-tools";
 import { useFiles } from "@/hooks/use-files";
+import { toastEnterAPIKey } from "@/lib/utils";
 import Onboarding from "@/components/Onboarding";
 import { EmptyLoadingScreen } from "@/components/LoadingScreen";
 import MessageInput from "@/components/MessageInput";
@@ -127,7 +128,7 @@ export function ChatUI() {
         toast.error("Please select a model");
       }
     } else {
-      toast.error("Please set your OpenRouter key in settings.");
+      toastEnterAPIKey();
     }
   }
 
