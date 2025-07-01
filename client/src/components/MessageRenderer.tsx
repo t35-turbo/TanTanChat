@@ -240,20 +240,20 @@ function RenderedMsg({
     >
       {files.data && files.data.length > 0
         ? files.data.map((file) => (
-            <div
-              key={file.fileId}
-              className="text-sm border rounded-lg italic p-1 flex items-center group cursor-default relative"
+          <div
+            key={file.fileId}
+            className="text-sm border rounded-lg italic p-1 flex items-center group cursor-default relative"
+          >
+            <Paperclip className="size-3" />
+            {file.fileName}
+            <button
+              className="absolute -bottom-1 -left-1 hidden group-hover:block text-destructive-foreground rounded-full p-0.5 hover:bg-destructive/80"
+              onClick={() => deleteFile.mutate(file.fileId)}
             >
-              <Paperclip className="size-3" />
-              {file.fileName}
-              <button
-                className="absolute -bottom-1 -left-1 hidden group-hover:block text-destructive-foreground rounded-full p-0.5 hover:bg-destructive/80"
-                onClick={() => deleteFile.mutate(file.fileId)}
-              >
-                <X className="size-3" />
-              </button>
-            </div>
-          ))
+              <X className="size-3" />
+            </button>
+          </div>
+        ))
         : null}
       <div className={`group relative max-w-[70%] ${editingMessage ? "w-full" : ""}`}>
         {editingMessage ? (
@@ -376,6 +376,17 @@ function RenderedMsg({
 
 function MarkdownRenderer({ children }: { children: string | null | undefined }) {
   const base = useTheme((state) => state.base);
+
+  const preprocessMathBlocks = React.useCallback((text: string): string => {
+    // Convert display math wrapped in \[ ... \] to $$ blocks so that remark-math can parse them
+    // Supports multiline content inside the delimiters.
+    return text.replace(/\\\[((?:.|\n)+?)\\\]/g, (_, content: string) => `\n$$\n${content}\n$$`);
+  }, []);
+
+  const processedChildren = React.useMemo(() => {
+    return typeof children === "string" ? preprocessMathBlocks(children) : children ?? "";
+  }, [children, preprocessMathBlocks]);
+
   return (
     <ReactMarkdown
       components={{
@@ -409,7 +420,7 @@ function MarkdownRenderer({ children }: { children: string | null | undefined })
       remarkPlugins={[remarkMath]}
       rehypePlugins={[rehypeKatex]}
     >
-      {children}
+      {processedChildren}
     </ReactMarkdown>
   );
 }
