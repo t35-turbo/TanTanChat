@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, index, pgEnum, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, index, pgEnum, integer, jsonb } from "drizzle-orm/pg-core";
 import { desc } from "drizzle-orm";
 import { int } from "drizzle-orm/mysql-core";
 
@@ -69,7 +69,7 @@ export const chats = pgTable("chats", {
     .notNull(),
 });
 
-export const roleEnum = pgEnum("role", ["system", "assistant", "user"]);
+export const roleEnum = pgEnum("role", ["system", "assistant", "user", "tool"]);
 export const chatMessages = pgTable(
   "chat_messages",
   {
@@ -84,6 +84,8 @@ export const chatMessages = pgTable(
     message: text("content").notNull(),
     reasoning: text("reasoning"),
     finish_reason: text("finish_reason"),
+    tool_calls: jsonb("tool_calls").$defaultFn(() => []), // An array/object of JSON is apparently 'jsonb' format and not type 'array'
+    toolCallId: text("tool_call_id"),
     files: text("files").array(),
     createdAt: timestamp("created_at")
       .$defaultFn(() => /* @__PURE__ */ new Date())

@@ -9,14 +9,17 @@ import { BunFile, ServerWebSocket } from "bun";
 import Exa from "exa-js";
 import { default_prompt } from "./lib/sys_prompts";
 import env from "./lib/env";
+import { debugLogger, devLog } from "./tools/debugLogger";
 
 export type Messages = {
   id: string;
-  role: "user" | "system" | "assistant";
+  role: "user" | "system" | "assistant" | "tool";
   chatId: string;
   senderId: string;
   message: string;
   createdAt: Date;
+  toolCallId?: string;
+  tool_calls?: any[];
   files: {
     data: BunFile;
     metadata: {
@@ -69,6 +72,77 @@ const vk_client = vk.createClient();
 //   return "search_result: " + JSON.stringify(result);
 // }
 
+
+type Book = {
+  id: number;
+  title: string;
+  authors: any[];
+};
+
+
+async function searchGutenbergBooks(searchTerms: string[]): Promise<Book[]> {
+  const searchQuery = searchTerms.join(' ');
+  const url = 'https://gutendex.com/books';
+  const response = await fetch(`${url}?search=${searchQuery}`);
+  const data = await response.json();
+
+  return data.results.map((book: any) => ({
+    id: book.id,
+    title: book.title,
+    authors: book.authors,
+  }));
+}
+
+async function testSearch(): Promise<{ message: string; timestamp: string }> {
+  return {
+    message: "This is a test search function",
+    timestamp: new Date().toISOString()
+  };
+}
+
+const tools = [
+  {
+    type: 'function' as const,
+    function: {
+      name: 'searchGutenbergBooks',
+      description:
+        'Search for books in the Project Gutenberg library based on specified search terms',
+      parameters: {
+        type: 'object',
+        properties: {
+          search_terms: {
+            type: 'array',
+            items: {
+              type: 'string',
+            },
+            description:
+              "List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)",
+          },
+        },
+        required: ['search_terms'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'testSearch',
+      description: 'A test function that returns a simple test message with timestamp',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+    },
+  },
+];
+
+const TOOL_MAPPING = {
+  searchGutenbergBooks,
+  testSearch,
+};
+
+
 export async function newMessage(chatId: string, messages: Messages, opts: Options) {
   let uuid = crypto.randomUUID();
 
@@ -82,6 +156,8 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
   if (!vk_client.isOpen) await vk_client.connect();
 
   let accumulatedContent = "";
+  // Add accumulator for tool calls
+  let accumulatedToolCalls: any[] = [];
 
   await vk_client.set(`chat:${chatId}:activeMessage`, id);
   await vk_client.publish(`chat:${chatId}:events`, `activeMessage ${id}`);
@@ -172,17 +248,33 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
                 ...fileContents,
               ],
             };
-          } else {
+          } else if (m.role === "tool") {
             return {
-              role: m.role as "system" | "assistant",
+              role: "tool" as const,
+              content: m.message,
+              tool_call_id: m.toolCallId || "",
+            };
+          } else if (m.role === "assistant") { 
+            return {
+              role: "assistant" as const,
+              content: m.message || null, // content can be null when tool_calls are present
+              tool_calls: m.tool_calls,
+            };
+          } else { // For "system" or any other role
+            return {
+              role: m.role as "system",
               content: m.message,
             };
           }
         }),
       )),
     ];
+
+    devLog("[Debug] Messages to OpenAI:", msgs);
+
     const stream = await oai_client.chat.completions.create({
       model: opts.model,
+      tools,
       messages: msgs,
       reasoning_effort: opts.reasoning_effort,
       stream: true,
@@ -199,16 +291,114 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
       }
 
       const contentChunk = choice.delta?.content || "";
+      const toolCallsChunk = choice.delta?.tool_calls || [];
 
       accumulatedContent += contentChunk;
+      if (toolCallsChunk.length > 0) {
+        for (const toolCallChunk of toolCallsChunk) {
+          const index = toolCallChunk.index;
+
+          // Initialize if this is the first chunk for this tool call
+          if (!accumulatedToolCalls[index]) {
+            accumulatedToolCalls[index] = {
+              id: toolCallChunk.id || "",
+              type: toolCallChunk.type || "function",
+              function: {
+                name: toolCallChunk.function?.name || "",
+                arguments: toolCallChunk.function?.arguments || ""
+              }
+            };
+          } else {
+            if (toolCallChunk.function?.arguments) {
+              accumulatedToolCalls[index].function.arguments += toolCallChunk.function.arguments;
+            }
+          }
+        }
+      }
 
       await vk_client.xAdd(`msg:${id}`, "*", {
         finish_reason: choice.finish_reason || "",
         reasoning: (choice.delta as any).reasoning || "",
         content: contentChunk,
         refusal: choice.delta?.refusal || "",
-        tool_calls: JSON.stringify(choice.delta?.tool_calls || null),
+        tool_calls: JSON.stringify(accumulatedToolCalls || []),
       });
+
+      if (choice.finish_reason && choice.finish_reason === "tool_calls") {
+        // devLog("[Debug] Tool calls detected, processing...");
+        devLog("[Debug] Tool calls: ", accumulatedToolCalls);
+        for (const toolCall of accumulatedToolCalls) {
+          // devLog("[Debug] Processing tool call:", toolCall);
+
+          if (toolCall.function.name in TOOL_MAPPING) {
+            try {
+              const args = JSON.parse(toolCall.function.arguments);
+              const result = await TOOL_MAPPING[toolCall.function.name as keyof typeof TOOL_MAPPING](args.search_terms);
+              // devLog("[Debug] Tool call result:", result);
+
+              //add to db
+              await db.insert(chatMessages).values({
+                id: crypto.randomUUID(),
+                chatId,
+                senderId: "tool_response", // Ensure senderId is passed correctly
+                role: "tool",
+                message: JSON.stringify(result),
+                toolCallId: toolCall.id,
+                reasoning: "",
+                tool_calls: [],
+                finish_reason: "tool_calls_response",
+                createdAt: new Date(),
+              });
+
+            } catch (error) {
+              devLog("[Error] Tool call failed:", error);
+            }
+          }
+        }
+
+        // After processing, we make another call to continue the conversation
+
+        // First, fetch the tool response messages from the database
+        const toolResponseMessages = await db
+          .select()
+          .from(chatMessages)
+          .where(eq(chatMessages.chatId, chatId))
+          .orderBy(chatMessages.createdAt);
+
+        // Filter to get only the tool messages we just created
+        const recentToolMessages = toolResponseMessages
+          .filter(msg => msg.role === "tool" &&
+            accumulatedToolCalls.some(tc => tc.id === msg.toolCallId))
+          .map(msg => ({
+            id: msg.id,
+            role: "tool" as const,
+            chatId: msg.chatId,
+            senderId: msg.senderId,
+            message: msg.message,
+            createdAt: msg.createdAt,
+            files: [],
+            toolCallId: msg.toolCallId ?? undefined
+          }));
+
+        const newMessages = [
+          ...messages,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant" as const,
+            chatId,
+            senderId: opts.model,
+            message: accumulatedContent,
+            createdAt: new Date(),
+            files: [],
+            tool_calls: accumulatedToolCalls,
+          },
+          ...recentToolMessages,
+        ];
+
+        // devLog("[Debug] Continuing conversation with new messages:", newMessages);
+        // await newCompletion(id, chatId, newMessages, opts);
+        await newMessage(chatId, newMessages, opts);
+      }
     }
   } catch (err: any) {
     await vk_client.xAdd(`msg:${id}`, "*", {
@@ -298,11 +488,34 @@ async function pgSubscriber(id: string, chatId: string, model: string) {
     let message = "";
     let reasoning = "";
     let finish_reason = "";
+    let tool_calls: any[] = [];
     for await (const chunk of msgSubscribe(id)) {
       message += chunk.content;
       reasoning += chunk.reasoning;
       finish_reason = chunk.finish_reason;
+      if (chunk.tool_calls) {
+        try {
+          const chunkToolCalls = JSON.parse(chunk.tool_calls);
+          if (Array.isArray(chunkToolCalls) && chunkToolCalls.length > 0) {
+            tool_calls = chunkToolCalls;
+          }
+        } catch (error) {
+          devLog("[Error] Failed to parse tool calls:", error);
+        }
+      }
     }
+    devLog("[Debug] Tool_calls (pgSubscriber):", tool_calls);
+    // get type of tool_calls
+    console.log("[Debug] Tool_calls type:", typeof tool_calls);
+
+    // for some reason the tool call is not a real JSON object, so we need to parse it
+    const parsedToolCalls = tool_calls.map(call => ({
+      ...call,
+      function: {
+        ...call.function,
+        arguments: JSON.parse(call.function.arguments),
+      },
+    }));
 
     await db.insert(chatMessages).values({
       id,
@@ -311,6 +524,7 @@ async function pgSubscriber(id: string, chatId: string, model: string) {
       role: "assistant",
       message,
       reasoning,
+      tool_calls: parsedToolCalls,
       finish_reason,
       createdAt: new Date(),
     });

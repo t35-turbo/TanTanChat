@@ -64,12 +64,40 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
           if (!messageResponse) {
             throw new Error("Failed to fetch messages");
           }
-          let messages = await messageResponse.json();
+          let messages = await messageResponse.json() as { messages?: any[] };
 
           if (!activeId && activeMessage.length > 0 && setActiveMessage) {
             setActiveMessage([]);
           }
-          return z.object({ messages: z.array(Message) }).parse(messages);
+
+          // Add tool_calls or tool_call_id (null) because Zod v4 Mini does not support partial, and API does not return tool_calls per message
+          // Should fix message rendering with tool_calls support
+          // edit: now checks type of tool_calls and converts arguments to string if needed, probably make backend API better later
+
+          const parsedMessages = messages.messages?.map((msg: any) => ({
+            ...msg,
+            tool_calls: msg.tool_calls ? msg.tool_calls.map((tc: any) => ({
+              ...tc,
+              function: {
+                ...tc.function,
+                arguments: typeof tc.function.arguments === 'string' 
+                  ? tc.function.arguments 
+                  : JSON.stringify(tc.function.arguments)
+              }
+            })) : null,
+            toolCallId: msg.toolCallId || null,
+            // Throw error if role invalid
+            role: ["system", "user", "assistant", "tool"].includes(msg.role) 
+              ? msg.role 
+              : (() => { throw new Error(`Invalid role: ${msg.role}`) })()
+          })) || [];
+
+          console.log('Raw API response:', messages);
+          console.log('Parsed messages before Zod:', parsedMessages);
+          console.log('Sample message structure:', parsedMessages[0]);
+
+          // Now you can re-enable Zod parsing
+          return { messages: z.array(Message).parse(parsedMessages) };
         } else {
           return { messages: [], cursor: 0 };
         }
@@ -93,6 +121,8 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
       message: sendMessageVariables,
       reasoning: null,
       files: null,
+      tool_calls: null,
+      toolCallId: null,
       finish_reason: null,
       createdAt: new Date(),
     });
@@ -108,6 +138,8 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
       reasoning: activeMessage.reduce((prev, cur) => prev + cur.reasoning, ""),
       finish_reason: activeMessage.reduce((prev: string | null, cur) => (prev ? prev : cur.finish_reason), null),
       files: null,
+      tool_calls: null,
+      toolCallId: null,
       createdAt: new Date(),
     });
   }
@@ -148,6 +180,8 @@ function RenderedMsg({
   setActiveMessage?: (chunks: any[]) => void;
 }) {
   const [showThink, setShowThink] = React.useState(false);
+  const [showToolResult, setShowToolResult] = React.useState(false);
+  const [showFunctionCalls, setShowFunctionCalls] = React.useState(false);
   const or_key = useORKey((state) => state.key);
   const model = useModel((state) => state.model);
   const [editMessage, setEditMessage] = useState("");
@@ -269,25 +303,108 @@ function RenderedMsg({
           </div>
         ) : (
           <div
-            className={`${message.role === "user" ? "border p-2 rounded-lg ml-auto" : "px-2 py-1"} bg-background mb-1 prose`}
+            className={`${message.role === "user" ? "border p-2 rounded-lg ml-auto" : "px-2 py-1"} bg-background mb-1`}
           >
-            {message.reasoning ? (
-              <Collapsible>
-                <CollapsibleTrigger
-                  className="flex items-center gap-1 transition-all text-foreground/50 hover:text-foreground"
-                  onClick={() => setShowThink(!showThink)}
-                >
-                  {showThink ? <ChevronDown /> : <ChevronRight />} {showThink ? "Hide Thinking" : "Show Thinking"}
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <MarkdownRenderer>{message.reasoning ?? ""}</MarkdownRenderer>
-                </CollapsibleContent>
-              </Collapsible>
-            ) : null}
+            {/* Only wrap in space-y-2 for non-user messages EDIT: changed wrapper to use space-y-3*/}
+            {message.role === "user" ? (
+              /* User messages: apply prose only to final content */
+              <>
+                {message.reasoning ? (
+                  <Collapsible>
+                    <CollapsibleTrigger
+                      className="flex items-center gap-1 transition-all text-foreground/50 hover:text-foreground"
+                      onClick={() => setShowThink(!showThink)}
+                    >
+                      {showThink ? <ChevronDown /> : <ChevronRight />} {showThink ? "Hide Thinking" : "Show Thinking"}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="prose">
+                        <MarkdownRenderer>{message.reasoning ?? ""}</MarkdownRenderer>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ) : null}
+                <div className="prose">
+                  <MarkdownRenderer>{retryMessage.variables ?? message.message}</MarkdownRenderer>
+                </div>
+              </>
+            ) : (
+              /* Assistant/system/tool messages: apply prose only to final content */
+              /* Nevermind we use space-y-3 for more consistiency because my code is cooked */
+              <div className="space-y-3">
+                {message.reasoning ? (
+                  <Collapsible>
+                    <CollapsibleTrigger
+                      className="flex items-center gap-1 transition-all text-foreground/50 hover:text-foreground"
+                      onClick={() => setShowThink(!showThink)}
+                    >
+                      {showThink ? <ChevronDown /> : <ChevronRight />} {showThink ? "Hide Thinking" : "Show Thinking"}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="prose">
+                        <MarkdownRenderer>{message.reasoning ?? ""}</MarkdownRenderer>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ) : null}
 
-            <MarkdownRenderer>{retryMessage.variables ?? message.message}</MarkdownRenderer>
+                {/* Tool message rendering */}
+                {message.role === "tool" ? (
+                  <Collapsible>
+                    <CollapsibleTrigger
+                      className="flex items-center gap-1 transition-all text-foreground/50 hover:text-foreground"
+                      onClick={() => setShowToolResult(!showToolResult)}
+                    >
+                      {showToolResult ? <ChevronDown /> : <ChevronRight />} Tool Result
+                      {message.toolCallId && (
+                        <span className="text-xs text-foreground/40">({message.toolCallId})</span>
+                      )}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2">
+                      <div className="border-l-2 border-foreground/20 pl-3 prose">
+                        <MarkdownRenderer>{retryMessage.variables ?? message.message}</MarkdownRenderer>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ) : message.tool_calls && message.tool_calls.length > 0 ? (
+                  <>
+                    <Collapsible>
+                      <CollapsibleTrigger
+                        className="flex items-center gap-1 transition-all text-foreground/50 hover:text-foreground"
+                        onClick={() => setShowFunctionCalls(!showFunctionCalls)}
+                      >
+                        {showFunctionCalls ? <ChevronDown /> : <ChevronRight />} Function Calls ({message.tool_calls.length})
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="border-l-2 border-foreground/20 pl-3 space-y-2">
+                          {message.tool_calls.map((toolCall, index) => (
+                            <div key={toolCall.id || index} className="text-sm">
+                              <div className="font-mono text-foreground/80 mb-1">
+                                {toolCall.function.name}
+                              </div>
+                              <div className="text-xs text-foreground/60 bg-muted p-2 rounded font-mono overflow-x-auto">
+                                {toolCall.function.arguments}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                    {message.message && (
+                      <div className="prose">
+                        <MarkdownRenderer>{retryMessage.variables ?? message.message}</MarkdownRenderer>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="prose">
+                    <MarkdownRenderer>{retryMessage.variables ?? message.message}</MarkdownRenderer>
+                  </div>
+                )}
+              </div>
+            )}
 
-            {message.finish_reason && message.finish_reason !== "stop" ? (
+            {message.finish_reason && ["stop", "tool_calls", "tool_calls_response"].includes(message.finish_reason) !== true ? (
               <Alert variant="destructive">
                 <AlertTitle>{message.finish_reason}</AlertTitle>
               </Alert>
