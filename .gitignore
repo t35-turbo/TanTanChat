@@ -5,6 +5,9 @@ file_store/
 node_modules/
 client/node_modules/
 
+# Drizzle ORM during development
+drizzle/
+
 # Environment variables
 .env
 
