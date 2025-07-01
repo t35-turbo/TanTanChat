@@ -86,10 +86,13 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
               }
             })) : null,
             toolCallId: msg.toolCallId || null,
-            // Throw error if role invalid
-            role: ["system", "user", "assistant", "tool"].includes(msg.role) 
-              ? msg.role 
-              : (() => { throw new Error(`Invalid role: ${msg.role}`) })()
+             // Default to assistant if role is invalid, but warn in console
+            role: ["system", "user", "assistant", "tool"].includes(msg.role)
+              ? msg.role
+              : (() => {
+                console.warn(`Invalid role: ${msg.role}, defaulting to 'assistant'`);
+                return 'assistant'
+              })()
           })) || [];
 
           return { messages: z.array(Message).parse(parsedMessages) };
