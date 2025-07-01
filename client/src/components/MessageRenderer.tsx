@@ -303,26 +303,9 @@ function RenderedMsg({
             {/* Only wrap in space-y-2 for non-user messages EDIT: changed wrapper to use space-y-3*/}
             {message.role === "user" ? (
               /* User messages: apply prose only to final content */
-              <>
-                {message.reasoning ? (
-                  <Collapsible>
-                    <CollapsibleTrigger
-                      className="flex items-center gap-1 transition-all text-foreground/50 hover:text-foreground"
-                      onClick={() => setShowThink(!showThink)}
-                    >
-                      {showThink ? <ChevronDown /> : <ChevronRight />} {showThink ? "Hide Thinking" : "Show Thinking"}
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="prose">
-                        <MarkdownRenderer>{message.reasoning ?? ""}</MarkdownRenderer>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ) : null}
-                <div className="prose">
-                  <MarkdownRenderer>{retryMessage.variables ?? message.message}</MarkdownRenderer>
-                </div>
-              </>
+              <div className="prose">
+                <MarkdownRenderer>{retryMessage.variables ?? message.message}</MarkdownRenderer>
+              </div>
             ) : (
               /* Assistant/system/tool messages: apply prose only to final content */
               /* Nevermind we use space-y-3 for more consistiency because my code is cooked */
