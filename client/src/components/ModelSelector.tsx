@@ -72,8 +72,7 @@ export const defaultModels: Models = {
   "anthropic/claude-3.5-sonnet": {
     name: "Claude 3.5 Sonnet",
     id: "anthropic/claude-3.5-sonnet",
-    thinking: true,
-    thinkingEffort: "low",
+    thinking: false,
     vision: true,
   },
   "deepseek/deepseek-r1-0528-qwen3-8b:free": {
@@ -133,28 +132,28 @@ export const defaultModels: Models = {
     name: "Qwen 3 32B",
     id: "qwen/qwen3-32b",
     thinking: true,
-    thinkingEffort: "medium",
+    thinkingEffort: "low",
     vision: false,
   },
   "qwen/qwen3-32b:free": {
     name: "Qwen 3 32B (Free)",
     id: "qwen/qwen3-32b:free",
     thinking: true,
-    thinkingEffort: "medium",
+    thinkingEffort: "low",
     vision: false,
   },
   "qwen/qwen3-235b-a22b": {
     name: "Qwen 3 235B",
     id: "qwen/qwen3-235b-a22b",
     thinking: true,
-    thinkingEffort: "high",
+    thinkingEffort: "low",
     vision: false,
   },
   "qwen/qwen3-235b-a22b:free": {
     name: "Qwen 3 235B (Free)",
     id: "qwen/qwen3-235b-a22b:free",
     thinking: true,
-    thinkingEffort: "high",
+    thinkingEffort: "low",
     vision: false,
   },
 };
