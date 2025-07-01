@@ -506,7 +506,7 @@ async function pgSubscriber(id: string, chatId: string, model: string) {
     }
     devLog("[Debug] Tool_calls (pgSubscriber):", tool_calls);
     // get type of tool_calls
-    console.log("[Debug] Tool_calls type:", typeof tool_calls);
+    devLog("[Debug] Tool_calls type:", typeof tool_calls);
 
     // for some reason the tool call is not a real JSON object, so we need to parse it
     const parsedToolCalls = tool_calls.map(call => ({
