@@ -64,7 +64,10 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
           if (!messageResponse) {
             throw new Error("Failed to fetch messages");
           }
-          let messages = await messageResponse.json() as { messages?: any[] };
+            const messageResponseData = await messageResponse.json();
+            const messages = z.object({
+            messages: z.optional(z.array(z.any()))
+            }).parse(messageResponseData);
 
           if (!activeId && activeMessage.length > 0 && setActiveMessage) {
             setActiveMessage([]);
