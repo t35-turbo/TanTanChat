@@ -62,9 +62,16 @@ export const defaultModels: Models = {
     thinkingEffort: "low",
     vision: true,
   },
-  "anthropoic/claude-opus-4": {
+  "anthropic/claude-opus-4": {
     name: "Claude Opus 4",
     id: "anthropic/claude-opus-4",
+    thinking: true,
+    thinkingEffort: "low",
+    vision: true,
+  },
+  "anthropic/claude-3.5-sonnet": {
+    name: "Claude 3.5 Sonnet",
+    id: "anthropic/claude-3.5-sonnet",
     thinking: true,
     thinkingEffort: "low",
     vision: true,
@@ -90,7 +97,7 @@ export const defaultModels: Models = {
     thinkingEffort: "medium",
     vision: false,
   },
-  "deepseek/deepseek-v3": {
+  "deepseek/deepseek-chat-v3-0324": {
     name: "Deepseek V3",
     id: "deepseek/deepseek-chat-v3-0324",
     thinking: false,
@@ -109,6 +116,46 @@ export const defaultModels: Models = {
     thinking: true,
     thinkingEffort: "medium",
     vision: true,
+  },
+  "meta-llama/llama-3.3-70b-instruct": {
+    name: "Llama 3 70B",
+    id: "meta-llama/llama-3.3-70b-instruct",
+    thinking: false,
+    vision: false,
+  },
+  "meta-llama/llama-3.3-70b-instruct:free": {
+    name: "Llama 3 70B (Free)",
+    id: "meta-llama/llama-3.3-70b-instruct:free",
+    thinking: false,
+    vision: false,
+  },
+  "qwen/qwen3-32b": {
+    name: "Qwen 3 32B",
+    id: "qwen/qwen3-32b",
+    thinking: true,
+    thinkingEffort: "medium",
+    vision: false,
+  },
+  "qwen/qwen3-32b:free": {
+    name: "Qwen 3 32B (Free)",
+    id: "qwen/qwen3-32b:free",
+    thinking: true,
+    thinkingEffort: "medium",
+    vision: false,
+  },
+  "qwen/qwen3-235b-a22b": {
+    name: "Qwen 3 235B",
+    id: "qwen/qwen3-235b-a22b",
+    thinking: true,
+    thinkingEffort: "high",
+    vision: false,
+  },
+  "qwen/qwen3-235b-a22b:free": {
+    name: "Qwen 3 235B (Free)",
+    id: "qwen/qwen3-235b-a22b:free",
+    thinking: true,
+    thinkingEffort: "high",
+    vision: false,
   },
 };
 
