@@ -25,6 +25,7 @@ import { z } from "zod/v4-mini";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useActiveId, useActiveMessage } from "./WSManager";
+import { normaliseToolCalls, safeRole } from "@/lib/message-normalise";
 
 interface MessageRendererProps {
   chatId?: string;
@@ -37,7 +38,6 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
   const { chunks: activeMessage, setChunks: setActiveMessage } = useActiveMessage();
   const activeId = useActiveId();
 
-  // Use useMutationState to access the sendMessage mutation state
   const sendMessageVariables = useMutationState<string | null>({
     filters: { mutationKey: ["sendMessage", chatId], status: "pending" },
     select: (mutation) => z.string().parse(mutation.state.variables ?? ""),
@@ -46,10 +46,10 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
   // HACK: do we really need inf. query? it has been disabled for now
   const messagePages = useInfiniteQuery({
     queryKey: ["messages", chatId],
-    queryFn: async ({ pageParam: cursor }) => {
+    queryFn: async ({ pageParam: cursor }): Promise<{ messages: Message[]; cursor?: number; }> => {
       if (user_sess.data) {
         if (chatId) {
-          // TODO: get messages
+          // TODO: proper pagination
           let messageResponse;
           try {
             messageResponse = await ky.get(`/api/chats/${chatId}?cursor=${cursor}`);
@@ -64,41 +64,25 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
           if (!messageResponse) {
             throw new Error("Failed to fetch messages");
           }
-            const messageResponseData = await messageResponse.json();
-            const messages = z.object({
-            messages: z.optional(z.array(z.any()))
-            }).parse(messageResponseData);
+
+          const messages = z.object({
+            messages: z.array(Message)
+          }).parse(await messageResponse.json()).messages;
+
+          // Normalise messages for proper rendering
+          const parsedMessages =
+            messages?.map((msg: Message) => ({
+              ...msg,
+              tool_calls: normaliseToolCalls(msg.tool_calls),
+              toolCallId: msg.toolCallId ?? null,
+              role: safeRole(msg.role),
+            })) ?? [];
 
           if (!activeId && activeMessage.length > 0 && setActiveMessage) {
             setActiveMessage([]);
           }
 
-          // Add tool_calls or tool_call_id (null) because Zod v4 Mini does not support partial, and API does not return tool_calls per message
-          // Should fix message rendering with tool_calls support
-          // edit: now checks type of tool_calls and converts arguments to string if needed, probably make backend API better later
-
-          const parsedMessages = messages.messages?.map((msg: any) => ({
-            ...msg,
-            tool_calls: msg.tool_calls ? msg.tool_calls.map((tc: any) => ({
-              ...tc,
-              function: {
-                ...tc.function,
-                arguments: typeof tc.function.arguments === 'string' 
-                  ? tc.function.arguments 
-                  : JSON.stringify(tc.function.arguments)
-              }
-            })) : null,
-            toolCallId: msg.toolCallId || null,
-             // Default to assistant if role is invalid, but warn in console
-            role: ["system", "user", "assistant", "tool"].includes(msg.role)
-              ? msg.role
-              : (() => {
-                console.warn(`Invalid role: ${msg.role}, defaulting to 'assistant'`);
-                return 'assistant'
-              })()
-          })) || [];
-
-          return { messages: z.array(Message).parse(parsedMessages) };
+          return { messages: parsedMessages, cursor: 0 };
         } else {
           return { messages: [], cursor: 0 };
         }
@@ -351,7 +335,7 @@ function RenderedMsg({
                             try {
                               // Try to parse as JSON first, then format with proper line breaks
                               const parsed = JSON.parse(retryMessage.variables ?? message.message);
-                              return typeof parsed === 'string' 
+                              return typeof parsed === 'string'
                                 ? parsed.replace(/\\n/g, '\n') // Convert escaped newlines to actual newlines
                                 : JSON.stringify(parsed, null, 2); // Pretty print JSON with proper formatting
                             } catch {
