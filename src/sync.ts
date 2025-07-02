@@ -561,7 +561,7 @@ async function pgSubscriber(id: string, chatId: string, model: string) {
       },
       }));
     } catch (error) {
-      devLog(['development', 'production'], "[Error] Failed to parse tool call arguments:", error);
+      debugLogger(['development', 'production'], "[Error] Failed to parse tool call arguments:", error);
     }
 
     await db.insert(chatMessages).values({
