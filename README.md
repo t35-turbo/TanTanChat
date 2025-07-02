@@ -19,6 +19,7 @@ https://tantan.konkon.pablonara.com/
 - Real time Sync
 - File Uploads
 - Multiplayer (WIP)
+- Tool calling (WIP - See PR)
 - Web Search (WIP)
 
 # Hosting & Setup
