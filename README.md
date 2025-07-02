@@ -19,7 +19,7 @@ https://tantan.konkon.pablonara.com/
 - Real time Sync
 - File Uploads
 - Multiplayer (WIP)
-- Tool calling (WIP - See PR and branch [here](https://github.com/t35-turbo/TanTanChat/pull/5) to try, it's almost ready to merge! )
+- Tool calling (WIP - See PR and branch [here](https://github.com/t35-turbo/TanTanChat/pull/5) to try, it's almost ready to merge!)
 - Web Search (WIP)
 
 # Hosting & Setup
