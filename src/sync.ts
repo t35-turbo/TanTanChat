@@ -143,17 +143,21 @@ const TOOL_MAPPING = {
 };
 
 
-export async function newMessage(chatId: string, messages: Messages, opts: Options) {
+export async function newMessage(chatId: string, messages: Messages, opts: Options, depth?: number) {
   let uuid = crypto.randomUUID();
 
-  newCompletion(uuid, chatId, messages, opts);
+  newCompletion(uuid, chatId, messages, opts, depth ?? 0);
   pgSubscriber(uuid, chatId, opts.model);
 
   return uuid;
 }
 
-async function newCompletion(id: string, chatId: string, messages: Messages, opts: Options) {
+async function newCompletion(id: string, chatId: string, messages: Messages, opts: Options, depth: number) {
   if (!vk_client.isOpen) await vk_client.connect();
+
+  if (depth > parseInt(process.env.MAX_TOOL_RECURSION_DEPTH || "10")) {
+    debugLogger(['development', 'production'], `[WARN] Max tool recursion depth exceeded: ${depth}`);
+  }
 
   let accumulatedContent = "";
   // Add accumulator for tool calls
@@ -226,7 +230,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
     const msgs = [
       {
         role: "system" as const,
-        content: default_prompt(opts.model.split("/")[0], opts.model.split("/")[0]) + "\n" + opts.system_prompt,
+        content: default_prompt(opts.model.split("/")[0], opts.model.split("/")[0], 0) + "\n" + opts.system_prompt,
       },
       ...(await Promise.all(
         messages.map(async (m) => {
@@ -255,11 +259,29 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
               tool_call_id: m.toolCallId || "",
             };
           } else if (m.role === "assistant") { 
-            return {
+            // Only include tool_calls if it exists and has content
+            const hasToolCalls = m.tool_calls && Array.isArray(m.tool_calls) && m.tool_calls.length > 0;
+            
+            const assistantMessage: any = {
               role: "assistant" as const,
               content: m.message || null, // content can be null when tool_calls are present
-              tool_calls: m.tool_calls,
             };
+            
+            // Only add tool_calls property if it has actual content
+            if (hasToolCalls) {
+              // Convert arguments from object to JSON string for OpenAI
+              assistantMessage.tool_calls = m.tool_calls!.map(call => ({
+                ...call,
+                function: {
+                  ...call.function,
+                  arguments: typeof call.function.arguments === 'string' 
+                    ? call.function.arguments 
+                    : JSON.stringify(call.function.arguments)
+                }
+              }));
+            }
+            
+            return assistantMessage;
           } else { // For "system" or any other role
             return {
               role: m.role as "system",
@@ -270,7 +292,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
       )),
     ];
 
-    devLog("[Debug] Messages to OpenAI:", msgs);
+    // devLog("[Debug] Messages to OpenAI:", msgs);
 
     const stream = await oai_client.chat.completions.create({
       model: opts.model,
@@ -390,14 +412,20 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
             message: accumulatedContent,
             createdAt: new Date(),
             files: [],
-            tool_calls: accumulatedToolCalls,
+            tool_calls: accumulatedToolCalls.map(call => ({
+              ...call,
+              function: {
+                ...call.function,
+                arguments: JSON.stringify(call.function.arguments) // Convert to JSON string for OAI
+              }
+            })),
           },
           ...recentToolMessages,
         ];
 
         // devLog("[Debug] Continuing conversation with new messages:", newMessages);
         // await newCompletion(id, chatId, newMessages, opts);
-        await newMessage(chatId, newMessages, opts);
+        await newMessage(chatId, newMessages, opts, depth+1);
       }
     }
   } catch (err: any) {
@@ -513,7 +541,9 @@ async function pgSubscriber(id: string, chatId: string, model: string) {
       ...call,
       function: {
         ...call.function,
-        arguments: JSON.parse(call.function.arguments),
+        arguments: typeof call.function.arguments === 'string' 
+          ? JSON.parse(call.function.arguments) 
+          : call.function.arguments,
       },
     }));
 
