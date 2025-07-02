@@ -6,10 +6,9 @@ import { eq, and, inArray } from "drizzle-orm";
 import * as vk from "./db/redis";
 import { WSContext } from "hono/ws";
 import { BunFile, ServerWebSocket } from "bun";
-import Exa from "exa-js";
 import { default_prompt } from "./lib/sys_prompts";
-import env from "./lib/env";
 import { debugLogger, devLog } from "./tools/debugLogger";
+import { tools, TOOL_MAPPING } from "./tools";
 
 export type Messages = {
   id: string;
@@ -71,143 +70,6 @@ const vk_client = vk.createClient();
 //   });
 //   return "search_result: " + JSON.stringify(result);
 // }
-
-
-type Book = {
-  id: number;
-  title: string;
-  authors: any[];
-};
-
-async function searchGutenbergBooks(searchTerms: string[]): Promise<Book[]> {
-  const searchQuery = searchTerms.join(' ');
-  const url = 'https://gutendex.com/books';
-  const response = await fetch(`${url}?search=${searchQuery}`);
-  const data = await response.json();
-
-  return data.results.map((book: any) => ({
-    id: book.id,
-    title: book.title,
-    authors: book.authors,
-  }));
-}
-
-async function testSearch(): Promise<{ message: string; timestamp: string }> {
-  return {
-    message: "This is a test search function",
-    timestamp: new Date().toISOString()
-  };
-}
-
-async function searchWeb(query: string, numResults: number = 3, links: number = 1, includeSubpages: number = 0, fullPageText: boolean = false, imageLinks: number = 0, summary: boolean = false): Promise<any> {
-  const exa = new Exa(process.env.EXASEARCH_API_KEY || "");
-  const result = await exa.searchAndContents(
-    query,
-    {
-      context: true,
-      subpages: includeSubpages,
-      numResults: numResults,
-      extras: {
-        links: links,
-        imageLinks: imageLinks,
-      },
-      summary: summary ? true : undefined,
-      text: fullPageText ? true : undefined,
-    }
-  )
-  return result.context;
-}
-
-const tools = [
-  {
-    type: 'function' as const,
-    function: {
-      name: 'searchGutenbergBooks',
-      description:
-        'Search for books in the Project Gutenberg library based on specified search terms',
-      parameters: {
-        type: 'object',
-        properties: {
-          search_terms: {
-            type: 'array',
-            items: {
-              type: 'string',
-            },
-            description:
-              "List of search terms to find books in the Gutenberg library (e.g. ['dickens', 'great'] to search for books by Dickens with 'great' in the title)",
-          },
-        },
-        required: ['search_terms'],
-      },
-    },
-  },
-  {
-    type: 'function' as const,
-    function: {
-      name: 'testSearch',
-      description: 'A test function that returns a simple test message with timestamp',
-      parameters: {
-        type: 'object',
-        properties: {},
-        required: [],
-      },
-    },
-  },
-  {
-    type: 'function' as const,
-    function: {
-      name: 'searchWeb',
-      description: 'Searches the web for information using Exa, a powerful search API. Can retrieve summaries, links, full page text, and image links.',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: {
-            type: 'string',
-            description: 'The search query string.',
-          },
-          numResults: {
-            type: 'number',
-            description: 'The number of search results to return (default: 3).',
-            default: 3,
-          },
-          links: {
-            type: 'number',
-            description: 'The number of links to include for each result (default: 1). If you need more links, set this to a higher number.',
-            default: 1,
-          },
-          includeSubpages: {
-            type: 'number',
-            description: 'The number of subpages to include for each result (default: 0).',
-            default: 0,
-          },
-          fullPageText: {
-            type: 'boolean',
-            description: 'Whether to return the full page text of the results (default: false). Use True if you need full page contents.',
-            default: false,
-          },
-          imageLinks: {
-            type: 'number',
-            description: 'The number of image links to include for each result (default: 0). If performing image search set this to AT LEAST 5 or more (you are not penalized for doing so), to ensure you grab relevant results',
-            default: 0,
-          },
-          summary: {
-            type: 'boolean',
-            description: 'Whether to return a summary of the results (default: false). If you need more detail, use the fullPageText option and set this to false.',
-            default: false,
-          },
-        },
-        required: ['query'],
-      },
-    },
-  }
-];
-
-const TOOL_MAPPING = {
-  searchGutenbergBooks,
-  testSearch,
-  searchWeb,
-};
-
 
 export async function newMessage(chatId: string, messages: Messages, opts: Options, depth?: number) {
   let uuid = crypto.randomUUID();
@@ -324,15 +186,15 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
               content: m.message,
               tool_call_id: m.toolCallId || "",
             };
-          } else if (m.role === "assistant") { 
+          } else if (m.role === "assistant") {
             // Only include tool_calls if it exists and has content
             const hasToolCalls = m.tool_calls && Array.isArray(m.tool_calls) && m.tool_calls.length > 0;
-            
+
             const assistantMessage: any = {
               role: "assistant" as const,
               content: m.message || null, // content can be null when tool_calls are present
             };
-            
+
             // Only add tool_calls property if it has actual content
             if (hasToolCalls) {
               // Convert arguments from object to JSON string for OpenAI
@@ -340,13 +202,13 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
                 ...call,
                 function: {
                   ...call.function,
-                  arguments: typeof call.function.arguments === 'string' 
-                    ? call.function.arguments 
+                  arguments: typeof call.function.arguments === 'string'
+                    ? call.function.arguments
                     : JSON.stringify(call.function.arguments)
                 }
               }));
             }
-            
+
             return assistantMessage;
           } else { // For "system" or any other role
             return {
@@ -515,7 +377,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
 
         // devLog("[Debug] Continuing conversation with new messages:", newMessages);
         // await newCompletion(id, chatId, newMessages, opts);
-        await newMessage(chatId, newMessages, opts, depth+1);
+        await newMessage(chatId, newMessages, opts, depth + 1);
       }
     }
   } catch (err: any) {
@@ -630,13 +492,13 @@ async function pgSubscriber(id: string, chatId: string, model: string) {
     let parsedToolCalls: any[] = [];
     try {
       parsedToolCalls = tool_calls.map(call => ({
-      ...call,
-      function: {
-        ...call.function,
-        arguments: typeof call.function.arguments === 'string' 
-        ? JSON.parse(call.function.arguments) 
-        : call.function.arguments,
-      },
+        ...call,
+        function: {
+          ...call.function,
+          arguments: typeof call.function.arguments === 'string'
+            ? JSON.parse(call.function.arguments)
+            : call.function.arguments,
+        },
       }));
     } catch (error) {
       debugLogger(['development', 'production'], "[Error] Failed to parse tool call arguments:", error);

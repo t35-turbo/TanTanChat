@@ -1,0 +1,89 @@
+/**
+ * Search the web for information using the Exa search API.
+ *
+ * @param query - The textual query to search for.
+ * @param numResults - Number of top-level results to return.
+ * @param links - Number of links to attach to each result.
+ * @param includeSubpages - Number of sub-pages to fetch for each result.
+ * @param fullPageText - When true, include full page text in the payload.
+ * @param imageLinks - Number of image links to retrieve.
+ * @param summary - Whether to include a summary of each result.
+ *
+ * @returns Whatever payload Exa returns – currently the `context` field.
+ */
+import Exa from "exa-js";
+
+export default async function searchWeb(
+    query: string,
+    numResults: number = 3,
+    links: number = 1,
+    includeSubpages: number = 0,
+    fullPageText: boolean = false,
+    imageLinks: number = 0,
+    summary: boolean = false,
+): Promise<any> {
+    const exa = new Exa(process.env.EXASEARCH_API_KEY || "");
+    const result = await exa.searchAndContents(query, {
+        context: true,
+        subpages: includeSubpages,
+        numResults,
+        extras: {
+            links,
+            imageLinks,
+        },
+        summary: summary ? true : undefined,
+        text: fullPageText ? true : undefined,
+    });
+
+    return result.context;
+}
+
+// -------------------- OpenAI Tool Definition --------------------
+export const definition = {
+    type: "function" as const,
+    function: {
+        name: "searchWeb",
+        description:
+            "Searches the web for information using Exa, a powerful search API. Can retrieve summaries, links, full page text, and image links.",
+        parameters: {
+            type: "object",
+            properties: {
+                query: {
+                    type: "string",
+                    description: "The search query string.",
+                },
+                numResults: {
+                    type: "number",
+                    description: "The number of search results to return (default: 3).",
+                    default: 3,
+                },
+                links: {
+                    type: "number",
+                    description: "The number of links to include for each result (default: 1). If you need more links, set this to a higher number.",
+                    default: 1,
+                },
+                includeSubpages: {
+                    type: "number",
+                    description: "The number of subpages to include for each result (default: 0).",
+                    default: 0,
+                },
+                fullPageText: {
+                    type: "boolean",
+                    description: "Whether to return the full page text of the results (default: false). Use True if you need full page contents.",
+                    default: false,
+                },
+                imageLinks: {
+                    type: "number",
+                    description: "The number of image links to include for each result (default: 0). If performing image search set this to AT LEAST 5 or more (you are not penalized for doing so), to ensure you grab relevant results",
+                    default: 0,
+                },
+                summary: {
+                    type: "boolean",
+                    description: "Whether to return a summary of the results (default: false). If you need more detail, use the fullPageText option and set this to false.",
+                    default: false,
+                },
+            },
+            required: ["query"],
+        },
+    },
+} as const; 

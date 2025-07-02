@@ -7,9 +7,11 @@ export const Chat = z.object({
 });
 export const Chats = z.array(Chat);
 export type Chat = z.infer<typeof Chat>;
+
+export const allowedRoles = ["system", "user", "assistant", "tool"] as const;
 export const Message = z.object({
   id: z.uuidv4(),
-  role: z.enum(["system", "user", "assistant", "tool"]),
+  role: z.enum(allowedRoles),
   senderId: z.string(),
   chatId: z.string(),
   files: z.nullable(z.array(z.string())),

@@ -1,3 +1,5 @@
+import { allowedRoles } from "./db";
+
 export function normaliseToolCalls(tool_calls?: any[] | null) {
     if (!tool_calls) return null;
     return tool_calls.map((tc) => ({
@@ -11,8 +13,6 @@ export function normaliseToolCalls(tool_calls?: any[] | null) {
         },
     }));
 }
-
-const allowedRoles = ["system", "user", "assistant", "tool"] as const;
 
 export function safeRole(role: string): (typeof allowedRoles)[number] {
     const idx = (allowedRoles as readonly string[]).indexOf(role);
