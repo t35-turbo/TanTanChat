@@ -549,15 +549,20 @@ async function pgSubscriber(id: string, chatId: string, model: string) {
     devLog("[Debug] Tool_calls type:", typeof tool_calls);
 
     // for some reason the tool call is not a real JSON object, so we need to parse it
-    const parsedToolCalls = tool_calls.map(call => ({
+    let parsedToolCalls: any[] = [];
+    try {
+      parsedToolCalls = tool_calls.map(call => ({
       ...call,
       function: {
         ...call.function,
         arguments: typeof call.function.arguments === 'string' 
-          ? JSON.parse(call.function.arguments) 
-          : call.function.arguments,
+        ? JSON.parse(call.function.arguments) 
+        : call.function.arguments,
       },
-    }));
+      }));
+    } catch (error) {
+      devLog(['development', 'production'], "[Error] Failed to parse tool call arguments:", error);
+    }
 
     await db.insert(chatMessages).values({
       id,
