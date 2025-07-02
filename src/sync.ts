@@ -355,7 +355,17 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
           if (toolCall.function.name in TOOL_MAPPING) {
             try {
               const args = JSON.parse(toolCall.function.arguments);
-              const result = await TOOL_MAPPING[toolCall.function.name as keyof typeof TOOL_MAPPING](args.search_terms);
+              let result;
+              switch (toolCall.function.name) {
+                case 'searchGutenbergBooks':
+                  result = await TOOL_MAPPING.searchGutenbergBooks(args.search_terms);
+                  break;
+                case 'testSearch':
+                  result = await TOOL_MAPPING.testSearch();
+                  break;
+                default:
+                  throw new Error(`Unknown tool function: ${toolCall.function.name}`);
+              }
               // devLog("[Debug] Tool call result:", result);
 
               //add to db
