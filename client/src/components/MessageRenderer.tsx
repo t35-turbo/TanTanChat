@@ -346,7 +346,20 @@ function RenderedMsg({
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-2">
                       <div className="border-l-2 border-foreground/20 pl-3 prose">
-                        <MarkdownRenderer>{retryMessage.variables ?? message.message}</MarkdownRenderer>
+                        <MarkdownRenderer>
+                          {(() => {
+                            try {
+                              // Try to parse as JSON first, then format with proper line breaks
+                              const parsed = JSON.parse(retryMessage.variables ?? message.message);
+                              return typeof parsed === 'string' 
+                                ? parsed.replace(/\\n/g, '\n') // Convert escaped newlines to actual newlines
+                                : JSON.stringify(parsed, null, 2); // Pretty print JSON with proper formatting
+                            } catch {
+                              // If not JSON, just handle escaped newlines
+                              return (retryMessage.variables ?? message.message).replace(/\\n/g, '\n');
+                            }
+                          })()}
+                        </MarkdownRenderer>
                       </div>
                     </CollapsibleContent>
                   </Collapsible>

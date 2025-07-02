@@ -79,7 +79,6 @@ type Book = {
   authors: any[];
 };
 
-
 async function searchGutenbergBooks(searchTerms: string[]): Promise<Book[]> {
   const searchQuery = searchTerms.join(' ');
   const url = 'https://gutendex.com/books';
@@ -98,6 +97,25 @@ async function testSearch(): Promise<{ message: string; timestamp: string }> {
     message: "This is a test search function",
     timestamp: new Date().toISOString()
   };
+}
+
+async function searchWeb(query: string, numResults: number = 3, links: number = 1, includeSubpages: number = 0, fullPageText: boolean = false, imageLinks: number = 0, summary: boolean = false): Promise<any> {
+  const exa = new Exa(process.env.EXASEARCH_API_KEY || "");
+  const result = await exa.searchAndContents(
+    query,
+    {
+      context: true,
+      subpages: includeSubpages,
+      numResults: numResults,
+      extras: {
+        links: links,
+        imageLinks: imageLinks,
+      },
+      summary: summary ? true : undefined,
+      text: fullPageText ? true : undefined,
+    }
+  )
+  return result.context;
 }
 
 const tools = [
@@ -135,11 +153,59 @@ const tools = [
       },
     },
   },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'searchWeb',
+      description: 'Searches the web for information using Exa, a powerful search API. Can retrieve summaries, links, full page text, and image links.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'The search query string.',
+          },
+          numResults: {
+            type: 'number',
+            description: 'The number of search results to return (default: 3).',
+            default: 3,
+          },
+          links: {
+            type: 'number',
+            description: 'The number of links to include for each result (default: 1). If you need more links, set this to a higher number.',
+            default: 1,
+          },
+          includeSubpages: {
+            type: 'number',
+            description: 'The number of subpages to include for each result (default: 0).',
+            default: 0,
+          },
+          fullPageText: {
+            type: 'boolean',
+            description: 'Whether to return the full page text of the results (default: false). Use True if you need full page contents.',
+            default: false,
+          },
+          imageLinks: {
+            type: 'number',
+            description: 'The number of image links to include for each result (default: 0). If performing image search set this to AT LEAST 5 or more (you are not penalized for doing so), to ensure you grab relevant results',
+            default: 0,
+          },
+          summary: {
+            type: 'boolean',
+            description: 'Whether to return a summary of the results (default: false). If you need more detail, use the fullPageText option and set this to false.',
+            default: false,
+          },
+        },
+        required: ['query'],
+      },
+    },
+  }
 ];
 
 const TOOL_MAPPING = {
   searchGutenbergBooks,
   testSearch,
+  searchWeb,
 };
 
 
@@ -292,7 +358,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
       )),
     ];
 
-    // devLog("[Debug] Messages to OpenAI:", msgs);
+    devLog("[Debug] Messages to OpenAI:", msgs);
 
     const stream = await oai_client.chat.completions.create({
       model: opts.model,
@@ -363,6 +429,18 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
                 case 'testSearch':
                   result = await TOOL_MAPPING.testSearch();
                   break;
+                case 'searchWeb':
+                  result = await TOOL_MAPPING.searchWeb(
+                    args.query,
+                    args.numResults,
+                    args.links,
+                    args.includeSubpages,
+                    args.fullPageText,
+                    args.imageLinks,
+                    args.summary
+                  );
+                  devLog("[Debug] Search Web Result:", result);
+                  break;
                 default:
                   throw new Error(`Unknown tool function: ${toolCall.function.name}`);
               }
@@ -374,7 +452,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
                 chatId,
                 senderId: "tool_response", // Ensure senderId is passed correctly
                 role: "tool",
-                message: JSON.stringify(result),
+                message: JSON.stringify(result) || "", // Ensure message is never undefined/null
                 toolCallId: toolCall.id,
                 reasoning: "",
                 tool_calls: [],
