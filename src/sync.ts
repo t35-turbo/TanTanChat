@@ -230,7 +230,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
     const msgs = [
       {
         role: "system" as const,
-        content: default_prompt(opts.model.split("/")[0], opts.model.split("/")[0], 0) + "\n" + opts.system_prompt,
+        content: default_prompt(opts.model.split("/")[0], opts.model.split("/")[0], depth) + "\n" + opts.system_prompt,
       },
       ...(await Promise.all(
         messages.map(async (m) => {
