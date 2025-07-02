@@ -8,7 +8,7 @@ import { WSContext } from "hono/ws";
 import { BunFile, ServerWebSocket } from "bun";
 import { default_prompt } from "./lib/sys_prompts";
 import { debugLogger, devLog } from "./tools/debugLogger";
-import { tools, TOOL_MAPPING } from "./tools";
+import { tools, executeTool } from "./tools";
 
 export type Messages = {
   id: string;
@@ -280,51 +280,27 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
         for (const toolCall of accumulatedToolCalls) {
           // devLog("[Debug] Processing tool call:", toolCall);
 
-          if (toolCall.function.name in TOOL_MAPPING) {
-            try {
-              const args = JSON.parse(toolCall.function.arguments);
-              let result;
-              switch (toolCall.function.name) {
-                case 'searchGutenbergBooks':
-                  result = await TOOL_MAPPING.searchGutenbergBooks(args.search_terms);
-                  break;
-                case 'testSearch':
-                  result = await TOOL_MAPPING.testSearch();
-                  break;
-                case 'searchWeb':
-                  result = await TOOL_MAPPING.searchWeb(
-                    args.query,
-                    args.numResults,
-                    args.links,
-                    args.includeSubpages,
-                    args.fullPageText,
-                    args.imageLinks,
-                    args.summary
-                  );
-                  devLog("[Debug] Search Web Result:", result);
-                  break;
-                default:
-                  throw new Error(`Unknown tool function: ${toolCall.function.name}`);
-              }
-              // devLog("[Debug] Tool call result:", result);
+          try {
+            const args = JSON.parse(toolCall.function.arguments);
+            const result = await executeTool(toolCall.function.name, args);
+            devLog("[Debug] Tool Result:", result);
 
-              //add to db
-              await db.insert(chatMessages).values({
-                id: crypto.randomUUID(),
-                chatId,
-                senderId: "tool_response", // Ensure senderId is passed correctly
-                role: "tool",
-                message: JSON.stringify(result) || "", // Ensure message is never undefined/null
-                toolCallId: toolCall.id,
-                reasoning: "",
-                tool_calls: [],
-                finish_reason: "tool_calls_response",
-                createdAt: new Date(),
-              });
+            //add to db
+            await db.insert(chatMessages).values({
+              id: crypto.randomUUID(),
+              chatId,
+              senderId: "tool_response", // Ensure senderId is passed correctly
+              role: "tool",
+              message: JSON.stringify(result) || "", // Ensure message is never undefined/null
+              toolCallId: toolCall.id,
+              reasoning: "",
+              tool_calls: [],
+              finish_reason: "tool_calls_response",
+              createdAt: new Date(),
+            });
 
-            } catch (error) {
-              devLog("[Error] Tool call failed:", error);
-            }
+          } catch (error) {
+            devLog("[Error] Tool call failed:", error);
           }
         }
 

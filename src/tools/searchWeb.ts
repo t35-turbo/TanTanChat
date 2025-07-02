@@ -12,16 +12,49 @@
  * @returns Whatever payload Exa returns – currently the `context` field.
  */
 import Exa from "exa-js";
+import { z } from "zod/v4";
 
-export default async function searchWeb(
-    query: string,
-    numResults: number = 3,
-    links: number = 1,
-    includeSubpages: number = 0,
-    fullPageText: boolean = false,
-    imageLinks: number = 0,
-    summary: boolean = false,
-): Promise<any> {
+// -------------------- Types --------------------
+export interface SearchWebArgs {
+    /** The search query string. */
+    query: string;
+    /** The number of search results to return (default: 3). */
+    numResults?: number;
+    /** The number of links to include for each result (default: 1). */
+    links?: number;
+    /** The number of subpages to include for each result (default: 0). */
+    includeSubpages?: number;
+    /** Whether to return the full page text of the results (default: false). */
+    fullPageText?: boolean;
+    /** The number of image links to include for each result (default: 0). */
+    imageLinks?: number;
+    /** Whether to return a summary of the results (default: false). */
+    summary?: boolean;
+}
+
+// Zod schema to validate and supply defaults
+const searchWebArgsSchema = z.object({
+    query: z.string(),
+    numResults: z.number().int().positive().max(100).default(3),
+    links: z.number().int().nonnegative().default(1),
+    includeSubpages: z.number().int().nonnegative().default(0),
+    fullPageText: z.boolean().default(false),
+    imageLinks: z.number().int().nonnegative().default(0),
+    summary: z.boolean().default(false),
+});
+
+export async function toolFunction(rawArgs: SearchWebArgs): Promise<any> {
+    // Validate and enrich args with defaults
+    const {
+        query,
+        numResults,
+        links,
+        includeSubpages,
+        fullPageText,
+        imageLinks,
+        summary,
+    } = searchWebArgsSchema.parse(rawArgs);
+
     const exa = new Exa(process.env.EXASEARCH_API_KEY || "");
     const result = await exa.searchAndContents(query, {
         context: true,

@@ -1,17 +1,21 @@
-import searchGutenbergBooks, { definition as searchGutenbergBooksDefinition } from "./searchGutenbergBooks";
-import testSearch, { definition as testSearchDefinition } from "./testSearch";
-import searchWeb, { definition as searchWebDefinition } from "./searchWeb";
+import * as searchWebModule from "./searchWeb";
 
 // -------------------- OpenAI Tool Definitions --------------------
 export const tools = [
-    searchGutenbergBooksDefinition,
-    testSearchDefinition,
-    searchWebDefinition,
-] as const;
+    searchWebModule.definition,
+];
 
 // -------------------- Runtime Mapping --------------------
 export const TOOL_MAPPING = {
-    searchGutenbergBooks,
-    testSearch,
-    searchWeb,
+    searchWeb: searchWebModule.toolFunction,
 } as const;
+
+// -------------------- Runtime Execution Helper --------------------
+export async function executeTool(toolName: string, args: any): Promise<any> {
+    switch (toolName) {
+        case "searchWeb":
+            return TOOL_MAPPING.searchWeb(args);
+        default:
+            throw new Error(`Unknown tool function: ${toolName}`);
+    }
+}

@@ -24,7 +24,7 @@ export const Message = z.object({
     type: z.literal("function"),
     function: z.object({
       name: z.string(),
-      arguments: z.string(),
+      arguments: z.record(z.string(), z.unknown()),
     }),
   }))),
   toolCallId: z.nullable(z.string())

@@ -65,13 +65,18 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
             throw new Error("Failed to fetch messages");
           }
 
-          const messages = z.object({
+          const safeParsedData = z.object({
             messages: z.array(Message)
-          }).parse(await messageResponse.json()).messages;
+          }).safeParse(await messageResponse.json());
+
+          if (!safeParsedData.success) {
+            console.error("zod error while parsing messages", safeParsedData.error, messageResponse);
+            return { messages: [], cursor: 0 };
+          }
 
           // Normalise messages for proper rendering
           const parsedMessages =
-            messages?.map((msg: Message) => ({
+            safeParsedData.data.messages?.map((msg: Message) => ({
               ...msg,
               tool_calls: normaliseToolCalls(msg.tool_calls),
               toolCallId: msg.toolCallId ?? null,
