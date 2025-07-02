@@ -369,7 +369,9 @@ function RenderedMsg({
                                 {toolCall.function.name}
                               </div>
                               <div className="text-xs text-foreground/60 bg-muted p-2 rounded font-mono overflow-x-auto">
-                                {toolCall.function.arguments}
+                                {typeof toolCall.function.arguments === "object"
+                                  ? JSON.stringify(toolCall.function.arguments, null, 2)
+                                  : String(toolCall.function.arguments)}
                               </div>
                             </div>
                           ))}
