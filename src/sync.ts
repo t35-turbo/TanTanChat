@@ -2,7 +2,7 @@ import { OpenAI } from "openai";
 import { z } from "zod/v4";
 import { db } from "./db";
 import { chatMessages, chats } from "./db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import * as vk from "./db/redis";
 import { WSContext } from "hono/ws";
 import { BunFile, ServerWebSocket } from "bun";
@@ -391,17 +391,19 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
         // After processing, we make another call to continue the conversation
 
         // First, fetch the tool response messages from the database
-        const toolResponseMessages = await db
+        const toolCallIds = accumulatedToolCalls.map(tc => tc.id);
+        const recentToolMessages = await db
           .select()
           .from(chatMessages)
-          .where(eq(chatMessages.chatId, chatId))
-          .orderBy(chatMessages.createdAt);
-
-        // Filter to get only the tool messages we just created
-        const recentToolMessages = toolResponseMessages
-          .filter(msg => msg.role === "tool" &&
-            accumulatedToolCalls.some(tc => tc.id === msg.toolCallId))
-          .map(msg => ({
+          .where(
+            and(
+              eq(chatMessages.chatId, chatId),
+              eq(chatMessages.role, "tool"),
+              inArray(chatMessages.toolCallId, toolCallIds)
+            )
+          )
+          .orderBy(chatMessages.createdAt)
+          .then(results => results.map(msg => ({
             id: msg.id,
             role: "tool" as const,
             chatId: msg.chatId,
@@ -410,7 +412,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
             createdAt: msg.createdAt,
             files: [],
             toolCallId: msg.toolCallId ?? undefined
-          }));
+          })));
 
         const newMessages = [
           ...messages,
