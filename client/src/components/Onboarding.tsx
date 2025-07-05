@@ -5,7 +5,7 @@ import { useKeyInput } from "@/hooks/use-key-input";
 import { useNavigate } from "@tanstack/react-router";
 
 export default function Onboarding() {
-  const openKeyInput = useKeyInput((state) => state.open);
+  const openKeyInput = useKeyInput((state) => state.openAI);
   const navigate = useNavigate();
 
   return (

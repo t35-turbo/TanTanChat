@@ -1,4 +1,4 @@
-# Project Rules: Zod Import Conventions
+# Project Rule: Zod Import Conventions
 
 ## Objective
 Ensure consistent usage of Zod across the code-base:
@@ -23,3 +23,11 @@ Ensure consistent usage of Zod across the code-base:
 * If migrating an existing file, update its Zod import to follow these rules.
 
 These rules apply to all future code generations and refactors. 
+
+# Project Rule: UI Kit (Client Side)
+We use the latest version of shadcn. To install components from shadcn, use the command:
+```shell
+pnpm dlx shadcn@latest add <componentname>
+```
+
+Components will be installed in components/ui/... and can be imported with the @/components/ui/... etc.

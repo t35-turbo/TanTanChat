@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Button } from "./ui/button";
-import { ChevronDownIcon, Paperclip } from "lucide-react";
+import { ChevronDownIcon, ChevronUp, Globe, Paperclip, PocketKnife } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { useORKey } from "@/hooks/use-or-key";
 import { toast } from "sonner";
 import { type Models, useModel } from "@/hooks/use-model";
-import { toastEnterAPIKey } from "@/lib/utils";
+import { useKeyToasts } from "@/hooks/use-key-toasts";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,11 +14,12 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Toggle } from "./ui/toggle";
 import { Label } from "./ui/label";
 import { useFiles } from "@/hooks/use-files";
-// import { Toggle } from "./ui/toggle";
-// import { useTools } from "@/hooks/use-tools";
+import { Switch } from "./ui/switch";
+import { useTools } from "@/hooks/use-tools";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { useExaKey } from "@/hooks/use-exa-key";
 
 export const defaultModels: Models = {
   "google/gemini-2.5-pro-preview": {
@@ -163,13 +164,12 @@ export default function ModelSelector() {
   const model = useModel((state) => state.model);
   const setModel = useModel((state) => state.setModel);
 
-  // const webSearch = useTools(state => state.web_search);
-  // const setWebSearch = useTools(state => state.setWebSearch);
-
   const or_key = useORKey((state) => state.key);
 
   const files = useFiles((state) => state.files);
   const addFiles = useFiles((state) => state.addFiles);
+
+  const { toastEnterAPIKey } = useKeyToasts();
 
   function handleNewFiles(evt: React.ChangeEvent<HTMLInputElement>) {
     if (evt.target.files) {
@@ -267,7 +267,7 @@ export default function ModelSelector() {
         </DropdownMenu>
       ) : null}
       <Button variant={"ghost"} asChild>
-        <Label htmlFor="attachments">
+        <Label htmlFor="attachments" className="cursor-pointer">
           <Paperclip /> Attach
         </Label>
       </Button>
@@ -275,14 +275,57 @@ export default function ModelSelector() {
         type="file"
         name="attachments"
         id="attachments"
-        className="hidden"
+        className="hidden cursor-pointer"
         // the fuck???
         accept={`.txt,.js,.jsx,.ts,.tsx,.json,.md,.yaml,.yml,.xml,.html,.css,.csv,.log,.py,.java,.cpp,.c,.h,.php,.rb,.go,.rs,.sh,.bat,.sql,.ini,.cfg,.conf,.env,.gitignore,.dockerfile,text/*,application/pdf${model?.vision ? ",image/png,image/jpeg,image/webp" : ""}`}
         onChange={handleNewFiles}
         multiple
       />
 
+      <ToolSelector />
+
       {/* <Toggle className="border" onPressedChange={setWebSearch} pressed={webSearch}><Globe /> Search</Toggle> */}
     </>
+  );
+}
+
+function ToolSelector() {
+  const webSearch = useTools((state) => state.web_search);
+  const setWebSearch = useTools((state) => state.setWebSearch);
+
+  const exaKey = useExaKey((state) => state.key);
+
+  const { toastEnterExaAPIKey } = useKeyToasts();
+
+  function handleWebSearchToggle(enabled: boolean) {
+    if (enabled) {
+      if (!exaKey) {
+        toastEnterExaAPIKey();
+        return; // do not enable until key is provided
+      }
+    }
+    setWebSearch(enabled);
+  }
+
+  return (
+    <Popover>
+      <Tooltip>
+        <TooltipTrigger>
+          <PopoverTrigger asChild>
+            <Button variant={"ghost"}>
+              <PocketKnife className="size-4" /> <ChevronUp className="size-4" />
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Configure Tools</TooltipContent>
+        <PopoverContent className="text-foreground w-auto">
+          <div className="flex items-center gap-1 justify-between">
+            <Globe className="size-4" />
+            <span className="mr-4">Search</span>
+            <Switch checked={webSearch} onCheckedChange={handleWebSearchToggle} />
+          </div>
+        </PopoverContent>
+      </Tooltip>
+    </Popover>
   );
 }

@@ -85,7 +85,7 @@ function AccountCard() {
   const user_sess = authClient.useSession();
   const keySet = useORKey((state) => !!state.key);
   const setKey = useORKey((state) => state.setKey);
-  const openKeyInput = useKeyInput((state) => state.open);
+  const openKeyInput = useKeyInput((state) => state.openAI);
   const navigate = useNavigate();
 
   return (

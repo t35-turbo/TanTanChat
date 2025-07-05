@@ -12,7 +12,7 @@ export const Route = createFileRoute("/or_auth")({
 function RouteComponent() {
   const location = useLocation();
   const navigate = useNavigate();
-  const open = useKeyInput((state) => state.open);
+  const open = useKeyInput((state) => state.openAI);
   const setKey = useORKey((state) => state.setKey);
   const hasExchanged = React.useRef(false); // jank
 
