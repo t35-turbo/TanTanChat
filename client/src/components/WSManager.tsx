@@ -222,11 +222,6 @@ export function useActiveMessage() {
   const context = useContext(WSEventProvider);
 
   useEffect(() => {
-    // we don't want to reset this anymore, we want to reset it when the history has been fetched and will rerender
-    // setTimeout(() => setChunks([]));
-  }, [activeId]);
-
-  useEffect(() => {
     if (!context || !activeId) return;
 
     const handleChunk = (evt: Event) => {

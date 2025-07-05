@@ -9,7 +9,7 @@ import { useTheme } from "@/hooks/use-theme";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { useMutation, useQuery, useInfiniteQuery, useMutationState } from "@tanstack/react-query";
@@ -42,6 +42,12 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
     filters: { mutationKey: ["sendMessage", chatId], status: "pending" },
     select: (mutation) => z.string().parse(mutation.state.variables ?? ""),
   })[0];
+
+  useEffect(() => {
+    setTimeout(() => queryClient.invalidateQueries({ queryKey: ["messages"] }), 100);
+    setTimeout(() => queryClient.invalidateQueries({ queryKey: ["messages"] }), 200);
+    setTimeout(() => queryClient.invalidateQueries({ queryKey: ["messages"] }), 400);
+  }, [])
 
   // HACK: do we really need inf. query? it has been disabled for now
   const messagePages = useInfiniteQuery({
