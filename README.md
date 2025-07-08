@@ -23,8 +23,8 @@ https://tantan.konkon.pablonara.com/
 - Web Search (WIP)
 
 ## Showcase Videos
-- [File Uploads Demo](showcase_fileuploads.mp4)
-- [Real-time Sync Demo](showcase_realtime-sync.mp4)
+![File Uploads Demo](showcase_fileuploads.mp4)
+![Real-time Sync Demo](showcase_realtime-sync.mp4)
 
 # Hosting & Setup
 ## Setup with Docker Compose
