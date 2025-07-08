@@ -1,18 +1,29 @@
 import { create } from "zustand";
 
 type KeyInputState = {
-  isOpen: boolean;
-  open: () => void;
-  toggle: (arg0?: boolean) => void;
-  close: () => void;
+  isAIOpen: boolean;
+  openAI: () => void;
+  toggleAI: (arg0?: boolean) => void;
+  closeAI: () => void;
+  isExaOpen: boolean;
+  openExa: () => void;
+  toggleExa: (arg0?: boolean) => void;
+  closeExa: () => void;
 };
 
 export const useKeyInput = create<KeyInputState>((set, get) => ({
-  isOpen: false,
-  open: () => set({ isOpen: true }),
-  toggle: (arg0) => {
-    if (arg0 !== undefined) set({ isOpen: arg0 });
-    else set({ isOpen: !get().isOpen });
+  isAIOpen: false,
+  openAI: () => set({ isAIOpen: true }),
+  toggleAI: (value) => {
+    if (value !== undefined) set({ isAIOpen: value });
+    else set({ isAIOpen: !get().isAIOpen });
   },
-  close: () => set({ isOpen: false }),
+  closeAI: () => set({ isAIOpen: false }),
+  isExaOpen: false,
+  openExa: () => set({ isExaOpen: true }),
+  toggleExa: (value) => {
+    if (value !== undefined) set({ isExaOpen: value });
+    else set({ isExaOpen: !get().isExaOpen });
+  },
+  closeExa: () => set({ isExaOpen: false }),
 }));

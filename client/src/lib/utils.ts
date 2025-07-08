@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function toastEnterAPIKey(reason: 'missing' | 'invalid' = 'missing') {
-  const openModal = useKeyInput(state => state.open);
+  const openModal = useKeyInput(state => state.openAI);
 
   if (reason === 'invalid') {
     toast.error("Invalid OpenRouter Key.", {
@@ -18,7 +18,7 @@ export function toastEnterAPIKey(reason: 'missing' | 'invalid' = 'missing') {
       },
     });
   } else if (reason === 'missing') {
-    toast.error("Please set your OpenRouter Key first.", {
+    toast.error("Please set your AI API Key first.", {
       action: {
         label: "Enter Key",
         onClick: openModal,
@@ -27,4 +27,15 @@ export function toastEnterAPIKey(reason: 'missing' | 'invalid' = 'missing') {
   } else {
     throw new Error(`Invalid reason: ${reason}`);
   }
+}
+
+export function toastEnterExaAPIKey() {
+  const openModal = useKeyInput(state => state.openExa);
+
+  toast.error("Please set your Exa Search API Key first.", {
+    action: {
+      label: "Enter Key",
+      onClick: openModal,
+    },
+  });
 }

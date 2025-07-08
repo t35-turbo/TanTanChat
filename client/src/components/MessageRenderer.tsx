@@ -25,6 +25,7 @@ import { z } from "zod/v4-mini";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useActiveId, useActiveMessage } from "./WSManager";
+import { normaliseToolCalls, safeRole } from "@/lib/message-normalise";
 
 interface MessageRendererProps {
   chatId?: string;
@@ -37,7 +38,6 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
   const { chunks: activeMessage, setChunks: setActiveMessage } = useActiveMessage();
   const activeId = useActiveId();
 
-  // Use useMutationState to access the sendMessage mutation state
   const sendMessageVariables = useMutationState<string | null>({
     filters: { mutationKey: ["sendMessage", chatId], status: "pending" },
     select: (mutation) => z.string().parse(mutation.state.variables ?? ""),
@@ -52,10 +52,10 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
   // HACK: do we really need inf. query? it has been disabled for now
   const messagePages = useInfiniteQuery({
     queryKey: ["messages", chatId],
-    queryFn: async ({ pageParam: cursor }) => {
+    queryFn: async ({ pageParam: cursor }): Promise<{ messages: Message[]; cursor?: number; }> => {
       if (user_sess.data) {
         if (chatId) {
-          // TODO: get messages
+          // TODO: proper pagination
           let messageResponse;
           try {
             messageResponse = await ky.get(`/api/chats/${chatId}?cursor=${cursor}`);
@@ -70,12 +70,30 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
           if (!messageResponse) {
             throw new Error("Failed to fetch messages");
           }
-          let messages = await messageResponse.json();
+
+          const safeParsedData = z.object({
+            messages: z.array(Message)
+          }).safeParse(await messageResponse.json());
+
+          if (!safeParsedData.success) {
+            console.error("zod error while parsing messages", safeParsedData.error, messageResponse);
+            return { messages: [], cursor: 0 };
+          }
+
+          // Normalise messages for proper rendering
+          const parsedMessages =
+            safeParsedData.data.messages?.map((msg: Message) => ({
+              ...msg,
+              tool_calls: normaliseToolCalls(msg.tool_calls),
+              toolCallId: msg.toolCallId ?? null,
+              role: safeRole(msg.role),
+            })) ?? [];
 
           if (!activeId && activeMessage.length > 0 && setActiveMessage) {
             setActiveMessage([]);
           }
-          return z.object({ messages: z.array(Message) }).parse(messages);
+
+          return { messages: parsedMessages, cursor: 0 };
         } else {
           return { messages: [], cursor: 0 };
         }
@@ -99,6 +117,8 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
       message: sendMessageVariables,
       reasoning: null,
       files: null,
+      tool_calls: null,
+      toolCallId: null,
       finish_reason: null,
       createdAt: new Date(),
     });
@@ -114,6 +134,8 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
       reasoning: activeMessage.reduce((prev, cur) => prev + cur.reasoning, ""),
       finish_reason: activeMessage.reduce((prev: string | null, cur) => (prev ? prev : cur.finish_reason), null),
       files: null,
+      tool_calls: null,
+      toolCallId: null,
       createdAt: new Date(),
     });
   }
@@ -154,6 +176,8 @@ function RenderedMsg({
   setActiveMessage?: (chunks: any[]) => void;
 }) {
   const [showThink, setShowThink] = React.useState(false);
+  const [showToolResult, setShowToolResult] = React.useState(false);
+  const [showFunctionCalls, setShowFunctionCalls] = React.useState(false);
   const or_key = useORKey((state) => state.key);
   const model = useModel((state) => state.model);
   const [editMessage, setEditMessage] = useState("");
@@ -275,25 +299,106 @@ function RenderedMsg({
           </div>
         ) : (
           <div
-            className={`${message.role === "user" ? "border p-2 rounded-lg ml-auto" : "px-2 py-1"} bg-background mb-1 prose`}
+            className={`${message.role === "user" ? "border p-2 rounded-lg ml-auto" : "px-2 py-1"} bg-background mb-1`}
           >
-            {message.reasoning ? (
-              <Collapsible>
-                <CollapsibleTrigger
-                  className="flex items-center gap-1 transition-all text-foreground/50 hover:text-foreground"
-                  onClick={() => setShowThink(!showThink)}
-                >
-                  {showThink ? <ChevronDown /> : <ChevronRight />} {showThink ? "Hide Thinking" : "Show Thinking"}
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <MarkdownRenderer>{message.reasoning ?? ""}</MarkdownRenderer>
-                </CollapsibleContent>
-              </Collapsible>
-            ) : null}
+            {/* Only wrap in space-y-2 for non-user messages EDIT: changed wrapper to use space-y-3*/}
+            {message.role === "user" ? (
+              /* User messages: apply prose only to final content */
+              <div className="prose">
+                <MarkdownRenderer>{retryMessage.variables ?? message.message}</MarkdownRenderer>
+              </div>
+            ) : (
+              /* Assistant/system/tool messages: apply prose only to final content */
+              /* Nevermind we use space-y-3 for more consistiency because my code is cooked */
+              <div className="space-y-3">
+                {message.reasoning ? (
+                  <Collapsible>
+                    <CollapsibleTrigger
+                      className="flex items-center gap-1 transition-all text-foreground/50 hover:text-foreground"
+                      onClick={() => setShowThink(!showThink)}
+                    >
+                      {showThink ? <ChevronDown /> : <ChevronRight />} {showThink ? "Hide Thinking" : "Show Thinking"}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="prose">
+                        <MarkdownRenderer>{message.reasoning ?? ""}</MarkdownRenderer>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ) : null}
 
-            <MarkdownRenderer>{retryMessage.variables ?? message.message}</MarkdownRenderer>
+                {/* Tool message rendering */}
+                {message.role === "tool" ? (
+                  <Collapsible>
+                    <CollapsibleTrigger
+                      className="flex items-center gap-1 transition-all text-foreground/50 hover:text-foreground"
+                      onClick={() => setShowToolResult(!showToolResult)}
+                    >
+                      {showToolResult ? <ChevronDown /> : <ChevronRight />} Tool Result
+                      {message.toolCallId && (
+                        <span className="text-xs text-foreground/40">({message.toolCallId})</span>
+                      )}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2">
+                      <div className="border-l-2 border-foreground/20 pl-3 prose">
+                        <MarkdownRenderer>
+                          {(() => {
+                            try {
+                              // Try to parse as JSON first, then format with proper line breaks
+                              const parsed = JSON.parse(retryMessage.variables ?? message.message);
+                              return typeof parsed === 'string'
+                                ? parsed.replace(/\\n/g, '\n') // Convert escaped newlines to actual newlines
+                                : JSON.stringify(parsed, null, 2); // Pretty print JSON with proper formatting
+                            } catch {
+                              // If not JSON, just handle escaped newlines
+                              return (retryMessage.variables ?? message.message).replace(/\\n/g, '\n');
+                            }
+                          })()}
+                        </MarkdownRenderer>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ) : message.tool_calls && message.tool_calls.length > 0 ? (
+                  <>
+                    <Collapsible>
+                      <CollapsibleTrigger
+                        className="flex items-center gap-1 transition-all text-foreground/50 hover:text-foreground"
+                        onClick={() => setShowFunctionCalls(!showFunctionCalls)}
+                      >
+                        {showFunctionCalls ? <ChevronDown /> : <ChevronRight />} Function Calls ({message.tool_calls.length})
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="border-l-2 border-foreground/20 pl-3 space-y-2">
+                          {message.tool_calls.map((toolCall, index) => (
+                            <div key={toolCall.id || index} className="text-sm">
+                              <div className="font-mono text-foreground/80 mb-1">
+                                {toolCall.function.name}
+                              </div>
+                              <div className="text-xs text-foreground/60 bg-muted p-2 rounded font-mono overflow-x-auto">
+                                {typeof toolCall.function.arguments === "object"
+                                  ? JSON.stringify(toolCall.function.arguments, null, 2)
+                                  : String(toolCall.function.arguments)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                    {message.message && (
+                      <div className="prose">
+                        <MarkdownRenderer>{retryMessage.variables ?? message.message}</MarkdownRenderer>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="prose">
+                    <MarkdownRenderer>{retryMessage.variables ?? message.message}</MarkdownRenderer>
+                  </div>
+                )}
+              </div>
+            )}
 
-            {message.finish_reason && message.finish_reason !== "stop" ? (
+            {message.finish_reason && ["stop", "tool_calls", "tool_calls_response"].includes(message.finish_reason) !== true ? (
               <Alert variant="destructive">
                 <AlertTitle>{message.finish_reason}</AlertTitle>
               </Alert>

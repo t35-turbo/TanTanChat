@@ -5,10 +5,11 @@ import { useORKey } from "@/hooks/use-or-key";
 import { useState } from "react";
 import { Button } from "./ui/button";
 import { Buffer } from 'buffer';
+import { useExaKey } from "@/hooks/use-exa-key";
 
 export default function KeyInputModal() {
-  const isOpen = useKeyInput((state) => state.isOpen);
-  const toggle = useKeyInput((state) => state.toggle);
+  const isOpen = useKeyInput((state) => state.isAIOpen);
+  const toggle = useKeyInput((state) => state.toggleAI);
   const setKey = useORKey((state) => state.setKey);
 
   const [key, setKeyLocal] = useState("");
@@ -55,7 +56,6 @@ export default function KeyInputModal() {
   );
 }
 
-
 async function createSHA256CodeChallenge(input: string) {
   const encoder = new TextEncoder();
   const data = encoder.encode(input);
@@ -63,4 +63,39 @@ async function createSHA256CodeChallenge(input: string) {
   const hashArray = new Uint8Array(hash);
   const hashBase64 = Buffer.from(hashArray).toString('base64');
   return hashBase64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+// Named export for Exa Search API key modal
+export function ExaKeyInputModal() {
+  const isOpen = useKeyInput((state) => state.isExaOpen);
+  const toggle = useKeyInput((state) => state.toggleExa);
+  const setKey = useExaKey((state) => state.setKey);
+
+  const [key, setKeyLocal] = useState("");
+
+  return (
+    <Dialog open={isOpen} onOpenChange={toggle}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Input Exa Search API Key</DialogTitle>
+          <span>Your key is stored locally and is never saved on our server.</span>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            setKey(key);
+            toggle(false);
+          }}
+          className="flex space-x-2"
+        >
+          <Input
+            placeholder="exa_XXXXXXXXXXXXXXXX"
+            value={key}
+            onChange={(e) => setKeyLocal(e.target.value)}
+          />
+          <Button type="submit">Save</Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }

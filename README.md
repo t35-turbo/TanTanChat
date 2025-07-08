@@ -22,6 +22,10 @@ https://tantan.konkon.pablonara.com/
 - Tool calling (WIP - See PR and branch [here](https://github.com/t35-turbo/TanTanChat/pull/5) to try, it's almost ready to merge!)
 - Web Search (WIP)
 
+## Showcase Videos
+- [File Uploads Demo](showcase_fileuploads.mp4)
+- [Real-time Sync Demo](showcase_realtime-sync.mp4)
+
 # Hosting & Setup
 ## Setup with Docker Compose
 ```sh

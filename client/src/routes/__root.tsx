@@ -1,4 +1,5 @@
 import KeyInputModal from "@/components/KeyInputModal";
+import { ExaKeyInputModal } from "@/components/KeyInputModal";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -11,6 +12,7 @@ export const Route = createRootRoute({
     <ThemeProvider >
       <QueryClientProvider client={queryClient}>
         <KeyInputModal />
+        <ExaKeyInputModal />
         <Toaster position="top-center" />
         <Outlet />
       </QueryClientProvider>

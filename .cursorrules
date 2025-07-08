@@ -1,0 +1,33 @@
+# Project Rule: Zod Import Conventions
+
+## Objective
+Ensure consistent usage of Zod across the code-base:
+
+1. **Server-side (backend) code** – _must_ import Zod from `"zod/v4"`.
+2. **Client-side (frontend) code** – _must_ import Zod from `"zod/v4-mini"`.
+
+## Scope
+* **Server-side**: any TypeScript / TSX files under `src/` or other backend folders.
+* **Client-side**: any files under `client/`.
+
+## Guidelines
+* When writing or modifying backend code, always use:
+  ```ts
+  import { z } from "zod/v4";
+  ```
+* When writing or modifying frontend code, always use:
+  ```ts
+  import { z } from "zod/v4-mini";
+  ```
+* Do **not** mix the two versions in the same file.
+* If migrating an existing file, update its Zod import to follow these rules.
+
+These rules apply to all future code generations and refactors. 
+
+# Project Rule: UI Kit (Client Side)
+We use the latest version of shadcn. To install components from shadcn, use the command:
+```shell
+pnpm dlx shadcn@latest add <componentname>
+```
+
+Components will be installed in components/ui/... and can be imported with the @/components/ui/... etc.

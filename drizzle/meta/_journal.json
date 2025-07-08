@@ -8,6 +8,34 @@
       "when": 1750267871981,
       "tag": "0000_normal_proteus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1751319970878,
+      "tag": "0001_odd_annihilus",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1751323086353,
+      "tag": "0002_sudden_nick_fury",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1751333885790,
+      "tag": "0003_sloppy_living_lightning",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1751335818675,
+      "tag": "0004_mixed_ser_duncan",
+      "breakpoints": true
     }
   ]
 }

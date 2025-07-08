@@ -16,11 +16,12 @@ import { getUserSetting } from "../settings";
 import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
 import { useTools } from "@/hooks/use-tools";
 import { useFiles } from "@/hooks/use-files";
-import { toastEnterAPIKey } from "@/lib/utils";
+import { useKeyToasts } from "@/hooks/use-key-toasts";
 import Onboarding from "@/components/Onboarding";
 import { EmptyLoadingScreen } from "@/components/LoadingScreen";
 import MessageInput from "@/components/MessageInput";
 import { ChunkData, useActiveId, useActiveMessage } from "@/components/WSManager";
+import { useExaKey } from "@/hooks/use-exa-key";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
@@ -33,6 +34,7 @@ export function ChatUI() {
   const navigate = useNavigate();
   const user_sess = authClient.useSession();
   const or_key = useORKey((state) => state.key);
+  const exa_key = useExaKey((state) => state.key);
   const web_search = useTools((state) => state.web_search);
 
   const { chatId } = useParams({
@@ -73,6 +75,7 @@ export function ChatUI() {
                 message: message,
                 opts: {
                   apiKey: or_key,
+                  exaKey: exa_key,
                   model: "openai/gpt-4.1-mini",
                 },
               }),
@@ -116,6 +119,8 @@ export function ChatUI() {
       }
     },
   });
+
+  const { toastEnterAPIKey } = useKeyToasts();
 
   function sendMessage(message: string) {
     if (or_key) {

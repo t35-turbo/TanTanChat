@@ -2,21 +2,23 @@ import { OpenAI } from "openai";
 import { z } from "zod/v4";
 import { db } from "./db";
 import { chatMessages, chats } from "./db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import * as vk from "./db/redis";
 import { WSContext } from "hono/ws";
 import { BunFile, ServerWebSocket } from "bun";
-import Exa from "exa-js";
 import { default_prompt } from "./lib/sys_prompts";
-import env from "./lib/env";
+import { debugLogger, devLog } from "./tools/debugLogger";
+import { tools, executeTool } from "./tools";
 
 export type Messages = {
   id: string;
-  role: "user" | "system" | "assistant";
+  role: "user" | "system" | "assistant" | "tool";
   chatId: string;
   senderId: string;
   message: string;
   createdAt: Date;
+  toolCallId?: string;
+  tool_calls?: any[];
   files: {
     data: BunFile;
     metadata: {
@@ -69,19 +71,25 @@ const vk_client = vk.createClient();
 //   return "search_result: " + JSON.stringify(result);
 // }
 
-export async function newMessage(chatId: string, messages: Messages, opts: Options) {
+export async function newMessage(chatId: string, messages: Messages, opts: Options, depth?: number) {
   let uuid = crypto.randomUUID();
 
-  newCompletion(uuid, chatId, messages, opts);
+  newCompletion(uuid, chatId, messages, opts, depth ?? 0);
   pgSubscriber(uuid, chatId, opts.model);
 
   return uuid;
 }
 
-async function newCompletion(id: string, chatId: string, messages: Messages, opts: Options) {
+async function newCompletion(id: string, chatId: string, messages: Messages, opts: Options, depth: number) {
   if (!vk_client.isOpen) await vk_client.connect();
 
+  if (depth > parseInt(process.env.MAX_TOOL_RECURSION_DEPTH || "10")) {
+    debugLogger(['development', 'production'], `[WARN] Max tool recursion depth exceeded: ${depth}`);
+  }
+
   let accumulatedContent = "";
+  // Add accumulator for tool calls
+  let accumulatedToolCalls: any[] = [];
 
   await vk_client.set(`chat:${chatId}:activeMessage`, id);
   await vk_client.publish(`chat:${chatId}:events`, `activeMessage ${id}`);
@@ -150,7 +158,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
     const msgs = [
       {
         role: "system" as const,
-        content: default_prompt(opts.model.split("/")[0], opts.model.split("/")[0]) + "\n" + opts.system_prompt,
+        content: default_prompt(opts.model.split("/")[0], opts.model.split("/")[0], depth) + "\n" + opts.system_prompt,
       },
       ...(await Promise.all(
         messages.map(async (m) => {
@@ -172,17 +180,51 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
                 ...fileContents,
               ],
             };
-          } else {
+          } else if (m.role === "tool") {
             return {
-              role: m.role as "system" | "assistant",
+              role: "tool" as const,
+              content: m.message,
+              tool_call_id: m.toolCallId || "",
+            };
+          } else if (m.role === "assistant") {
+            // Only include tool_calls if it exists and has content
+            const hasToolCalls = m.tool_calls && Array.isArray(m.tool_calls) && m.tool_calls.length > 0;
+
+            const assistantMessage: any = {
+              role: "assistant" as const,
+              content: m.message || null, // content can be null when tool_calls are present
+            };
+
+            // Only add tool_calls property if it has actual content
+            if (hasToolCalls) {
+              // Convert arguments from object to JSON string for OpenAI
+              assistantMessage.tool_calls = m.tool_calls!.map(call => ({
+                ...call,
+                function: {
+                  ...call.function,
+                  arguments: typeof call.function.arguments === 'string'
+                    ? call.function.arguments
+                    : JSON.stringify(call.function.arguments)
+                }
+              }));
+            }
+
+            return assistantMessage;
+          } else { // For "system" or any other role
+            return {
+              role: m.role as "system",
               content: m.message,
             };
           }
         }),
       )),
     ];
+
+    devLog("[Debug] Messages to OpenAI:", msgs);
+
     const stream = await oai_client.chat.completions.create({
       model: opts.model,
+      tools,
       messages: msgs,
       reasoning_effort: opts.reasoning_effort,
       stream: true,
@@ -199,16 +241,120 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
       }
 
       const contentChunk = choice.delta?.content || "";
+      const toolCallsChunk = choice.delta?.tool_calls || [];
 
       accumulatedContent += contentChunk;
+      if (toolCallsChunk.length > 0) {
+        for (const toolCallChunk of toolCallsChunk) {
+          const index = toolCallChunk.index;
+
+          // Initialize if this is the first chunk for this tool call
+          if (!accumulatedToolCalls[index]) {
+            accumulatedToolCalls[index] = {
+              id: toolCallChunk.id || "",
+              type: toolCallChunk.type || "function",
+              function: {
+                name: toolCallChunk.function?.name || "",
+                arguments: toolCallChunk.function?.arguments || ""
+              }
+            };
+          } else {
+            if (toolCallChunk.function?.arguments) {
+              accumulatedToolCalls[index].function.arguments += toolCallChunk.function.arguments;
+            }
+          }
+        }
+      }
 
       await vk_client.xAdd(`msg:${id}`, "*", {
         finish_reason: choice.finish_reason || "",
         reasoning: (choice.delta as any).reasoning || "",
         content: contentChunk,
         refusal: choice.delta?.refusal || "",
-        tool_calls: JSON.stringify(choice.delta?.tool_calls || null),
+        tool_calls: JSON.stringify(accumulatedToolCalls || []),
       });
+
+      if (choice.finish_reason && choice.finish_reason === "tool_calls") {
+        // devLog("[Debug] Tool calls detected, processing...");
+        devLog("[Debug] Tool calls: ", accumulatedToolCalls);
+        for (const toolCall of accumulatedToolCalls) {
+          // devLog("[Debug] Processing tool call:", toolCall);
+
+          try {
+            const args = JSON.parse(toolCall.function.arguments);
+            const result = await executeTool(toolCall.function.name, args);
+            devLog("[Debug] Tool Result:", result);
+
+            //add to db
+            await db.insert(chatMessages).values({
+              id: crypto.randomUUID(),
+              chatId,
+              senderId: "tool_response", // Ensure senderId is passed correctly
+              role: "tool",
+              message: JSON.stringify(result) || "", // Ensure message is never undefined/null
+              toolCallId: toolCall.id,
+              reasoning: "",
+              tool_calls: [],
+              finish_reason: "tool_calls_response",
+              createdAt: new Date(),
+            });
+
+          } catch (error) {
+            devLog("[Error] Tool call failed:", error);
+          }
+        }
+
+        // After processing, we make another call to continue the conversation
+
+        // First, fetch the tool response messages from the database
+        const toolCallIds = accumulatedToolCalls.map(tc => tc.id);
+        const recentToolMessages = await db
+          .select()
+          .from(chatMessages)
+          .where(
+            and(
+              eq(chatMessages.chatId, chatId),
+              eq(chatMessages.role, "tool"),
+              inArray(chatMessages.toolCallId, toolCallIds)
+            )
+          )
+          .orderBy(chatMessages.createdAt)
+          .then(results => results.map(msg => ({
+            id: msg.id,
+            role: "tool" as const,
+            chatId: msg.chatId,
+            senderId: msg.senderId,
+            message: msg.message,
+            createdAt: msg.createdAt,
+            files: [],
+            toolCallId: msg.toolCallId ?? undefined
+          })));
+
+        const newMessages = [
+          ...messages,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant" as const,
+            chatId,
+            senderId: opts.model,
+            message: accumulatedContent,
+            createdAt: new Date(),
+            files: [],
+            tool_calls: accumulatedToolCalls.map(call => ({
+              ...call,
+              function: {
+                ...call.function,
+                arguments: JSON.stringify(call.function.arguments) // Convert to JSON string for OAI
+              }
+            })),
+          },
+          ...recentToolMessages,
+        ];
+
+        // devLog("[Debug] Continuing conversation with new messages:", newMessages);
+        // await newCompletion(id, chatId, newMessages, opts);
+        await newMessage(chatId, newMessages, opts, depth + 1);
+      }
     }
   } catch (err: any) {
     await vk_client.xAdd(`msg:${id}`, "*", {
@@ -298,10 +444,40 @@ async function pgSubscriber(id: string, chatId: string, model: string) {
     let message = "";
     let reasoning = "";
     let finish_reason = "";
+    let tool_calls: any[] = [];
     for await (const chunk of msgSubscribe(id)) {
       message += chunk.content;
       reasoning += chunk.reasoning;
       finish_reason = chunk.finish_reason;
+      if (chunk.tool_calls) {
+        try {
+          const chunkToolCalls = JSON.parse(chunk.tool_calls);
+          if (Array.isArray(chunkToolCalls) && chunkToolCalls.length > 0) {
+            tool_calls = chunkToolCalls;
+          }
+        } catch (error) {
+          devLog("[Error] Failed to parse tool calls:", error);
+        }
+      }
+    }
+    devLog("[Debug] Tool_calls (pgSubscriber):", tool_calls);
+    // get type of tool_calls
+    devLog("[Debug] Tool_calls type:", typeof tool_calls);
+
+    // for some reason the tool call is not a real JSON object, so we need to parse it
+    let parsedToolCalls: any[] = [];
+    try {
+      parsedToolCalls = tool_calls.map(call => ({
+        ...call,
+        function: {
+          ...call.function,
+          arguments: typeof call.function.arguments === 'string'
+            ? JSON.parse(call.function.arguments)
+            : call.function.arguments,
+        },
+      }));
+    } catch (error) {
+      debugLogger(['development', 'production'], "[Error] Failed to parse tool call arguments:", error);
     }
 
     await db.insert(chatMessages).values({
@@ -311,6 +487,7 @@ async function pgSubscriber(id: string, chatId: string, model: string) {
       role: "assistant",
       message,
       reasoning,
+      tool_calls: parsedToolCalls,
       finish_reason,
       createdAt: new Date(),
     });

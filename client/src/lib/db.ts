@@ -7,9 +7,11 @@ export const Chat = z.object({
 });
 export const Chats = z.array(Chat);
 export type Chat = z.infer<typeof Chat>;
+
+export const allowedRoles = ["system", "user", "assistant", "tool"] as const;
 export const Message = z.object({
   id: z.uuidv4(),
-  role: z.enum(["system", "user", "assistant"]),
+  role: z.enum(allowedRoles),
   senderId: z.string(),
   chatId: z.string(),
   files: z.nullable(z.array(z.string())),
@@ -17,5 +19,14 @@ export const Message = z.object({
   message: z.string(),
   finish_reason: z.nullable(z.string()),
   createdAt: z.coerce.date(),
+  tool_calls: z.nullable(z.array(z.object({
+    id: z.string(),
+    type: z.literal("function"),
+    function: z.object({
+      name: z.string(),
+      arguments: z.record(z.string(), z.unknown()),
+    }),
+  }))),
+  toolCallId: z.nullable(z.string())
 });
 export type Message = z.infer<typeof Message>;

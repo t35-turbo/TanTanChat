@@ -61,7 +61,6 @@ chatsApp.post("/new", async (c) => {
   const user = c.get("user");
   const body = await NewChatBody.safeParseAsync(await c.req.json());
 
-  // TODO: allow unauth
   if (!session || !user) {
     return c.json({ error: "Unauthorized" }, 401);
   }
@@ -96,9 +95,16 @@ async function getChatMessages(chatId: string): Promise<sync.Messages> {
       completions.push({
         ...msg,
         files: files.filter((file) => !!file),
+        toolCallId: msg.toolCallId ?? undefined,
+        tool_calls: Array.isArray(msg.tool_calls) ? msg.tool_calls : undefined
       });
     } else {
-      completions.push({ ...msg, files: [] });
+      completions.push({
+        ...msg,
+        files: [],
+        toolCallId: msg.toolCallId ?? undefined,
+        tool_calls: Array.isArray(msg.tool_calls) ? msg.tool_calls : undefined
+      });
     }
   }
 
