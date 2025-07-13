@@ -13,9 +13,9 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: 3s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: valkey/valkey:7-alpine
@@ -42,9 +42,9 @@ services:
             redis-cli ping
           fi
         '
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: 3s
+      timeout: 5s
+      retries: 5
 
   server:
     build:
