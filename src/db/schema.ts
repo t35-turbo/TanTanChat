@@ -135,22 +135,33 @@ export const systemSettings = pgTable(
   (table) => [index("idx_system_settings_key").on(table.key)],
 );
 
-export const files = pgTable(
-  "files",
-  {
-    "id": text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    "filename": text("filename").notNull(),
-    "size": integer("size").notNull(),
-    "hash": text("hash").notNull(),
-    "mime": text("mime").notNull(),
-    "ownedBy": text("owned_by").notNull().references(() => user.id, { onDelete: "cascade" }),
-    "onS3": boolean("on_s3")
-      .$defaultFn(() => false)
-      .notNull(),
-    "filePath": text("file_path").notNull(),
-    "createdAt": timestamp("created_at")
-      .$defaultFn(() => /* @__PURE__ */ new Date())
-      .notNull(),
+export const files = pgTable("files", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  filename: text("filename").notNull(),
+  size: integer("size").notNull(),
+  hash: text("hash").notNull(),
+  mime: text("mime").notNull(),
+  ownedBy: text("owned_by")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  onS3: boolean("on_s3")
+    .$defaultFn(() => false)
+    .notNull(),
+  filePath: text("file_path").notNull(),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
 
-  }
-);
+export const pageContents = pgTable("pageContents", {
+  url: text("url").primaryKey().notNull(),
+  contents: text("contents").notNull(),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+  modifiedAt: timestamp("modified_at")
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
