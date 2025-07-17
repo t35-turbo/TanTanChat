@@ -28,7 +28,7 @@ export const defaultModels: Models = {
     thinkingEffort: "medium",
     vision: true,
   },
-  "google/gemini-2.5-flash-preview": {
+  "google/gemini-2.5-flash": {
     name: "Gemini 2.5 Flash",
     id: "google/gemini-2.5-flash",
     thinking: false,
