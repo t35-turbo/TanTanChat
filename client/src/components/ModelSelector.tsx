@@ -21,21 +21,22 @@ import { useFiles } from "@/hooks/use-files";
 // import { useTools } from "@/hooks/use-tools";
 
 export const defaultModels: Models = {
-  "google/gemini-2.5-pro-preview": {
+  "google/gemini-2.5-pro": {
     name: "Gemini 2.5 Pro",
-    id: "google/gemini-2.5-pro-preview",
-    thinking: false,
+    id: "google/gemini-2.5-pro",
+    thinking: true,
+    thinkingEffort: "medium",
     vision: true,
   },
   "google/gemini-2.5-flash-preview": {
     name: "Gemini 2.5 Flash",
-    id: "google/gemini-2.5-flash-preview",
+    id: "google/gemini-2.5-flash",
     thinking: false,
     vision: true,
   },
-  "google/gemini-2.5-flash-preview:thinking": {
+  "google/gemini-2.5-flash:thinking": {
     name: "Gemini 2.5 Flash (Thinking)",
-    id: "google/gemini-2.5-flash-preview:thinking",
+    id: "google/gemini-2.5-flash:thinking",
     thinking: true,
     thinkingEffort: "medium",
     vision: true,
