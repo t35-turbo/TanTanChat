@@ -22,7 +22,6 @@ function File({ file }: { file: FileItem }) {
 
   const uploader = useMutation({
     mutationFn: async () => {
-      // Convert file to base64
       const formData = new FormData();
       formData.append("file", file.file);
       const results = await __client.files.upload.mutate(formData);

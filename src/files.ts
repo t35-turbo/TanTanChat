@@ -8,7 +8,7 @@ import env from "./lib/env";
 import { authProcedure, router } from "./trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import {isBinaryFile} from "isbinaryfile";
+import { isBinaryFile } from "isbinaryfile";
 
 if (env.USE_S3 === false) {
   try {
@@ -61,15 +61,14 @@ export const filesRouter = router({
     const buffer = Buffer.from(await file.arrayBuffer());
     let fileType = file.type;
 
-    if (fileType === "") { // TODO: better mime type identification
+    if (fileType === "") {
+      // TODO: better mime type identification
       if (await isBinaryFile(buffer)) {
-        fileType = "application/octet-stream"
+        fileType = "application/octet-stream";
       } else {
-        fileType = "text/plain"
+        fileType = "text/plain";
       }
     }
-
-    console.log(fileType);
 
     await Bun.write(filePath, buffer);
 

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { authProcedure, router } from "./trpc";
 import { userSettings } from "./db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "./db";
 
 export const settingsRouter = router({
@@ -45,32 +45,22 @@ export const settingsRouter = router({
     }
   }),
   setKeys: authProcedure.input(z.record(z.string(), z.string())).mutation(async (opts) => {
-    const existing = new Set( // build a set of keys to check
-      (
-        await db
-          .select({ key: userSettings.key })
-          .from(userSettings)
-          .where(and(eq(userSettings.userId, opts.ctx.user.id), inArray(userSettings.key, Object.keys(opts.input))))
-      ).map((entry) => entry.key),
-    );
+    const values = Object.entries(opts.input).map(([key, value]) => ({
+      userId: opts.ctx.user.id,
+      key,
+      value,
+      updatedAt: new Date(),
+    }));
 
-    for (let record of Object.entries(opts.input)) {
-      if (existing.has(record[0])) {
-        await db
-          .update(userSettings)
-          .set({
-            value: record[1],
-            updatedAt: new Date(),
-          })
-          .where(and(eq(userSettings.userId, opts.ctx.user.id), eq(userSettings.key, record[0])));
-      } else {
-        await db.insert(userSettings).values({
-          userId: opts.ctx.user.id,
-          key: record[0],
-          value: record[1],
-          updatedAt: new Date(),
-        });
-      }
-    }
+    await db
+      .insert(userSettings)
+      .values(values)
+      .onConflictDoUpdate({
+        target: [userSettings.userId, userSettings.key],
+        set: {
+          value: sql`excluded.value`,
+          updatedAt: sql`excluded.updated_at`,
+        },
+      });
   }),
 });
