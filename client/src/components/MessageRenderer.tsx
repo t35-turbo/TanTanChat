@@ -26,6 +26,13 @@ interface MessageRendererProps {
   chatId?: string;
 }
 
+/**
+ * Renders the chat message history for a given chat, including pending user and assistant messages.
+ *
+ * Fetches and displays the list of messages for the specified chat ID, appending any in-progress user or assistant messages. Handles loading and error states, and renders each message using the `RenderedMsg` component.
+ *
+ * @param chatId - The ID of the chat whose messages are to be displayed (optional).
+ */
 export function MessageRenderer({ chatId }: MessageRendererProps) {
   const navigate = useNavigate();
   const user_sess = authClient.useSession();
@@ -103,6 +110,14 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
   );
 }
 
+/**
+ * Renders an individual chat message with support for editing, retrying, file attachments, and displaying reasoning details.
+ *
+ * Displays message content with markdown and math rendering, attached files with delete options, and UI controls for copying, editing, and regenerating messages. Allows editing user messages with keyboard shortcuts and manages local editing state. Shows reasoning details in a collapsible section if present, and displays alerts for non-standard finish reasons.
+ *
+ * @param message - The message object to render, including content, role, attachments, and metadata.
+ * @param last - Indicates if this is the last message in the chat thread, affecting layout.
+ */
 function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
   const [showThink, setShowThink] = React.useState(false);
   const or_key = useORKey((state) => state.key);
@@ -375,6 +390,14 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
   );
 }
 
+/**
+ * Renders markdown content with syntax highlighting and math support.
+ *
+ * Converts display math blocks using `\[ ... \]` delimiters to `$$ ... $$` for compatibility with math plugins, and applies syntax highlighting based on the current theme.
+ *
+ * @param children - The markdown string to render, or null/undefined for empty content.
+ * @returns The rendered markdown as React elements with math and code formatting.
+ */
 function MarkdownRenderer({ children }: { children: string | null | undefined }) {
   const base = useTheme((state) => state.base);
 

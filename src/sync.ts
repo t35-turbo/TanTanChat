@@ -56,6 +56,16 @@ const RedisMessageResponse = z.object({
 
 const vk_client = vk.createClient();
 
+/**
+ * Initiates an AI-generated chat message, streams its completion, and persists the result.
+ *
+ * Generates a unique message ID, starts streaming the AI completion, and triggers persistence of the final message. Returns the generated message ID.
+ *
+ * @param chatId - The unique identifier of the chat
+ * @param messages - The list of chat messages to provide context for the AI
+ * @param opts - Options for the AI completion request
+ * @returns The unique ID of the new message
+ */
 export async function newMessage(chatId: string, messages: Messages, opts: Options) {
   let uuid = crypto.randomUUID();
 
@@ -65,6 +75,11 @@ export async function newMessage(chatId: string, messages: Messages, opts: Optio
   return uuid;
 }
 
+/**
+ * Streams an AI-generated chat completion for a message, processes file attachments, and publishes response chunks to a Redis stream.
+ *
+ * Constructs the AI prompt from the provided chat history and system prompt, embedding file attachments as base64-encoded data or text as appropriate. Initiates a streaming chat completion request to the OpenAI API, accumulates and publishes each response chunk to a Redis stream keyed by message ID, and handles errors by publishing an error chunk.
+ */
 async function newCompletion(id: string, chatId: string, messages: Messages, opts: Options) {
   if (!vk_client.isOpen) await vk_client.connect();
 

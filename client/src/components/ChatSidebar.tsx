@@ -19,6 +19,13 @@ interface ChatItemProps {
   renameChat: UseMutationResult<void, Error, { chatId: string; name: string }, unknown>;
 }
 
+/**
+ * Renders a single chat item with options to rename or delete via context menu or inline actions.
+ *
+ * Displays the chat title as a link, with an inline input for renaming when active. Provides context menu actions for renaming and deleting the chat. Handles keyboard shortcuts for renaming and prevents navigation when deleting.
+ *
+ * @param item - The chat object to display and manage
+ */
 function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
   const [renameInput, setRenameInput] = useState<string>("");
   const [renaming, setRenaming] = useState<boolean>(false);
@@ -89,6 +96,11 @@ function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
   );
 }
 
+/**
+ * Renders the chat sidebar UI, providing chat list management, search, and user session controls.
+ *
+ * Displays a searchable, categorized list of chat threads with options to create, rename, or delete chats. Shows user information and navigation links for login and settings. Integrates with server state for real-time updates and manages chat mutations.
+ */
 export default function ChatSidebar() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const user_sess = authClient.useSession();
@@ -216,6 +228,13 @@ function timeDelta(date: Date) {
   }
 }
 
+/**
+ * Generates a list of chat sidebar items with date category headers for rendering.
+ *
+ * Groups chats by their last updated date, inserting headers such as "Today", "Yesterday", etc., before each group. If there are no chats, returns a message indicating no chats are available.
+ *
+ * @returns An array of objects containing React components for chat items and date headers, preserving grouping and order.
+ */
 function renderChatOutput(
   chats: Chat[],
   deleteChat: UseMutationResult<boolean, any, { chatId: string }, undefined>,

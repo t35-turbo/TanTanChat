@@ -205,6 +205,12 @@ export const chatRouter = router({
     }),
 });
 
+/**
+ * Retrieves all messages for a given chat, including detailed file information for any attached files.
+ *
+ * @param chatId - The ID of the chat whose messages are to be retrieved
+ * @returns An array of messages for the chat, each with file data populated for attached files
+ */
 async function getChatMessages(chatId: string): Promise<sync.Messages> {
   let msgs = await db
     .select()
@@ -227,6 +233,13 @@ async function getChatMessages(chatId: string): Promise<sync.Messages> {
   return completions;
 }
 
+/**
+ * Determines whether a chat with the specified ID exists for the given user.
+ *
+ * @param chatId - The unique identifier of the chat to check
+ * @param userId - The unique identifier of the user who should own the chat
+ * @returns True if the chat exists for the user; otherwise, false
+ */
 async function checkChatExists(chatId: string, userId: string): Promise<boolean> {
   return !!(
     await db

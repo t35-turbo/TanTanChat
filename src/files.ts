@@ -19,6 +19,14 @@ if (env.USE_S3 === false) {
   }
 }
 
+/**
+ * Retrieves a file's metadata and data handle by its ID from local storage.
+ *
+ * Returns `null` if the file does not exist. Throws an error if S3 storage is enabled.
+ *
+ * @param id - The unique identifier of the file to retrieve
+ * @returns An object containing the file's metadata and a Bun file handle, or `null` if not found
+ */
 export async function getFile(id: string) {
   const file = await db.select().from(files).where(eq(files.id, id)).limit(1);
 

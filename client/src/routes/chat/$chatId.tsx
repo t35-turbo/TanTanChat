@@ -25,7 +25,11 @@ export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
 });
 
-// TODO: when the new chat is created, the input ui loses focus
+/**
+ * Renders the main chat interface, handling chat session state, message sending, and user onboarding.
+ *
+ * Displays chat messages, manages message input, and integrates user settings and file attachments. Handles navigation between chat threads, loading and error states for user sessions, and onboarding flow based on URL parameters.
+ */
 export function ChatUI() {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 

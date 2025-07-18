@@ -4,6 +4,11 @@ import { LoaderCircle, Paperclip, X } from "lucide-react";
 import { useEffect } from "react";
 import { __client } from "@/lib/trpc";
 
+/**
+ * Displays a list of files with upload and removal controls.
+ *
+ * Renders each file using the `File` component within a flex container.
+ */
 export default function FileDisplay() {
   const files = useFiles((state) => state.files);
 
@@ -16,6 +21,13 @@ export default function FileDisplay() {
   );
 }
 
+/**
+ * Renders a file item with upload status and a remove option.
+ *
+ * Initiates an upload for the file if it has not been uploaded, displaying a loader during the process. Shows the file name and provides a button to remove the file from the list.
+ *
+ * @param file - The file item to display and upload
+ */
 function File({ file }: { file: FileItem }) {
   const removeFile = useFiles((state) => state.removeFile);
   const setUploaded = useFiles((state) => state.setUploaded);

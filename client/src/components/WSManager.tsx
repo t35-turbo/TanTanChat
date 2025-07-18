@@ -188,6 +188,13 @@ export function WSProvider({ children, chatId }: { children: React.ReactNode; ch
   return <WSEventProvider.Provider value={clientRef.current}>{children}</WSEventProvider.Provider>;
 }
 
+/**
+ * Returns the current active message ID from WebSocket events.
+ *
+ * Subscribes to "activeMessage" events from the WebSocket client context and updates the active message ID accordingly. When the active ID becomes null, invalidates the chat thread history query cache.
+ *
+ * @returns The current active message ID, or null if none is active.
+ */
 export function useActiveId() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const context = useContext(WSEventProvider);

@@ -296,6 +296,11 @@ function AppearanceCard() {
     </Card>
   );
 }
+/**
+ * Renders a card allowing users to customize their system prompt settings, including display name, self-description, and response preferences.
+ *
+ * Fetches and updates the "name," "self-attr," and "traits" settings for the authenticated user, providing live feedback for loading and error states.
+ */
 function SystemPromptCard() {
   const user_sess = authClient.useSession();
 
