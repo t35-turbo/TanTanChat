@@ -12,13 +12,11 @@ import React, { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { useMutation, useQuery, useInfiniteQuery, useMutationState } from "@tanstack/react-query";
-import ky, { HTTPError } from "ky";
 import { trpc, queryClient, type Message, __client } from "@/lib/trpc";
 import { useORKey } from "@/hooks/use-or-key";
 import { useModel } from "@/hooks/use-model";
 import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
 import { authClient } from "@/lib/auth-client";
-import { getUserSetting } from "@/routes/settings";
 import { Textarea } from "./ui/textarea";
 import { z } from "zod/v4-mini";
 import { useNavigate } from "@tanstack/react-router";
@@ -114,29 +112,23 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
 
   const user_sess = authClient.useSession();
 
-  const nameQ = useQuery({
-    queryKey: ["name", user_sess?.data?.user?.id],
-    queryFn: () => getUserSetting("name", user_sess?.data?.user?.id),
-    enabled: !user_sess.isPending && !user_sess.error,
-  });
-  const selfAttrQ = useQuery({
-    queryKey: ["self-attr", user_sess?.data?.user?.id],
-    queryFn: () => getUserSetting("self-attr", user_sess?.data?.user?.id),
-    enabled: !user_sess.isPending && !user_sess.error,
-  });
-  const traitsQ = useQuery({
-    queryKey: ["traits", user_sess?.data?.user?.id],
-    queryFn: () => getUserSetting("traits", user_sess?.data?.user?.id),
-    enabled: !user_sess.isPending && !user_sess.error,
-  });
+  const nameQ = useQuery(
+    trpc.settings.getKey.queryOptions("name", { enabled: !user_sess.isPending && !user_sess.error }),
+  );
+
+  const selfAttrQ = useQuery(
+    trpc.settings.getKey.queryOptions("self-attr", { enabled: !user_sess.isPending && !user_sess.error }),
+  );
+
+  const traitsQ = useQuery(
+    trpc.settings.getKey.queryOptions("traits", { enabled: !user_sess.isPending && !user_sess.error }),
+  );
 
   const files = useQuery({
     queryKey: ["files", message.files],
     queryFn: async () => {
       if (message.files) {
-        return z
-          .array(z.object({ fileId: z.string(), fileName: z.string() }))
-          .parse(await Promise.all(message.files.map((file) => ky.get(`/api/files/${file}/metadata`).json())));
+        return await Promise.all(message.files.map((file) => __client.files.getMetadata.query({ id: file })));
       } else {
         return [];
       }

@@ -1,12 +1,14 @@
-import { Hono } from "hono";
 import { db } from "./db";
 import { files } from "./db/schema";
 import { eq, and } from "drizzle-orm";
 import * as crypto from "crypto";
 import mime from "mime";
-import { auth } from "./lib/auth";
 import { mkdirSync, readdirSync } from "fs";
 import env from "./lib/env";
+import { authProcedure, router } from "./trpc";
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+import {isBinaryFile} from "isbinaryfile";
 
 if (env.USE_S3 === false) {
   try {
@@ -16,13 +18,6 @@ if (env.USE_S3 === false) {
     mkdirSync(env.LOCAL_FILE_STORE_PATH + "/store", { recursive: true });
   }
 }
-
-const filesApp = new Hono<{
-  Variables: {
-    user: typeof auth.$Infer.Session.user | null;
-    session: typeof auth.$Infer.Session.session | null;
-  };
-}>();
 
 export async function getFile(id: string) {
   const file = await db.select().from(files).where(eq(files.id, id)).limit(1);
@@ -50,141 +45,134 @@ export async function getFile(id: string) {
   };
 }
 
-filesApp.post("/upload", async (c) => {
-  // TODO: S3 support
+export const filesRouter = router({
+  upload: authProcedure.input(z.instanceof(FormData)).mutation(async (opts) => {
+    // TODO: S3 support
+    if (process.env.USE_S3 === "true") {
+      throw new TRPCError({
+        code: "NOT_IMPLEMENTED",
+        message: "File uploads are not supported when USE_S3 is true",
+      });
+    }
 
-  const session = c.get("session");
-  const user = c.get("user");
-  const formData = await c.req.formData();
-  const file = formData.get("file");
+    const file = z.instanceof(File).parse(opts.input.get("file"));
+    const fileId = crypto.randomUUID();
+    const filePath = `${env.LOCAL_FILE_STORE_PATH}/store/${fileId}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
+    let fileType = file.type;
 
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
+    if (fileType === "") { // TODO: better mime type identification
+      if (await isBinaryFile(buffer)) {
+        fileType = "application/octet-stream"
+      } else {
+        fileType = "text/plain"
+      }
+    }
 
-  if (!file || !(file instanceof Blob)) {
-    return c.json({ error: "Invalid file" }, 400);
-  }
+    console.log(fileType);
 
-  if (process.env.USE_S3 === "true") {
-    throw new Error("File uploads are not supported when USE_S3 is true");
-  }
+    await Bun.write(filePath, buffer);
 
-  const fileId = crypto.randomUUID();
-  const filePath = `${env.LOCAL_FILE_STORE_PATH}/store/${fileId}`;
-  const arrayBuffer = await file.arrayBuffer();
+    const fileName = file.name;
+    const fileSize = file.size;
+    const fileHash = crypto.createHash("md5").update(buffer).digest("hex");
 
-  await Bun.write(filePath, arrayBuffer);
+    const fileData = {
+      id: fileId,
+      filename: fileName,
+      size: fileSize,
+      hash: fileHash,
+      mime: fileType,
+      ownedBy: opts.ctx.user.id,
+      onS3: process.env.USE_S3 === "true",
+      filePath: filePath,
+      createdAt: new Date(),
+    };
 
-  const fileName = file.name || `${fileId}`;
-  const fileSize = file.size || arrayBuffer.byteLength;
-  const fileHash = crypto.createHash("md5").update(new Uint8Array(arrayBuffer)).digest("hex");
+    await db.insert(files).values(fileData);
+    return { fileId: fileId, fileName: fileName, fileSize: fileSize, fileHash: fileHash };
+  }),
 
-  const fileData = {
-    id: fileId,
-    filename: fileName,
-    size: fileSize,
-    hash: fileHash,
-    mime: file.type,
-    ownedBy: user.id,
-    onS3: process.env.USE_S3 === "true",
-    filePath: filePath,
-    createdAt: new Date(),
-  };
+  get: authProcedure.input(z.object({ id: z.string() })).query(async (opts) => {
+    const fileResult = await getFile(opts.input.id);
 
-  await db.insert(files).values(fileData);
-  return c.json({ fileId: fileId, fileName: fileName, fileSize: fileSize, fileHash: fileHash }, 201);
+    if (!fileResult) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "File not found",
+      });
+    }
+
+    if (opts.ctx.user.id !== fileResult.metadata.ownedBy) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Forbidden",
+      });
+    }
+
+    const filetype = mime.getType(fileResult.metadata.filename) || "application/octet-stream";
+    const arrayBuffer = await fileResult.data.arrayBuffer();
+
+    return {
+      data: Buffer.from(arrayBuffer).toString("base64"),
+      contentType: filetype,
+      filename: fileResult.metadata.filename,
+    };
+  }),
+
+  getMetadata: authProcedure.input(z.object({ id: z.string() })).query(async (opts) => {
+    const file = await db
+      .select()
+      .from(files)
+      .where(and(eq(files.id, opts.input.id), eq(files.ownedBy, opts.ctx.user.id)))
+      .limit(1);
+
+    if (file.length === 0) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "File not found",
+      });
+    }
+
+    return {
+      fileId: file[0].id,
+      fileName: file[0].filename,
+      fileSize: file[0].size,
+      fileHash: file[0].hash,
+    };
+  }),
+
+  delete: authProcedure.input(z.object({ id: z.string() })).mutation(async (opts) => {
+    const file = await db.select().from(files).where(eq(files.id, opts.input.id)).limit(1);
+
+    if (file.length === 0) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "File not found",
+      });
+    }
+
+    if (opts.ctx.user.id !== file[0].ownedBy) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Forbidden",
+      });
+    }
+
+    try {
+      // Delete the file from the local store
+      await Bun.file(`${file[0].filePath}`).delete();
+
+      // Delete the file record from the database
+      await db.delete(files).where(eq(files.id, opts.input.id));
+
+      return { message: "File deleted successfully" };
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to delete file",
+      });
+    }
+  }),
 });
-
-filesApp.get("/:id", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const fileId = c.req.param("id");
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-  if (!fileId || typeof fileId !== "string") {
-    return c.json({ error: "Invalid file ID" }, 400);
-  }
-
-  const fileResult = await getFile(fileId);
-
-  if (!fileResult) {
-    return c.json({ error: "File not found" }, 404);
-  }
-
-  if (user.id !== fileResult.metadata.ownedBy) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
-  const filetype = mime.getType(fileResult.metadata.filename) || "application/octet-stream";
-
-  c.header("Content-Type", filetype);
-
-  return c.body(await fileResult.data.arrayBuffer(), 200, {
-    "Content-Disposition": `attachment; filename="${fileResult.metadata.filename}"`,
-  });
-});
-
-filesApp.get("/:id/metadata", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const fileId = c.req.param("id");
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-  if (!fileId || typeof fileId !== "string") {
-    return c.json({ error: "Invalid file ID" }, 400);
-  }
-
-  const file = await db
-    .select()
-    .from(files)
-    .where(and(eq(files.id, fileId), eq(files.ownedBy, user.id)))
-    .limit(1);
-
-  if (file.length === 0) {
-    return c.json({ error: "File not found" }, 404);
-  }
-
-  return c.json({ fileId: file[0].id, fileName: file[0].filename, fileSize: file[0].size, fileHash: file[0].hash }, 201);
-});
-
-filesApp.delete("/:id", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const fileId = c.req.param("id");
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-  if (!fileId || typeof fileId !== "string") {
-    return c.json({ error: "Invalid file ID" }, 400);
-  }
-
-  const file = await db.select().from(files).where(eq(files.id, fileId)).limit(1);
-
-  if (file.length === 0) {
-    return c.json({ error: "File not found" }, 404);
-  }
-  if (user.id !== file[0].ownedBy) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
-  try {
-    // Delete the file from the local store
-    await Bun.file(`${file[0].filePath}`).delete();
-
-    // Delete the file record from the database
-    await db.delete(files).where(eq(files.id, fileId));
-
-    return c.json({ message: "File deleted successfully" }, 200);
-  } catch (error) {
-    console.error("Error deleting file:", error);
-    return c.json({ error: "Failed to delete file" }, 500);
-  }
-});
-
-export { filesApp };

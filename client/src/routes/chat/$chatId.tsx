@@ -12,7 +12,6 @@ import ky from "ky";
 import { toast } from "sonner";
 import { useORKey } from "@/hooks/use-or-key";
 import { useModel } from "@/hooks/use-model";
-import { getUserSetting } from "../settings";
 import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
 import { useTools } from "@/hooks/use-tools";
 import { useFiles } from "@/hooks/use-files";
@@ -45,21 +44,17 @@ export function ChatUI() {
   const files = useFiles((state) => state.files);
   const clearFiles = useFiles((state) => state.clearFiles);
 
-  const nameQ = useQuery({
-    queryKey: ["name", user_sess?.data?.user?.id],
-    queryFn: () => getUserSetting("name", user_sess?.data?.user?.id),
-    enabled: !user_sess.isPending && !user_sess.error,
-  });
-  const selfAttrQ = useQuery({
-    queryKey: ["self-attr", user_sess?.data?.user?.id],
-    queryFn: () => getUserSetting("self-attr", user_sess?.data?.user?.id),
-    enabled: !user_sess.isPending && !user_sess.error,
-  });
-  const traitsQ = useQuery({
-    queryKey: ["traits", user_sess?.data?.user?.id],
-    queryFn: () => getUserSetting("traits", user_sess?.data?.user?.id),
-    enabled: !user_sess.isPending && !user_sess.error,
-  });
+  const nameQ = useQuery(
+    trpc.settings.getKey.queryOptions("name", { enabled: !user_sess.isPending && !user_sess.error }),
+  );
+
+  const selfAttrQ = useQuery(
+    trpc.settings.getKey.queryOptions("self-attr", { enabled: !user_sess.isPending && !user_sess.error }),
+  );
+
+  const traitsQ = useQuery(
+    trpc.settings.getKey.queryOptions("traits", { enabled: !user_sess.isPending && !user_sess.error }),
+  );
 
   const sendMessageMut = useMutation({
     mutationKey: ["sendMessage", chatId],

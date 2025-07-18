@@ -15,13 +15,8 @@ import ky from "ky";
 import { ArrowLeftIcon, Info, KeyIcon, LogIn, LogOut, Palette, User, Wrench } from "lucide-react";
 import { SessionLoadingScreen } from "@/components/LoadingScreen";
 import { z } from "zod/v4-mini";
-import { queryClient } from "@/lib/trpc";
+import { __client, queryClient, trpc } from "@/lib/trpc";
 import { useEffect } from "react";
-
-export const getUserSetting = async (key: string, userId?: string) => {
-  if (!userId) return ""; // TODO: Dexie Db for logged out users
-  return z.object({ value: z.nullable(z.string()) }).parse(await ky.get(`/api/user/settings/${key}`).json())?.value;
-};
 
 export const Route = createFileRoute("/settings")({
   component: RouteComponent,
@@ -304,55 +299,37 @@ function AppearanceCard() {
 function SystemPromptCard() {
   const user_sess = authClient.useSession();
 
-  const nameQ = useQuery({
-    queryKey: ["name", user_sess?.data?.user?.id],
-    queryFn: () => getUserSetting("name", user_sess?.data?.user?.id),
-    enabled: !user_sess.isPending && !user_sess.error,
-  });
+  const nameQ = useQuery(
+    trpc.settings.getKey.queryOptions("name", { enabled: !user_sess.isPending && !user_sess.error }),
+  );
 
-  const selfAttrQ = useQuery({
-    queryKey: ["self-attr", user_sess?.data?.user?.id],
-    queryFn: () => getUserSetting("self-attr", user_sess?.data?.user?.id),
-    enabled: !user_sess.isPending && !user_sess.error,
-  });
+  const selfAttrQ = useQuery(
+    trpc.settings.getKey.queryOptions("self-attr", { enabled: !user_sess.isPending && !user_sess.error }),
+  );
 
-  const traitsQ = useQuery({
-    queryKey: ["traits", user_sess?.data?.user?.id],
-    queryFn: () => getUserSetting("traits", user_sess?.data?.user?.id),
-    enabled: !user_sess.isPending && !user_sess.error,
-  });
+  const traitsQ = useQuery(
+    trpc.settings.getKey.queryOptions("traits", { enabled: !user_sess.isPending && !user_sess.error }),
+  );
 
   const nameMut = useMutation({
     mutationFn: async (newName: string) => {
-      return await ky
-        .put(`/api/user/settings/name`, {
-          json: { value: newName },
-        })
-        .json();
+      await __client.settings.setKey.mutate(["name", newName]);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["name"] }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: trpc.settings.getKey.queryKey("name") }),
   });
 
   const selfAttrMut = useMutation({
     mutationFn: async (newSelfAttr: string) => {
-      return await ky
-        .put(`/api/user/settings/self-attr`, {
-          json: { value: newSelfAttr },
-        })
-        .json();
+      await __client.settings.setKey.mutate(["self-attr", newSelfAttr]);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["self-attr"] }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: trpc.settings.getKey.queryKey("self-attr") }),
   });
 
   const traitsMut = useMutation({
     mutationFn: async (newTraits: string) => {
-      return await ky
-        .put(`/api/user/settings/traits`, {
-          json: { value: newTraits },
-        })
-        .json();
+      await __client.settings.setKey.mutate(["traits", newTraits]);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["traits"] }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: trpc.settings.getKey.queryKey("traits") }),
   });
 
   let name = "";

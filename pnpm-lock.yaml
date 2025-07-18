@@ -29,6 +29,9 @@ importers:
       hono:
         specifier: ^4.7.11
         version: 4.7.11
+      isbinaryfile:
+        specifier: ^5.0.4
+        version: 5.0.4
       mime:
         specifier: ^4.0.7
         version: 4.0.7
@@ -634,6 +637,10 @@ packages:
     resolution: {integrity: sha512-ZhMwEosbFJkA0YhFnNDgTM4ZxDRsS6HqTo7qsZM08fehyRYIYa0yHu5R6mgo1n/8MgaPBXiPimPD77baVFYg+A==}
     engines: {node: '>=12.13'}
 
+  isbinaryfile@5.0.4:
+    resolution: {integrity: sha512-YKBKVkKhty7s8rxddb40oOkuP0NbaeXrQvLin6QMHL7Ypiy2RW9LwOVrVgZRyOrhQlayMd9t+D8yDy8MKFTSDQ==}
+    engines: {node: '>= 18.0.0'}
+
   jose@5.10.0:
     resolution: {integrity: sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==}
 
@@ -1211,6 +1218,8 @@ snapshots:
   hono@4.7.11: {}
 
   is-what@4.1.16: {}
+
+  isbinaryfile@5.0.4: {}
 
   jose@5.10.0: {}
 
