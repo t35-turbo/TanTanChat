@@ -7,43 +7,8 @@ import * as sync from "./sync";
 import { z } from "zod";
 import * as crypto from "crypto";
 import { getFile } from "./files";
-
-const chatsApp = new Hono<{
-  Variables: {
-    user: typeof auth.$Infer.Session.user | null;
-    session: typeof auth.$Infer.Session.session | null;
-  };
-}>();
-
-// get all chat threads
-chatsApp.get("/", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  const userChats = await db.select().from(chats).where(eq(chats.userId, user.id));
-  if (userChats.length === 0) {
-    return c.json({ chats: [] });
-  }
-  const chatData = userChats.map((chat) => ({
-    id: chat.id,
-    title: chat.title,
-    lastUpdated: chat.lastUpdated,
-  }));
-
-  return c.json({ chats: chatData });
-});
-
-const NewChatBody = z.object({
-  message: z.string(),
-  opts: z.object({
-    apiKey: z.string(),
-    model: z.string(),
-  }),
-});
+import { authProcedure, publicProcedure, router } from "./trpc";
+import { TRPCError } from "@trpc/server";
 
 type Message = {
   id: string;
@@ -55,32 +20,189 @@ type Message = {
   createdAt: Date;
 };
 
-// make new chat thread
-chatsApp.post("/new", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const body = await NewChatBody.safeParseAsync(await c.req.json());
-
-  // TODO: allow unauth
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
+const chatProcedure = authProcedure.input(z.object({ chatId: z.string() })).use(async (opts) => {
+  if (await checkChatExists(opts.input.chatId, opts.ctx.user.id)) {
+    return opts.next();
+  } else {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "The relevant Chat was not found.",
+    });
   }
-  if (body.error) {
-    return c.json({ error: "Invalid message" }, 400);
-  }
-  const { message, opts } = body.data;
+});
 
-  const newChat = {
-    id: crypto.randomUUID(),
-    userId: user.id,
-    title: "New Chat",
-    lastUpdated: new Date(),
-  };
+export const chatRouter = router({
+  listThreads: authProcedure.query(async (opts) => {
+    return await db.select().from(chats).where(eq(chats.userId, opts.ctx.user.id));
+  }),
+  newThread: authProcedure
+    .input(
+      z.object({
+        message: z.string(),
+        opts: z.object({ apiKey: z.string(), model: z.string() }),
+      }),
+    )
+    .mutation(async (opts) => {
+      const newChat = {
+        id: crypto.randomUUID(),
+        userId: opts.ctx.user.id,
+        title: "New Chat",
+        lastUpdated: new Date(),
+      };
 
-  sync.titleGenerator(newChat.id, message, [user.id], opts);
+      sync.titleGenerator(newChat.id, opts.input.message, [opts.ctx.user.id], opts.input.opts);
+      await db.insert(chats).values(newChat);
 
-  await db.insert(chats).values(newChat);
-  return c.json({ uuid: newChat.id }, 201);
+      return newChat.id;
+    }),
+  deleteThread: chatProcedure.mutation(async (opts) => {
+    return (
+      (
+        await db
+          .delete(chats)
+          .where(and(eq(chats.id, opts.input.chatId), eq(chats.userId, opts.ctx.user.id)))
+          .returning({ id: chats.id })
+      ).length > 0
+    );
+  }),
+  renameThread: chatProcedure.input(z.object({ name: z.string() })).mutation(async (opts) => {
+    await db
+      .update(chats)
+      .set({ title: opts.input.name })
+      .where(and(eq(chats.id, opts.input.chatId), eq(chats.userId, opts.ctx.user.id)));
+  }),
+  removeFile: chatProcedure
+    .input(z.object({ msgId: z.string(), fileId: z.string() }))
+    .mutation(async (opts) => {
+      // Get the message to check if it exists and belongs to this chat
+      const message = await db
+        .select()
+        .from(chatMessages)
+        .where(and(eq(chatMessages.id, opts.input.msgId), eq(chatMessages.chatId, opts.input.chatId)))
+        .limit(1);
+
+      if (!message[0]) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Message not found",
+        });
+      }
+
+      // Remove the file from the files array
+      const currentFiles = message[0].files || [];
+      const updatedFiles = currentFiles.filter((file) => file !== opts.input.fileId);
+
+      // Update the message with the new files array
+      await db.update(chatMessages).set({ files: updatedFiles }).where(eq(chatMessages.id, opts.input.msgId));
+
+      return { message: "File removed successfully" };
+    }),
+  retryMessage: chatProcedure
+    .input(z.object({
+      msgId: z.string(),
+      message: z.string().optional(),
+      opts: z.object({
+        apiKey: z.string(),
+        model: z.string(),
+        reasoning_effort: z.enum(["low", "medium", "high"]).optional(),
+        system_prompt: z.string(),
+      })
+    }))
+    .mutation(async (opts) => {
+      // search for the message in the messages
+      const allMessages = await getChatMessages(opts.input.chatId);
+      const messageIndex = allMessages.findIndex((msg) => msg.id === opts.input.msgId);
+
+      let newMsgs: { arr: sync.Messages; delArr: string[] };
+
+      if (messageIndex === -1) {
+        // message not found
+        newMsgs = { arr: allMessages, delArr: [] };
+      } else {
+        const targetMessage = allMessages[messageIndex];
+        if (targetMessage.role === "user") {
+          // message to retry/edit is user message
+          if (opts.input.message && typeof opts.input.message === "string") {
+            targetMessage.message = opts.input.message;
+          }
+          newMsgs = {
+            // keep all messages up to and including this one.
+            arr: allMessages.slice(0, messageIndex + 1),
+            delArr: allMessages.slice(messageIndex + 1).map((m) => m.id),
+          };
+        } else {
+          // If the target is not a user message, we delete it and all subsequent messages.
+          newMsgs = {
+            arr: allMessages.slice(0, messageIndex),
+            delArr: allMessages.slice(messageIndex).map((m) => m.id),
+          };
+        }
+      }
+
+      if (await sync.getActiveMessage(opts.input.chatId)) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Chat is Busy",
+        });
+      }
+
+      // Delete messages after the specified message
+      const operations = [];
+
+      if (newMsgs.delArr.length > 0) {
+        operations.push(db.delete(chatMessages).where(inArray(chatMessages.id, newMsgs.delArr)));
+      }
+
+      if (opts.input.message) {
+        operations.push(db.update(chatMessages).set({ message: opts.input.message }).where(eq(chatMessages.id, opts.input.msgId)));
+      }
+
+      await Promise.all(operations);
+      sync.invalidateCache(opts.ctx.user.id, "messages");
+
+      const messages: sync.Messages = newMsgs.arr;
+      return { msgId: await sync.newMessage(opts.input.chatId, messages, opts.input.opts) };
+    }),
+
+  threadHistory: chatProcedure.query(async (opts) => {
+    return await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.chatId, opts.input.chatId))
+      .orderBy(asc(chatMessages.createdAt));
+  }),
+  newMessage: chatProcedure
+    .input(
+      z.object({
+        message: z.string(),
+        opts: z.object({
+          apiKey: z.string(),
+          model: z.string(),
+          system_prompt: z.string(),
+          tools: z.null(),
+        }),
+        files: z.string().array(),
+      }),
+    )
+    .mutation(async (opts) => {
+      const chatId = opts.input.chatId;
+
+      const newMessage: Message = {
+        id: crypto.randomUUID(),
+        chatId,
+        senderId: opts.ctx.user.id,
+        role: "user",
+        message: opts.input.message,
+        files: opts.input.files,
+        createdAt: new Date(),
+      };
+
+      await db.insert(chatMessages).values(newMessage);
+      let messages: sync.Messages = await getChatMessages(chatId);
+      sync.broadcastNewMessage(chatId);
+
+      return await sync.newMessage(chatId, messages, opts.input.opts);
+    }),
 });
 
 async function getChatMessages(chatId: string): Promise<sync.Messages> {
@@ -105,7 +227,7 @@ async function getChatMessages(chatId: string): Promise<sync.Messages> {
   return completions;
 }
 
-async function checkChatExists(chatId: string, userId: string) {
+async function checkChatExists(chatId: string, userId: string): Promise<boolean> {
   return !!(
     await db
       .select()
@@ -113,231 +235,3 @@ async function checkChatExists(chatId: string, userId: string) {
       .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
   )?.[0];
 }
-
-chatsApp.get("/:id", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const chatId = c.req.param("id");
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  if (!chatId || typeof chatId !== "string") {
-    return c.json({ error: "Invalid chat ID" }, 400);
-  }
-
-  if (!(await checkChatExists(chatId, user.id))) {
-    return c.json({ error: "Not Found" }, 404);
-  }
-
-  let messages = await db
-    .select()
-    .from(chatMessages)
-    .where(eq(chatMessages.chatId, chatId))
-    .orderBy(asc(chatMessages.createdAt));
-
-  return c.json({ messages }, 200);
-});
-
-chatsApp.delete("/:id", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const chatId = c.req.param("id");
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  if (!chatId) {
-    return c.json({ error: "Chat ID is required" }, 400);
-  }
-
-  if (!(await checkChatExists(chatId, user.id))) {
-    return c.json({ error: "Chat not found" }, 404);
-  }
-
-  // Delete the chat
-  await db.delete(chats).where(and(eq(chats.id, chatId), eq(chats.userId, user.id)));
-
-  return c.json({ message: "Chat deleted successfully" }, 200);
-});
-
-chatsApp.put("/:id/rename", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const { name } = await c.req.json();
-  const chatId = c.req.param("id");
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-  if (!chatId) {
-    return c.json({ error: "Invalid chat ID" }, 400);
-  }
-  if (!name || typeof name !== "string") {
-    return c.json({ error: "Invalid Name" }, 400);
-  }
-  if (!(await checkChatExists(chatId, user.id))) {
-    return c.json({ error: "Not Found" }, 404);
-  }
-
-  await db
-    .update(chats)
-    .set({ title: name })
-    .where(and(eq(chats.id, chatId), eq(chats.userId, user.id)));
-
-  return c.json({}, 200);
-});
-
-chatsApp.post("/:id/new", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const { message, opts, files } = await c.req.json();
-  const chatId = c.req.param("id");
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-  if (!chatId) {
-    return c.json({ error: "Invalid chat ID" }, 400);
-  }
-  if (!message || message.trim() === "") {
-    return c.json({ error: "Invalid message", message: message }, 400);
-  }
-  if (!(await checkChatExists(chatId, user.id))) {
-    return c.json({ error: "Not Found" }, 404);
-  }
-  if (await sync.getActiveMessage(chatId)) {
-    return c.json({ error: "Chat is Busy" }, 409);
-  }
-
-  const newMessage: Message = {
-    id: crypto.randomUUID(),
-    chatId: chatId,
-    senderId: user.id,
-    role: "user",
-    message: message,
-    files: files ?? [],
-    createdAt: new Date(),
-  };
-  console.log("Creating new message for chat:", chatId, "with message:", message);
-  await db.insert(chatMessages).values(newMessage);
-  let messages: sync.Messages = await getChatMessages(chatId);
-  sync.broadcastNewMessage(chatId);
-
-  return c.json({ msgId: await sync.newMessage(chatId, messages, opts) }, 201);
-});
-
-chatsApp.delete("/:id/file", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const chatId = c.req.param("id");
-  const msgId = c.req.query("msgId");
-  const fileId = c.req.query("fileId");
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  if (!chatId || !msgId || !fileId) {
-    return c.json({ error: "Bad Request" }, 400);
-  }
-
-  if (!(await checkChatExists(chatId, user.id))) {
-    return c.json({ error: "Not Found" }, 404);
-  }
-
-  // Get the message to check if it exists and belongs to this chat
-  const message = await db
-    .select()
-    .from(chatMessages)
-    .where(and(eq(chatMessages.id, msgId), eq(chatMessages.chatId, chatId)))
-    .limit(1);
-
-  if (!message[0]) {
-    return c.json({ error: "Message not found" }, 404);
-  }
-
-  // Remove the file from the files array
-  const currentFiles = message[0].files || [];
-  const updatedFiles = currentFiles.filter((file) => file !== fileId);
-
-  // Update the message with the new files array
-  await db.update(chatMessages).set({ files: updatedFiles }).where(eq(chatMessages.id, msgId));
-
-  return c.json({ message: "File removed successfully" }, 200);
-});
-
-chatsApp.post("/:id/retry", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const { message, opts } = await c.req.json();
-  const chatId = c.req.param("id");
-  const msgId = c.req.query("msgId");
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  if (!chatId || !msgId) {
-    return c.json({ error: "Chat ID and Message ID are required" }, 400);
-  }
-
-  if (!(await checkChatExists(chatId, user.id))) {
-    return c.json({ error: "Not Found" }, 404);
-  }
-
-  // search for the message in the messages
-  const allMessages = await getChatMessages(chatId);
-  const messageIndex = allMessages.findIndex((msg) => msg.id === msgId);
-
-  let newMsgs: { arr: sync.Messages; delArr: string[] };
-
-  if (messageIndex === -1) {
-    // message not found
-    newMsgs = { arr: allMessages, delArr: [] };
-  } else {
-    const targetMessage = allMessages[messageIndex];
-    if (targetMessage.role === "user") {
-      // message to retry/edit is user message
-      if (message && typeof message === "string") {
-        targetMessage.message = message;
-      }
-      newMsgs = {
-        // keep all messages up to and including this one.
-        arr: allMessages.slice(0, messageIndex + 1),
-        delArr: allMessages.slice(messageIndex + 1).map((m) => m.id),
-      };
-    } else {
-      // If the target is not a user message, we delete it and all subsequent messages.
-      newMsgs = {
-        arr: allMessages.slice(0, messageIndex),
-        delArr: allMessages.slice(messageIndex).map((m) => m.id),
-      };
-    }
-  }
-
-  if (await sync.getActiveMessage(chatId)) {
-    return c.json({ error: "Chat is Busy" }, 409);
-  }
-
-  // Delete messages after the specified message
-  const operations = [];
-
-  if (newMsgs.delArr.length > 0) {
-    operations.push(db.delete(chatMessages).where(inArray(chatMessages.id, newMsgs.delArr)));
-  }
-
-  if (message) {
-    operations.push(db.update(chatMessages).set({ message }).where(eq(chatMessages.id, msgId)));
-  }
-
-  await Promise.all(operations);
-  sync.invalidateCache(user.id, "messages");
-
-  const messages: sync.Messages = newMsgs.arr;
-  return c.json({ msgId: await sync.newMessage(chatId, messages, opts) }, 201);
-});
-
-export default chatsApp;

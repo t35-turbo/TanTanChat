@@ -15,7 +15,7 @@ import ky from "ky";
 import { ArrowLeftIcon, Info, KeyIcon, LogIn, LogOut, Palette, User, Wrench } from "lucide-react";
 import { SessionLoadingScreen } from "@/components/LoadingScreen";
 import { z } from "zod/v4-mini";
-import { queryClient } from "./__root";
+import { queryClient } from "@/lib/trpc";
 import { useEffect } from "react";
 
 export const getUserSetting = async (key: string, userId?: string) => {

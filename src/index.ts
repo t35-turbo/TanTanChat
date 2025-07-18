@@ -8,24 +8,31 @@ import { z } from "zod";
 import { createBunWebSocket, serveStatic } from "hono/bun";
 import type { ServerWebSocket } from "bun";
 import { filesApp } from "./files";
-import chatsApp from "./chats";
-import env from "./lib/env";
+import chatsApp, { chatRouter } from "./chats";
 import { testConnection as testRedisConnection } from "./db/redis";
+import { router } from "./trpc";
+import { trpcServer } from "@hono/trpc-server";
 
 const PORT = 3001;
 
 const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
 
-if (env.NODE_ENV === "development") {
-  console.log("[DEBUG] Discord environment variables:");
-  console.log("[DEBUG] DISCORD_CLIENT_ID:", process.env.DISCORD_CLIENT_ID);
-  console.log("[DEBUG] DISCORD_CLIENT_SECRET:", process.env.DISCORD_CLIENT_SECRET);
-  console.log("[DEBUG] REDIS_URL:", process.env.REDIS_URL);
-  console.log("[DEBUG] REDIS_PASSWORD:", process.env.REDIS_PASSWORD);
-  console.log("[DEBUG] PORT:", PORT);
-  console.log("[DEBUG] DATABASE_URL:", process.env.DATABASE_URL);
-  console.log("[DEBUG] AUTH_SECRET:", process.env.AUTH_SECRET);
-}
+// if (env.NODE_ENV === "development") {
+//   console.log("[DEBUG] Discord environment variables:");
+//   console.log("[DEBUG] DISCORD_CLIENT_ID:", process.env.DISCORD_CLIENT_ID);
+//   console.log("[DEBUG] DISCORD_CLIENT_SECRET:", process.env.DISCORD_CLIENT_SECRET);
+//   console.log("[DEBUG] REDIS_URL:", process.env.REDIS_URL);
+//   console.log("[DEBUG] REDIS_PASSWORD:", process.env.REDIS_PASSWORD);
+//   console.log("[DEBUG] PORT:", PORT);
+//   console.log("[DEBUG] DATABASE_URL:", process.env.DATABASE_URL);
+//   console.log("[DEBUG] AUTH_SECRET:", process.env.AUTH_SECRET);
+// }
+
+const appRouter = router({
+  chats: chatRouter
+});
+
+export type AppRouter = typeof appRouter;
 
 const app = new Hono<{
   Variables: {
@@ -34,75 +41,77 @@ const app = new Hono<{
   };
 }>();
 
-(async () => {
-  try {
-    await db.select().from(userSettings).limit(1);
-    console.log("✅ Database connection successful");
-  } catch (error) {
-    console.error("❌ Database connection failed:", error);
-    process.exit(1);
-  }
 
-  // Test Redis connection
-  try {
-    console.log("[INFO] Testing Redis connection...");
-    console.log("[INFO] Redis URL:", env.REDIS_URL);
-    console.log("[INFO] Redis authentication:", env.REDIS_PASSWORD ? "✅ Password configured" : "❌ No password configured");
+// (async () => {
+//   try {
+//     await db.select().from(userSettings).limit(1);
+//     console.log("✅ Database connection successful");
+//   } catch (error) {
+//     console.error("❌ Database connection failed:", error);
+//     process.exit(1);
+//   }
 
-    const redisTest = await testRedisConnection();
-    if (redisTest.success) {
-      console.log("✅ Redis connection successful");
-    } else {
-      console.error("❌ Redis connection failed:", redisTest.error);
-      process.exit(1);
-    }
-  } catch (error) {
-    console.error("❌ Redis connection test failed:", error);
-    process.exit(1);
-  }
-})();
+//   // Test Redis connection
+//   try {
+//     console.log("[INFO] Testing Redis connection...");
+//     console.log("[INFO] Redis URL:", env.REDIS_URL);
+//     console.log(
+//       "[INFO] Redis authentication:",
+//       env.REDIS_PASSWORD ? "✅ Password configured" : "❌ No password configured",
+//     );
 
-app.get("/health", async (c) => {
-  try {
-    // Check database connectivity
-    await db.select().from(userSettings).limit(1);
+//     const redisTest = await testRedisConnection();
+//     if (redisTest.success) {
+//       console.log("✅ Redis connection successful");
+//     } else {
+//       console.error("❌ Redis connection failed:", redisTest.error);
+//       process.exit(1);
+//     }
+//   } catch (error) {
+//     console.error("❌ Redis connection test failed:", error);
+//     process.exit(1);
+//   }
+// })();
 
-    // Check Redis connectivity
-    const redisTest = await testRedisConnection();
-    if (!redisTest.success) {
-      throw new Error(`Redis connection failed: ${redisTest.error}`);
-    }
+// app.get("/health", async (c) => {
+//   try {
+//     // Check database connectivity
+//     await db.select().from(userSettings).limit(1);
 
-    return c.json(
-      {
-        status: "healthy",
-        timestamp: new Date().toISOString(),
-        service: "backend",
-        checks: {
-          database: "✅ Connected",
-          redis: "✅ Connected"
-        }
-      },
-      200,
-    );
-  } catch (error) {
-    console.error("Health check failed:", error);
-    return c.json(
-      {
-        status: "unhealthy",
-        error: error instanceof Error ? error.message : "Unknown error",
-        timestamp: new Date().toISOString(),
-        service: "backend",
-      },
-      503,
-    );
-  }
-});
+//     // Check Redis connectivity
+//     const redisTest = await testRedisConnection();
+//     if (!redisTest.success) {
+//       throw new Error(`Redis connection failed: ${redisTest.error}`);
+//     }
+
+//     return c.json(
+//       {
+//         status: "healthy",
+//         timestamp: new Date().toISOString(),
+//         service: "backend",
+//         checks: {
+//           database: "✅ Connected",
+//           redis: "✅ Connected",
+//         },
+//       },
+//       200,
+//     );
+//   } catch (error) {
+//     console.error("Health check failed:", error);
+//     return c.json(
+//       {
+//         status: "unhealthy",
+//         error: error instanceof Error ? error.message : "Unknown error",
+//         timestamp: new Date().toISOString(),
+//         service: "backend",
+//       },
+//       503,
+//     );
+//   }
+// });
 
 app.use("*", async (c, next) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
-
-  console.log(c.req.method, c.req.path, new Date().toUTCString());
 
   if (!session) {
     c.set("user", null);
@@ -114,6 +123,19 @@ app.use("*", async (c, next) => {
   c.set("session", session.session);
   return next();
 });
+
+app.use(
+  "/trpc/*",
+  trpcServer({
+    router: appRouter,
+    createContext: (opts, c) => {
+      return {
+        user: c.get("user"),
+        session: c.get("session"),
+      };
+    },
+  }),
+);
 
 app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
@@ -196,15 +218,15 @@ app.use("/*", serveStatic({ root: "./client/dist" }));
 // SPA fallback - serve index.html for non-API 404s
 app.notFound(async (c) => {
   // If the request is for an API route, return 404
-  if (c.req.path.startsWith('/api/')) {
-    return c.json({ error: 'Not Found' }, 404);
+  if (c.req.path.startsWith("/api/")) {
+    return c.json({ error: "Not Found" }, 404);
   }
 
   // For all other routes, serve index.html (SPA routing)
-  const file = Bun.file('./client/dist/index.html');
+  const file = Bun.file("./client/dist/index.html");
   const content = await file.text();
   return new Response(content, {
-    headers: { 'Content-Type': 'text/html' },
+    headers: { "Content-Type": "text/html" },
   });
 });
 

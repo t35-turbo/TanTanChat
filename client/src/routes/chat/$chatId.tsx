@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import React from "react";
 import { authClient } from "@/lib/auth-client";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { queryClient } from "@/routes/__root";
+import { __client, queryClient, trpc } from "@/lib/trpc";
 import { z } from "zod/v4-mini";
 import ky from "ky";
 
@@ -64,51 +64,40 @@ export function ChatUI() {
   const sendMessageMut = useMutation({
     mutationKey: ["sendMessage", chatId],
     mutationFn: async (message: string) => {
-      let newChatId = chatId;
-      if (!newChatId) {
-        newChatId = z.object({ uuid: z.uuidv4() }).parse(
-          await ky
-            .post("/api/chats/new", {
-              body: JSON.stringify({
-                message: message,
-                opts: {
-                  apiKey: or_key,
-                  model: "openai/gpt-4.1-mini",
-                },
-              }),
-            })
-            .json(),
-        ).uuid;
-
-        queryClient.invalidateQueries({ queryKey: ["chats"] });
+      if (or_key === null) {
+        // TODO: real error handling
+        return;
       }
 
-      z.object({ msgId: z.string() }).parse(
-        await ky
-          .post(`/api/chats/${newChatId}/new`, {
-            body: JSON.stringify({
-              message: message,
-              opts: {
-                apiKey: or_key,
-                model: model.id, // nvm we need zustand LOL
-                system_prompt: generateSystemPrompt({
-                  name: nameQ.data,
-                  selfAttr: selfAttrQ.data,
-                  traits: traitsQ.data,
-                }),
-                tools: {
-                  web_search,
-                },
-              },
-              files: files.map((file) => file.id),
-            }),
-          })
-          .json(),
-      ).msgId;
+      let newChatId = chatId;
+      if (!newChatId) {
+        newChatId = await __client.chats.newThread.mutate({
+          message,
+          opts: { apiKey: or_key ?? "", model: "openai/gpt-4.1-mini" },
+        });
+
+        queryClient.invalidateQueries({ queryKey: trpc.chats.listThreads.queryKey() });
+      }
+
+      await __client.chats.newMessage.mutate({
+        chatId: newChatId,
+        message,
+        opts: {
+          apiKey: or_key,
+          model: model.id,
+          system_prompt: generateSystemPrompt({
+            name: nameQ.data,
+            selfAttr: selfAttrQ.data,
+            traits: traitsQ.data,
+          }),
+          tools: null,
+        },
+        files: files.map((file) => file.id),
+      });
 
       clearFiles(); // remove files from input
 
-      await queryClient.invalidateQueries({ queryKey: ["messages"] });
+      await queryClient.invalidateQueries({ queryKey: trpc.chats.threadHistory.queryKey({ chatId: newChatId }) });
 
       if (!chatId && newChatId) {
         // go to the new chatid thread if it's the first message in a chat
@@ -164,11 +153,7 @@ export function ChatUI() {
             <MessageRenderer chatId={chatId} />
           </div>
           <h1 className={`font-bold text-2xl md:text-4xl ${chatId ? "opacity-0" : "opacity-100"}`}>7o</h1>
-          <MessageInput
-            chatId={chatId}
-            sendMessage={sendMessage}
-            isPending={sendMessageMut.isPending}
-          />
+          <MessageInput chatId={chatId} sendMessage={sendMessage} isPending={sendMessageMut.isPending} />
         </motion.div>
       </div>
       {location.search.includes("onboarding=true") ? <Onboarding /> : null}

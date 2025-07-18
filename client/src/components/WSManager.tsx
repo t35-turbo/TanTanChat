@@ -1,4 +1,4 @@
-import { queryClient } from "@/routes/__root";
+import { queryClient, trpc } from "@/lib/trpc";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
@@ -209,7 +209,7 @@ export function useActiveId() {
 
   useEffect(() => {
     if (!activeId) {
-      queryClient.invalidateQueries({ queryKey: ["messages"] });
+      queryClient.invalidateQueries({ queryKey: trpc.chats.threadHistory.queryKey() });
     }
   }, [activeId]);
 

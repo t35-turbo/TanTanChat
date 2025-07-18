@@ -4,7 +4,6 @@ import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/pris
 import { Check, ChevronDown, ChevronRight, Copy, Paperclip, RefreshCw, SquarePen, Trash2, X } from "lucide-react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Message } from "@/lib/db";
 import { useTheme } from "@/hooks/use-theme";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -13,8 +12,8 @@ import React, { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { useMutation, useQuery, useInfiniteQuery, useMutationState } from "@tanstack/react-query";
-import { queryClient } from "@/routes/__root";
 import ky, { HTTPError } from "ky";
+import { trpc, queryClient, type Message, __client } from "@/lib/trpc";
 import { useORKey } from "@/hooks/use-or-key";
 import { useModel } from "@/hooks/use-model";
 import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
@@ -23,7 +22,6 @@ import { getUserSetting } from "@/routes/settings";
 import { Textarea } from "./ui/textarea";
 import { z } from "zod/v4-mini";
 import { useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
 import { useActiveId, useActiveMessage } from "./WSManager";
 
 interface MessageRendererProps {
@@ -43,52 +41,20 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
     select: (mutation) => z.string().parse(mutation.state.variables ?? ""),
   })[0];
 
-  useEffect(() => {
-    setTimeout(() => queryClient.invalidateQueries({ queryKey: ["messages"] }), 100);
-    setTimeout(() => queryClient.invalidateQueries({ queryKey: ["messages"] }), 200);
-    setTimeout(() => queryClient.invalidateQueries({ queryKey: ["messages"] }), 400);
-  }, [])
-
-  // HACK: do we really need inf. query? it has been disabled for now
-  const messagePages = useInfiniteQuery({
-    queryKey: ["messages", chatId],
-    queryFn: async ({ pageParam: cursor }) => {
-      if (user_sess.data) {
-        if (chatId) {
-          // TODO: get messages
-          let messageResponse;
-          try {
-            messageResponse = await ky.get(`/api/chats/${chatId}?cursor=${cursor}`);
-          } catch (err: any) {
-            if (err instanceof HTTPError && err.response.status === 404) {
-              toast.error("Chat not found");
-              navigate({ to: "/chat" });
-            } else {
-              throw err;
-            }
-          }
-          if (!messageResponse) {
-            throw new Error("Failed to fetch messages");
-          }
-          let messages = await messageResponse.json();
-
-          if (!activeId && activeMessage.length > 0 && setActiveMessage) {
-            setActiveMessage([]);
-          }
-          return z.object({ messages: z.array(Message) }).parse(messages);
-        } else {
-          return { messages: [], cursor: 0 };
-        }
-      } else {
-        throw new Error("User Session is erroring");
+  const messagePages = useQuery({
+    ...trpc.chats.threadHistory.queryOptions({ chatId: chatId ?? "" }),
+    enabled: !!chatId,
+    queryFn: async () => {
+      const data = await __client.chats.threadHistory.query({ chatId: chatId ?? "" });
+      if (!activeId && activeMessage.length > 0 && setActiveMessage) {
+        setActiveMessage([]);
       }
+
+      return data;
     },
-    initialPageParam: 0,
-    getNextPageParam: () => 0,
-    enabled: !user_sess.isPending,
   });
 
-  let messages = messagePages.data ? messagePages.data.pages.flatMap((page) => page.messages) : [];
+  let messages = [...(messagePages.data ?? [])];
 
   if (sendMessageVariables) {
     messages.push({
@@ -118,7 +84,7 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
     });
   }
 
-  if (messagePages.isPending) {
+  if (messagePages.isPending && chatId) {
     return (
       <div className="flex space-x-2 p-10">
         <div className="bg-border rounded-full h-8 w-8 motion-safe:animate-pulse"></div>
@@ -133,26 +99,13 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
   return (
     <>
       {messages.map((message, idex) => (
-        <RenderedMsg
-          message={message}
-          key={message.id}
-          last={idex === messages.length - 1}
-          setActiveMessage={setActiveMessage}
-        />
+        <RenderedMsg message={message} key={message.id} last={idex === messages.length - 1} />
       ))}
     </>
   );
 }
 
-function RenderedMsg({
-  message,
-  last,
-  setActiveMessage,
-}: {
-  message: Message;
-  last: boolean;
-  setActiveMessage?: (chunks: any[]) => void;
-}) {
+function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
   const [showThink, setShowThink] = React.useState(false);
   const or_key = useORKey((state) => state.key);
   const model = useModel((state) => state.model);
@@ -190,39 +143,31 @@ function RenderedMsg({
     },
   });
 
-  const retryMessage = useMutation({
-    mutationFn: async (newMessage?: string) => {
-      return await ky.post(`/api/chats/${message.chatId}/retry?msgId=${message.id}`, {
-        body: JSON.stringify({
-          message: newMessage,
-          opts: {
-            apiKey: or_key,
-            model: model.id,
-            reasoning_effort: model.thinkingEffort,
-            system_prompt: generateSystemPrompt({
-              name: nameQ.data,
-              selfAttr: selfAttrQ.data,
-              traits: traitsQ.data,
-            }),
-          },
-        }),
-      });
-    },
-    onSettled: () => {
-      setEditMessage("");
-      setEditingMessage(false);
-      return queryClient.invalidateQueries({ queryKey: ["messages"] });
-    },
-  });
+  const retryMessage = useMutation(
+    trpc.chats.retryMessage.mutationOptions({
+      onSettled: () => {
+        setEditMessage("");
+        setEditingMessage(false);
+        if (message.chatId) {
+          return queryClient.invalidateQueries({
+            queryKey: trpc.chats.threadHistory.queryKey({ chatId: message.chatId }),
+          });
+        }
+      },
+    }),
+  );
 
-  const deleteFile = useMutation({
-    mutationFn: async (fileId: string) => {
-      return await ky.delete(`/api/chats/${message.chatId}/file?msgId=${message.id}&fileId=${fileId}`);
-    },
-    onSettled: () => {
-      return queryClient.invalidateQueries({ queryKey: ["messages"] });
-    },
-  });
+  const deleteFile = useMutation(
+    trpc.chats.removeFile.mutationOptions({
+      onSettled: () => {
+        if (message.chatId) {
+          return queryClient.invalidateQueries({
+            queryKey: trpc.chats.threadHistory.queryKey({ chatId: message.chatId }),
+          });
+        }
+      },
+    }),
+  );
 
   function textareaShortcutHandler(evt: React.KeyboardEvent<HTMLTextAreaElement>) {
     switch (evt.code) {
@@ -232,8 +177,29 @@ function RenderedMsg({
         evt.preventDefault();
         break;
       case "Enter":
-        if (!evt.shiftKey && !evt.metaKey && !evt.ctrlKey && !evt.altKey) {
-          retryMessage.mutate(editMessage);
+        if (
+          !evt.shiftKey &&
+          !evt.metaKey &&
+          !evt.ctrlKey &&
+          !evt.altKey &&
+          !("ontouchstart" in window || navigator.maxTouchPoints > 0)
+        ) {
+          retryMessage.mutate({
+            // HACK: this is just atrocious. i mean like why is this even a thing, trpc should get some better side effect or mixin
+            chatId: message.chatId,
+            msgId: message.id,
+            message: editMessage,
+            opts: {
+              apiKey: or_key ?? "",
+              model: model.id,
+              reasoning_effort: model.thinkingEffort,
+              system_prompt: generateSystemPrompt({
+                name: nameQ.data ?? "",
+                selfAttr: selfAttrQ.data ?? "",
+                traits: traitsQ.data ?? "",
+              }),
+            },
+          });
           evt.preventDefault();
         }
     }
@@ -246,20 +212,20 @@ function RenderedMsg({
     >
       {files.data && files.data.length > 0
         ? files.data.map((file) => (
-          <div
-            key={file.fileId}
-            className="text-sm border rounded-lg italic p-1 flex items-center group cursor-default relative"
-          >
-            <Paperclip className="size-3" />
-            {file.fileName}
-            <button
-              className="absolute -bottom-1 -left-1 hidden group-hover:block text-destructive-foreground rounded-full p-0.5 hover:bg-destructive/80"
-              onClick={() => deleteFile.mutate(file.fileId)}
+            <div
+              key={file.fileId}
+              className="text-sm border rounded-lg italic p-1 flex items-center group cursor-default relative"
             >
-              <X className="size-3" />
-            </button>
-          </div>
-        ))
+              <Paperclip className="size-3" />
+              {file.fileName}
+              <button
+                className="absolute -bottom-1 -left-1 hidden group-hover:block text-destructive-foreground rounded-full p-0.5 hover:bg-destructive/80"
+                onClick={() => deleteFile.mutate({ chatId: message.chatId, msgId: message.id, fileId: file.fileId })}
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+          ))
         : null}
       <div className={`group relative max-w-[70%] ${editingMessage ? "w-full" : ""}`}>
         {editingMessage ? (
@@ -291,7 +257,7 @@ function RenderedMsg({
               </Collapsible>
             ) : null}
 
-            <MarkdownRenderer>{retryMessage.variables ?? message.message}</MarkdownRenderer>
+            <MarkdownRenderer>{retryMessage.variables?.message ?? message.message}</MarkdownRenderer>
 
             {message.finish_reason && message.finish_reason !== "stop" ? (
               <Alert variant="destructive">
@@ -323,7 +289,26 @@ function RenderedMsg({
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant={"ghost"} onClick={() => retryMessage.mutate(editMessage)}>
+                  <Button
+                    variant={"ghost"}
+                    onClick={() =>
+                      retryMessage.mutate({
+                        chatId: message.chatId,
+                        msgId: message.id,
+                        message: editMessage,
+                        opts: {
+                          apiKey: or_key ?? "",
+                          model: model.id,
+                          reasoning_effort: model.thinkingEffort,
+                          system_prompt: generateSystemPrompt({
+                            name: nameQ.data ?? "",
+                            selfAttr: selfAttrQ.data ?? "",
+                            traits: traitsQ.data ?? "",
+                          }),
+                        },
+                      })
+                    }
+                  >
                     <Check className="size-3" />
                   </Button>
                 </TooltipTrigger>
@@ -346,7 +331,25 @@ function RenderedMsg({
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant={"ghost"} onClick={() => retryMessage.mutate(undefined)}>
+                  <Button
+                    variant={"ghost"}
+                    onClick={() =>
+                      retryMessage.mutate({
+                        chatId: message.chatId,
+                        msgId: message.id,
+                        opts: {
+                          apiKey: or_key ?? "",
+                          model: model.id,
+                          reasoning_effort: model.thinkingEffort,
+                          system_prompt: generateSystemPrompt({
+                            name: nameQ.data ?? "",
+                            selfAttr: selfAttrQ.data ?? "",
+                            traits: traitsQ.data ?? "",
+                          }),
+                        },
+                      })
+                    }
+                  >
                     <RefreshCw className="size-3" />
                   </Button>
                 </TooltipTrigger>
@@ -390,7 +393,7 @@ function MarkdownRenderer({ children }: { children: string | null | undefined })
   }, []);
 
   const processedChildren = React.useMemo(() => {
-    return typeof children === "string" ? preprocessMathBlocks(children) : children ?? "";
+    return typeof children === "string" ? preprocessMathBlocks(children) : (children ?? "");
   }, [children, preprocessMathBlocks]);
 
   return (

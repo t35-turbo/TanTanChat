@@ -9,16 +9,14 @@ import { Input } from "./ui/input";
 import { authClient } from "@/lib/auth-client";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useMutation, useQuery, type UseMutationResult } from "@tanstack/react-query";
-import { z } from "zod/v4-mini";
 import ky from "ky";
-import { queryClient } from "@/routes/__root";
-import { Chat, Chats } from "@/lib/db";
+import { queryClient, trpc, type Chat } from "@/lib/trpc";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "./ui/context-menu";
 
 interface ChatItemProps {
   item: Chat;
-  deleteChat: UseMutationResult<void, Error, string, unknown>;
-  renameChat: UseMutationResult<void, Error, { id: string; name: string }, unknown>;
+  deleteChat: UseMutationResult<boolean, any, { chatId: string }, undefined>;
+  renameChat: UseMutationResult<void, Error, { chatId: string; name: string }, unknown>;
 }
 
 function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
@@ -28,7 +26,7 @@ function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
 
   function renameKeyHandler(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.code === "Enter") {
-      renameChat.mutate({ id: item.id, name: renameInput });
+      renameChat.mutate({ chatId: item.id, name: renameInput });
       setRenaming(false);
     } else if (e.code === "Escape") {
       setRenaming(false);
@@ -56,7 +54,7 @@ function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
                   <Button
                     variant="ghost"
                     onClick={(e) => {
-                      deleteChat.mutate(item.id);
+                      deleteChat.mutate({ chatId: item.id });
                       e.preventDefault();
                     }}
                   >
@@ -79,7 +77,7 @@ function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
           </ContextMenuItem>
           <ContextMenuItem
             onClick={() => {
-              deleteChat.mutate(item.id);
+              deleteChat.mutate({ chatId: item.id });
             }}
           >
             <Eraser />
@@ -102,39 +100,24 @@ export default function ChatSidebar() {
   const navigate = useNavigate();
 
   // CHROME PLEASE FINISH TEMPORAL ALREADY
-  const chats = useQuery({
-    queryKey: ["chats", user_sess.data?.user.id],
-    queryFn: async () => {
-      return z.object({ chats: Chats }).parse(await ky.get("/api/chats").json()).chats;
-    },
-  });
-  const deleteChat = useMutation({
-    mutationFn: async (id: string) => {
-      // TODO: add a confirmation
-      if (chatId === id) {
-        navigate({ to: "/chat" });
-      }
-      await ky.delete(`/api/chats/${id}`);
-    },
+  const chats = useQuery(trpc.chats.listThreads.queryOptions());
+  const deleteChat = useMutation(
+    trpc.chats.deleteThread.mutationOptions({
+      onSettled: () => queryClient.invalidateQueries({ queryKey: trpc.chats.listThreads.queryKey() }),
+    }),
+  );
 
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["chats"] }),
-  });
-
-  const renameChat = useMutation({
-    mutationFn: async ({ id, name }: { id: string; name: string }) => {
-      await ky.put(`/api/chats/${id}/rename`, {
-        json: { name },
-      });
-    },
-
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["chats"] }),
-  });
+  const renameChat = useMutation(
+    trpc.chats.renameThread.mutationOptions({
+      onSettled: () => queryClient.invalidateQueries({ queryKey: trpc.chats.listThreads.queryKey() }),
+    }),
+  );
 
   const filtered = fuzzysort
     .go(searchQuery, chats.data ?? [], { key: "title", all: true })
     .map((item) => item.obj)
-    .filter((item) => item.id !== deleteChat.variables)
-    .map((item) => item.id === renameChat.variables?.id ? {...item, title: renameChat.variables?.name} : item)
+    .filter((item) => item.id !== deleteChat.variables?.chatId)
+    .map((item) => (item.id === renameChat.variables?.chatId ? { ...item, title: renameChat.variables?.name } : item))
     .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
   const renderOutput = renderChatOutput(filtered, deleteChat, renameChat);
 
@@ -235,8 +218,8 @@ function timeDelta(date: Date) {
 
 function renderChatOutput(
   chats: Chat[],
-  deleteChat: UseMutationResult<void, Error, string, unknown>,
-  renameChat: UseMutationResult<void, Error, { id: string; name: string }, unknown>,
+  deleteChat: UseMutationResult<boolean, any, { chatId: string }, undefined>,
+  renameChat: UseMutationResult<void, any, { chatId: string; name: string }, unknown>,
 ) {
   let renderOutput: {
     component: React.ReactElement;

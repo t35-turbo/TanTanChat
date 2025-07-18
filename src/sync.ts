@@ -5,7 +5,7 @@ import { chatMessages, chats } from "./db/schema";
 import { eq } from "drizzle-orm";
 import * as vk from "./db/redis";
 import { WSContext } from "hono/ws";
-import { BunFile, ServerWebSocket } from "bun";
+import { type BunFile, type ServerWebSocket } from "bun";
 import Exa from "exa-js";
 import { default_prompt } from "./lib/sys_prompts";
 import env from "./lib/env";

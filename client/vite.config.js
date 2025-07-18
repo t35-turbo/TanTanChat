@@ -25,6 +25,11 @@ export default defineConfig({
         changeOrigin: true,
         ws: true
       },
+      "/trpc": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+        ws: false
+      },
     },
   },
 });
