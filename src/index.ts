@@ -1,15 +1,11 @@
 import { Hono } from "hono";
 import { auth } from "./lib/auth";
-import { db } from "./db";
-import { userSettings } from "./db/schema";
-import { eq, and } from "drizzle-orm";
 import * as sync from "./sync";
 import { z } from "zod";
 import { createBunWebSocket, serveStatic } from "hono/bun";
 import type { ServerWebSocket } from "bun";
 import { filesRouter } from "./files";
 import { chatRouter } from "./chats";
-import { testConnection as testRedisConnection } from "./db/redis";
 import { router } from "./trpc";
 import { trpcServer } from "@hono/trpc-server";
 import { settingsRouter } from "./settings";
@@ -17,17 +13,6 @@ import { settingsRouter } from "./settings";
 const PORT = 3001;
 
 const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
-
-// if (env.NODE_ENV === "development") {
-//   console.log("[DEBUG] Discord environment variables:");
-//   console.log("[DEBUG] DISCORD_CLIENT_ID:", process.env.DISCORD_CLIENT_ID);
-//   console.log("[DEBUG] DISCORD_CLIENT_SECRET:", process.env.DISCORD_CLIENT_SECRET);
-//   console.log("[DEBUG] REDIS_URL:", process.env.REDIS_URL);
-//   console.log("[DEBUG] REDIS_PASSWORD:", process.env.REDIS_PASSWORD);
-//   console.log("[DEBUG] PORT:", PORT);
-//   console.log("[DEBUG] DATABASE_URL:", process.env.DATABASE_URL);
-//   console.log("[DEBUG] AUTH_SECRET:", process.env.AUTH_SECRET);
-// }
 
 const appRouter = router({
   chats: chatRouter,
