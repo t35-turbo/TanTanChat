@@ -5,10 +5,8 @@ import { chatMessages, chats } from "./db/schema";
 import { eq } from "drizzle-orm";
 import * as vk from "./db/redis";
 import { WSContext } from "hono/ws";
-import { BunFile, ServerWebSocket } from "bun";
-import Exa from "exa-js";
+import { type BunFile, type ServerWebSocket } from "bun";
 import { default_prompt } from "./lib/sys_prompts";
-import env from "./lib/env";
 
 export type Messages = {
   id: string;
@@ -57,17 +55,6 @@ const RedisMessageResponse = z.object({
 });
 
 const vk_client = vk.createClient();
-
-// export async function searchWeb(query: string) {
-//   const exa = new Exa(env.EXASEARCH_API_KEY || "");
-//   const result = await exa.searchAndContents(query, {
-//     text: true,
-//     numResults: 3,
-//     context: true,
-//     // summary: true,
-//   });
-//   return "search_result: " + JSON.stringify(result);
-// }
 
 export async function newMessage(chatId: string, messages: Messages, opts: Options) {
   let uuid = crypto.randomUUID();
@@ -145,7 +132,6 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
     }
     return undefined;
   };
-
   try {
     const msgs = [
       {
@@ -181,6 +167,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
         }),
       )),
     ];
+
     const stream = await oai_client.chat.completions.create({
       model: opts.model,
       messages: msgs,

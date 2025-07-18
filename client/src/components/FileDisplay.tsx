@@ -1,8 +1,8 @@
 import { useFiles, type FileItem } from "@/hooks/use-files";
 import { useMutation } from "@tanstack/react-query";
-import ky from "ky";
 import { LoaderCircle, Paperclip, X } from "lucide-react";
 import { useEffect } from "react";
+import { __client } from "@/lib/trpc";
 
 export default function FileDisplay() {
   const files = useFiles((state) => state.files);
@@ -10,7 +10,7 @@ export default function FileDisplay() {
   return (
     <div className="flex flex-wrap p-1">
       {files.map((file) => (
-        <File file={file} />
+        <File file={file} key={file.id} />
       ))}
     </div>
   );
@@ -24,11 +24,9 @@ function File({ file }: { file: FileItem }) {
     mutationFn: async () => {
       const formData = new FormData();
       formData.append("file", file.file);
-      let results: any = await ky.post("/api/files/upload", { body: formData }).json();
+      const results = await __client.files.upload.mutate(formData);
 
-      if ("fileId" in results) {
-        setUploaded(file.file, results.fileId)
-      }
+      setUploaded(file.file, results.fileId);
     },
   });
 
@@ -40,7 +38,8 @@ function File({ file }: { file: FileItem }) {
 
   return (
     <div className="border p-2 rounded-xl flex items-center group relative cursor-default">
-      {uploader.isPending ? <LoaderCircle className="animate-spin size-4" /> : <Paperclip className="size-4 mr-1" />} {file.name}
+      {uploader.isPending ? <LoaderCircle className="animate-spin size-4" /> : <Paperclip className="size-4 mr-1" />}{" "}
+      {file.name}
       <button onClick={() => removeFile(file.id)} className="absolute -right-1 -top-1 hidden group-hover:block">
         <X className="size-3" />
       </button>

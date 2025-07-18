@@ -1,31 +1,26 @@
 import { Hono } from "hono";
 import { auth } from "./lib/auth";
-import { db } from "./db";
-import { userSettings } from "./db/schema";
-import { eq, and } from "drizzle-orm";
 import * as sync from "./sync";
 import { z } from "zod";
 import { createBunWebSocket, serveStatic } from "hono/bun";
 import type { ServerWebSocket } from "bun";
-import { filesApp } from "./files";
-import chatsApp from "./chats";
-import env from "./lib/env";
-import { testConnection as testRedisConnection } from "./db/redis";
+import { filesRouter } from "./files";
+import { chatRouter } from "./chats";
+import { router } from "./trpc";
+import { trpcServer } from "@hono/trpc-server";
+import { settingsRouter } from "./settings";
 
 const PORT = 3001;
 
 const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
 
-if (env.NODE_ENV === "development") {
-  console.log("[DEBUG] Discord environment variables:");
-  console.log("[DEBUG] DISCORD_CLIENT_ID:", process.env.DISCORD_CLIENT_ID);
-  console.log("[DEBUG] DISCORD_CLIENT_SECRET:", process.env.DISCORD_CLIENT_SECRET);
-  console.log("[DEBUG] REDIS_URL:", process.env.REDIS_URL);
-  console.log("[DEBUG] REDIS_PASSWORD:", process.env.REDIS_PASSWORD);
-  console.log("[DEBUG] PORT:", PORT);
-  console.log("[DEBUG] DATABASE_URL:", process.env.DATABASE_URL);
-  console.log("[DEBUG] AUTH_SECRET:", process.env.AUTH_SECRET);
-}
+const appRouter = router({
+  chats: chatRouter,
+  files: filesRouter,
+  settings: settingsRouter
+});
+
+export type AppRouter = typeof appRouter;
 
 const app = new Hono<{
   Variables: {
@@ -34,75 +29,8 @@ const app = new Hono<{
   };
 }>();
 
-(async () => {
-  try {
-    await db.select().from(userSettings).limit(1);
-    console.log("✅ Database connection successful");
-  } catch (error) {
-    console.error("❌ Database connection failed:", error);
-    process.exit(1);
-  }
-
-  // Test Redis connection
-  try {
-    console.log("[INFO] Testing Redis connection...");
-    console.log("[INFO] Redis URL:", env.REDIS_URL);
-    console.log("[INFO] Redis authentication:", env.REDIS_PASSWORD ? "✅ Password configured" : "❌ No password configured");
-
-    const redisTest = await testRedisConnection();
-    if (redisTest.success) {
-      console.log("✅ Redis connection successful");
-    } else {
-      console.error("❌ Redis connection failed:", redisTest.error);
-      process.exit(1);
-    }
-  } catch (error) {
-    console.error("❌ Redis connection test failed:", error);
-    process.exit(1);
-  }
-})();
-
-app.get("/health", async (c) => {
-  try {
-    // Check database connectivity
-    await db.select().from(userSettings).limit(1);
-
-    // Check Redis connectivity
-    const redisTest = await testRedisConnection();
-    if (!redisTest.success) {
-      throw new Error(`Redis connection failed: ${redisTest.error}`);
-    }
-
-    return c.json(
-      {
-        status: "healthy",
-        timestamp: new Date().toISOString(),
-        service: "backend",
-        checks: {
-          database: "✅ Connected",
-          redis: "✅ Connected"
-        }
-      },
-      200,
-    );
-  } catch (error) {
-    console.error("Health check failed:", error);
-    return c.json(
-      {
-        status: "unhealthy",
-        error: error instanceof Error ? error.message : "Unknown error",
-        timestamp: new Date().toISOString(),
-        service: "backend",
-      },
-      503,
-    );
-  }
-});
-
 app.use("*", async (c, next) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
-
-  console.log(c.req.method, c.req.path, new Date().toUTCString());
 
   if (!session) {
     c.set("user", null);
@@ -115,100 +43,40 @@ app.use("*", async (c, next) => {
   return next();
 });
 
+app.use(
+  "/trpc/*",
+  trpcServer({
+    router: appRouter,
+    createContext: (opts, c) => {
+      return {
+        user: c.get("user"),
+        session: c.get("session"),
+      };
+    },
+  }),
+);
+
 app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 app.get("/api/heartbeat", (c) => c.text("OK"));
-
-app.get("/api/user/settings/:key", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const key = c.req.param("key");
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  const val = await db
-    .select()
-    .from(userSettings)
-    .where(and(eq(userSettings.userId, user.id), eq(userSettings.key, key)));
-
-  return c.json({ value: val.length > 0 ? val[0] : null });
-});
-
-app.put("/api/user/settings/:key", async (c) => {
-  const session = c.get("session");
-  const user = c.get("user");
-  const key = c.req.param("key");
-
-  if (!session || !user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  if (!key) {
-    return c.json({ error: "Setting key is required" }, 400);
-  }
-
-  const body = await c.req.json();
-  const { value } = body;
-
-  if (value === undefined || value === null) {
-    return c.json({ error: "Value is required" }, 400);
-  }
-
-  try {
-    // Check if setting already exists
-    const existingSetting = await db
-      .select()
-      .from(userSettings)
-      .where(and(eq(userSettings.userId, user.id), eq(userSettings.key, key)));
-
-    if (existingSetting.length > 0) {
-      // Update existing setting
-      await db
-        .update(userSettings)
-        .set({
-          value: String(value),
-          updatedAt: new Date(),
-        })
-        .where(and(eq(userSettings.userId, user.id), eq(userSettings.key, key)));
-    } else {
-      // Create new setting
-      await db.insert(userSettings).values({
-        userId: user.id,
-        key: key,
-        value: String(value),
-      });
-    }
-
-    return c.json({ message: "Setting updated successfully" }, 200);
-  } catch (error) {
-    console.error("Error updating user setting:", error);
-    return c.json({ error: "Failed to update setting" }, 500);
-  }
-});
-
-app.route("/api/chats", chatsApp);
-app.route("/api/files", filesApp);
 
 app.use("/*", serveStatic({ root: "./client/dist" }));
 
 // SPA fallback - serve index.html for non-API 404s
 app.notFound(async (c) => {
   // If the request is for an API route, return 404
-  if (c.req.path.startsWith('/api/')) {
-    return c.json({ error: 'Not Found' }, 404);
+  if (c.req.path.startsWith("/api/")) {
+    return c.json({ error: "Not Found" }, 404);
   }
 
   // For all other routes, serve index.html (SPA routing)
-  const file = Bun.file('./client/dist/index.html');
+  const file = Bun.file("./client/dist/index.html");
   const content = await file.text();
   return new Response(content, {
-    headers: { 'Content-Type': 'text/html' },
+    headers: { "Content-Type": "text/html" },
   });
 });
 
-// TODO: add one for general non-chat window
 app.get(
   "/api/chats/:id/ws",
   upgradeWebSocket((c) => {

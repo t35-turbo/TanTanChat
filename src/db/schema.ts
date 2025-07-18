@@ -1,6 +1,5 @@
 import { pgTable, text, timestamp, boolean, index, pgEnum, integer } from "drizzle-orm/pg-core";
 import { desc } from "drizzle-orm";
-import { int } from "drizzle-orm/mysql-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),

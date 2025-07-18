@@ -4,18 +4,22 @@ FROM oven/bun:1-alpine AS base
 # Install pnpm
 RUN bun install -g pnpm
 
-# Install backend dependencies
-FROM base AS backend-deps
+# Build stage - install dependencies and build both backend and client
+FROM base AS builder
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
+
+# Copy all source files first
+COPY . .
+
+# Install backend dependencies
 RUN pnpm install --frozen-lockfile
 
 # Install client dependencies and build client
-FROM base AS client-builder
 WORKDIR /app/client
-COPY client/package.json client/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
-COPY client/ ./
+
+# Make sure the client can see the backend types during build
+# The client should import from ../../src/index not ../../../src/index
 RUN pnpm run build
 
 # Production image
@@ -29,15 +33,17 @@ RUN addgroup --system --gid 1001 bunjs
 RUN adduser --system --uid 1001 bunjs
 
 # Copy backend files
-COPY --from=backend-deps /app/node_modules ./node_modules
-COPY package.json ./
-COPY .env ./
-COPY src/ ./src/
-COPY drizzle.config.ts ./
-COPY drizzle/ ./drizzle/
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/src/ ./src/
+COPY --from=builder /app/drizzle.config.ts ./
+COPY --from=builder /app/drizzle/ ./drizzle/
+
+# Copy environment file if it exists
+COPY --from=builder /app/.env* ./
 
 # Copy built client
-COPY --from=client-builder /app/client/dist ./client/dist
+COPY --from=builder /app/client/dist ./client/dist
 
 # Create file_store directory with proper permissions
 RUN mkdir -p ./file_store && chown -R bunjs:bunjs ./file_store
