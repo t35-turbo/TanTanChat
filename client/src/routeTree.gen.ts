@@ -17,7 +17,9 @@ import { Route as OrauthImport } from './routes/or_auth'
 import { Route as LoginImport } from './routes/login'
 import { Route as ChatImport } from './routes/chat'
 import { Route as IndexImport } from './routes/index'
+import { Route as SettingsIndexImport } from './routes/settings/index'
 import { Route as ChatIndexImport } from './routes/chat/index'
+import { Route as SettingsKeysImport } from './routes/settings/keys'
 import { Route as ChatChatIdImport } from './routes/chat/$chatId'
 
 // Create/Update Routes
@@ -58,10 +60,22 @@ const IndexRoute = IndexImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const SettingsIndexRoute = SettingsIndexImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
+
 const ChatIndexRoute = ChatIndexImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ChatRoute,
+} as any)
+
+const SettingsKeysRoute = SettingsKeysImport.update({
+  id: '/keys',
+  path: '/keys',
+  getParentRoute: () => SettingsRoute,
 } as any)
 
 const ChatChatIdRoute = ChatChatIdImport.update({
@@ -123,12 +137,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatChatIdImport
       parentRoute: typeof ChatImport
     }
+    '/settings/keys': {
+      id: '/settings/keys'
+      path: '/keys'
+      fullPath: '/settings/keys'
+      preLoaderRoute: typeof SettingsKeysImport
+      parentRoute: typeof SettingsImport
+    }
     '/chat/': {
       id: '/chat/'
       path: '/'
       fullPath: '/chat/'
       preLoaderRoute: typeof ChatIndexImport
       parentRoute: typeof ChatImport
+    }
+    '/settings/': {
+      id: '/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexImport
+      parentRoute: typeof SettingsImport
     }
   }
 }
@@ -147,25 +175,42 @@ const ChatRouteChildren: ChatRouteChildren = {
 
 const ChatRouteWithChildren = ChatRoute._addFileChildren(ChatRouteChildren)
 
+interface SettingsRouteChildren {
+  SettingsKeysRoute: typeof SettingsKeysRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
+}
+
+const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsKeysRoute: SettingsKeysRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
+}
+
+const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
+  SettingsRouteChildren,
+)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteWithChildren
   '/login': typeof LoginRoute
   '/or_auth': typeof OrauthRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/chat/$chatId': typeof ChatChatIdRoute
+  '/settings/keys': typeof SettingsKeysRoute
   '/chat/': typeof ChatIndexRoute
+  '/settings/': typeof SettingsIndexRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/or_auth': typeof OrauthRoute
-  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/chat/$chatId': typeof ChatChatIdRoute
+  '/settings/keys': typeof SettingsKeysRoute
   '/chat': typeof ChatIndexRoute
+  '/settings': typeof SettingsIndexRoute
 }
 
 export interface FileRoutesById {
@@ -174,10 +219,12 @@ export interface FileRoutesById {
   '/chat': typeof ChatRouteWithChildren
   '/login': typeof LoginRoute
   '/or_auth': typeof OrauthRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/chat/$chatId': typeof ChatChatIdRoute
+  '/settings/keys': typeof SettingsKeysRoute
   '/chat/': typeof ChatIndexRoute
+  '/settings/': typeof SettingsIndexRoute
 }
 
 export interface FileRouteTypes {
@@ -190,16 +237,19 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/chat/$chatId'
+    | '/settings/keys'
     | '/chat/'
+    | '/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/or_auth'
-    | '/settings'
     | '/signup'
     | '/chat/$chatId'
+    | '/settings/keys'
     | '/chat'
+    | '/settings'
   id:
     | '__root__'
     | '/'
@@ -209,7 +259,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/chat/$chatId'
+    | '/settings/keys'
     | '/chat/'
+    | '/settings/'
   fileRoutesById: FileRoutesById
 }
 
@@ -218,7 +270,7 @@ export interface RootRouteChildren {
   ChatRoute: typeof ChatRouteWithChildren
   LoginRoute: typeof LoginRoute
   OrauthRoute: typeof OrauthRoute
-  SettingsRoute: typeof SettingsRoute
+  SettingsRoute: typeof SettingsRouteWithChildren
   SignupRoute: typeof SignupRoute
 }
 
@@ -227,7 +279,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRouteWithChildren,
   LoginRoute: LoginRoute,
   OrauthRoute: OrauthRoute,
-  SettingsRoute: SettingsRoute,
+  SettingsRoute: SettingsRouteWithChildren,
   SignupRoute: SignupRoute,
 }
 
@@ -266,7 +318,11 @@ export const routeTree = rootRoute
       "filePath": "or_auth.tsx"
     },
     "/settings": {
-      "filePath": "settings.tsx"
+      "filePath": "settings.tsx",
+      "children": [
+        "/settings/keys",
+        "/settings/"
+      ]
     },
     "/signup": {
       "filePath": "signup.tsx"
@@ -275,9 +331,17 @@ export const routeTree = rootRoute
       "filePath": "chat/$chatId.tsx",
       "parent": "/chat"
     },
+    "/settings/keys": {
+      "filePath": "settings/keys.tsx",
+      "parent": "/settings"
+    },
     "/chat/": {
       "filePath": "chat/index.tsx",
       "parent": "/chat"
+    },
+    "/settings/": {
+      "filePath": "settings/index.tsx",
+      "parent": "/settings"
     }
   }
 }

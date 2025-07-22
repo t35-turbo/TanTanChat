@@ -1,6 +1,7 @@
 import { pgTable, text, timestamp, boolean, index, pgEnum, integer, jsonb } from "drizzle-orm/pg-core";
 import { desc } from "drizzle-orm";
 
+export const privilegeEnum = pgEnum("privileges", ["admin", "user", "guest"]);
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -15,6 +16,7 @@ export const user = pgTable("user", {
   updatedAt: timestamp("updated_at")
     .$defaultFn(() => /* @__PURE__ */ new Date())
     .notNull(),
+  privileges: privilegeEnum().notNull().default("user"),
 });
 
 export const session = pgTable("session", {
@@ -153,5 +155,5 @@ export const api_keys = pgTable("api_keys", {
     .$defaultFn(() => crypto.randomUUID()),
   provider: text("provider").notNull(),
   key: text("key").notNull(),
-  custom_url: text("custom_url")
+  custom_url: text("custom_url"),
 });
