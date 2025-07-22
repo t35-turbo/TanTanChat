@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, index, pgEnum, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, index, pgEnum, integer, jsonb } from "drizzle-orm/pg-core";
 import { desc } from "drizzle-orm";
 
 export const user = pgTable("user", {
@@ -93,26 +93,21 @@ export const chatMessages = pgTable(
   }),
 );
 
-export const userSettings = pgTable(
-  "user_settings",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    key: text("key").notNull(),
-    value: text("value").notNull(),
-    createdAt: timestamp("created_at")
-      .$defaultFn(() => /* @__PURE__ */ new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at")
-      .$defaultFn(() => /* @__PURE__ */ new Date())
-      .notNull(),
-  },
-  (table) => [index("idx_settings_user_id_key").on(table.userId, table.key)],
-);
+export const userSettings = pgTable("user_settings", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  name: text("name"),
+  selfAttr: text("self_attr"),
+  traits: text("traits"),
+  api_keys: text("api_keys").array(),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
 
 export const systemSettings = pgTable(
   "system_settings",
@@ -132,22 +127,31 @@ export const systemSettings = pgTable(
   (table) => [index("idx_system_settings_key").on(table.key)],
 );
 
-export const files = pgTable(
-  "files",
-  {
-    "id": text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    "filename": text("filename").notNull(),
-    "size": integer("size").notNull(),
-    "hash": text("hash").notNull(),
-    "mime": text("mime").notNull(),
-    "ownedBy": text("owned_by").notNull().references(() => user.id, { onDelete: "cascade" }),
-    "onS3": boolean("on_s3")
-      .$defaultFn(() => false)
-      .notNull(),
-    "filePath": text("file_path").notNull(),
-    "createdAt": timestamp("created_at")
-      .$defaultFn(() => /* @__PURE__ */ new Date())
-      .notNull(),
+export const files = pgTable("files", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  filename: text("filename").notNull(),
+  size: integer("size").notNull(),
+  hash: text("hash").notNull(),
+  mime: text("mime").notNull(),
+  ownedBy: text("owned_by")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  onS3: boolean("on_s3")
+    .$defaultFn(() => false)
+    .notNull(),
+  filePath: text("file_path").notNull(),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
 
-  }
-);
+export const api_keys = pgTable("api_keys", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  provider: text("provider").notNull(),
+  key: text("key").notNull(),
+  custom_url: text("custom_url")
+});

@@ -44,17 +44,10 @@ export function ChatUI() {
   const files = useFiles((state) => state.files);
   const clearFiles = useFiles((state) => state.clearFiles);
 
-  const nameQ = useQuery(
-    trpc.settings.getKey.queryOptions("name", { enabled: !user_sess.isPending && !user_sess.error }),
-  );
-
-  const selfAttrQ = useQuery(
-    trpc.settings.getKey.queryOptions("self-attr", { enabled: !user_sess.isPending && !user_sess.error }),
-  );
-
-  const traitsQ = useQuery(
-    trpc.settings.getKey.queryOptions("traits", { enabled: !user_sess.isPending && !user_sess.error }),
-  );
+  const settingsQuery = useQuery({
+    ...trpc.settings.get.queryOptions(),
+    enabled: !user_sess.isPending && !user_sess.error,
+  });
 
   const sendMessageMut = useMutation({
     mutationKey: ["sendMessage", chatId],
@@ -81,9 +74,9 @@ export function ChatUI() {
           apiKey: or_key,
           model: model.id,
           system_prompt: generateSystemPrompt({
-            name: nameQ.data,
-            selfAttr: selfAttrQ.data,
-            traits: traitsQ.data,
+            name: settingsQuery.data?.name,
+            selfAttr: settingsQuery.data?.selfAttr,
+            traits: settingsQuery.data?.traits,
           }),
           tools: null,
         },

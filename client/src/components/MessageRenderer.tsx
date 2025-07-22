@@ -112,17 +112,10 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
 
   const user_sess = authClient.useSession();
 
-  const nameQ = useQuery(
-    trpc.settings.getKey.queryOptions("name", { enabled: !user_sess.isPending && !user_sess.error }),
-  );
-
-  const selfAttrQ = useQuery(
-    trpc.settings.getKey.queryOptions("self-attr", { enabled: !user_sess.isPending && !user_sess.error }),
-  );
-
-  const traitsQ = useQuery(
-    trpc.settings.getKey.queryOptions("traits", { enabled: !user_sess.isPending && !user_sess.error }),
-  );
+  const settingsQuery = useQuery({
+    ...trpc.settings.get.queryOptions(),
+    enabled: !user_sess.isPending && !user_sess.error,
+  });
 
   const files = useQuery({
     queryKey: ["files", message.files],
@@ -185,11 +178,11 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
               apiKey: or_key ?? "",
               model: model.id,
               reasoning_effort: model.thinkingEffort,
-              system_prompt: generateSystemPrompt({
-                name: nameQ.data ?? "",
-                selfAttr: selfAttrQ.data ?? "",
-                traits: traitsQ.data ?? "",
-              }),
+                          system_prompt: generateSystemPrompt({
+                            name: settingsQuery.data?.name ?? "",
+                            selfAttr: settingsQuery.data?.selfAttr ?? "",
+                            traits: settingsQuery.data?.traits ?? "",
+                          }),
             },
           });
           evt.preventDefault();
@@ -293,9 +286,9 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
                           model: model.id,
                           reasoning_effort: model.thinkingEffort,
                           system_prompt: generateSystemPrompt({
-                            name: nameQ.data ?? "",
-                            selfAttr: selfAttrQ.data ?? "",
-                            traits: traitsQ.data ?? "",
+                            name: settingsQuery.data?.name ?? "",
+                            selfAttr: settingsQuery.data?.selfAttr ?? "",
+                            traits: settingsQuery.data?.traits ?? "",
                           }),
                         },
                       })
@@ -334,9 +327,9 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
                           model: model.id,
                           reasoning_effort: model.thinkingEffort,
                           system_prompt: generateSystemPrompt({
-                            name: nameQ.data ?? "",
-                            selfAttr: selfAttrQ.data ?? "",
-                            traits: traitsQ.data ?? "",
+                            name: settingsQuery.data?.name ?? "",
+                            selfAttr: settingsQuery.data?.selfAttr ?? "",
+                            traits: settingsQuery.data?.traits ?? "",
                           }),
                         },
                       })
