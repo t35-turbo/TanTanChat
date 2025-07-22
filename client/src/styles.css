@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Comic+Relief:wght@400;700&display=swap');
+
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 @plugin "@catppuccin/tailwindcss";
@@ -257,7 +259,7 @@ code {
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
     --animate-big-bounce: bigBounce 1s infinite;
-    --font-comic: "Comic Sans MS", "Comic Sans", cursive, sans-serif;
+    --font-comic: "Comic Relief", "Comic Sans MS", "Comic Sans", cursive, sans-serif;
 }
 
 @layer base {

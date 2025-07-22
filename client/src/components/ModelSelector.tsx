@@ -7,6 +7,7 @@ import { useORKey } from "@/hooks/use-or-key";
 import { toast } from "sonner";
 import { type Models, useModel } from "@/hooks/use-model";
 import { toastEnterAPIKey } from "@/lib/utils";
+import { useKeyInput } from "@/hooks/use-key-input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -163,6 +164,7 @@ export default function ModelSelector() {
   const [open, setOpen] = useState(false);
   const model = useModel((state) => state.model);
   const setModel = useModel((state) => state.setModel);
+  const openModal = useKeyInput(state => state.open);
 
   // const webSearch = useTools(state => state.web_search);
   // const setWebSearch = useTools(state => state.setWebSearch);
@@ -201,9 +203,9 @@ export default function ModelSelector() {
         open={open}
         onOpenChange={(open) => {
           if (!or_key) {
-            toastEnterAPIKey();
+            toastEnterAPIKey('missing', openModal);
           } else if (!or_key.startsWith("sk-or")) {
-            toastEnterAPIKey("invalid");
+            toastEnterAPIKey("invalid", openModal);
           } else {
             setOpen(open);
           }
