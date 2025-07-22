@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import React from "react";
 import ModelSelector from "@/components/ModelSelector";
 import FileDisplay from "@/components/FileDisplay";
-import { useFiles } from "@/hooks/use-files";
+import { useFiles, type FileItem } from "@/hooks/use-files";
 import { useActiveId } from "./WSManager";
 
 interface MessageInputProps {
@@ -23,6 +23,7 @@ export default function MessageInput({
 }: MessageInputProps) {
   const [input, setInput] = React.useState("");
   const files = useFiles((state) => state.files);
+  const addFiles = useFiles((state) => state.addFiles);
 
   const activeId = useActiveId();
 
@@ -53,6 +54,60 @@ export default function MessageInput({
     if (input.trim()) {
       sendMessage(input);
       setInput("");
+    }
+  };
+
+  const handlePaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const clipboardData = event.clipboardData;
+    if (!clipboardData) return;
+
+    const files = Array.from(clipboardData.files);
+    const items = Array.from(clipboardData.items);
+    
+    const newFiles: FileItem[] = [];
+
+    // Prioritize direct files first
+    if (files.length > 0) {
+      files.forEach((file) => {
+        // Check if it's a generic pasted image name and replace with timestamp
+        let fileName = file.name;
+        if (fileName === 'image.png' || fileName === 'image.jpg' || fileName === 'image.jpeg' || fileName === 'image.webp' || fileName === 'image.gif') {
+          const extension = file.type.split('/')[1] || fileName.split('.').pop() || 'png';
+          fileName = `pasted-image-${(new Date()).toLocaleTimeString()}.${extension}`;
+        } else if (!fileName) {
+          fileName = `pasted-file-${(new Date()).toLocaleTimeString()}`;
+        }
+        
+        const fileItem: FileItem = {
+          id: crypto.randomUUID(),
+          name: fileName,
+          file: file,
+          uploaded: false,
+        };
+        newFiles.push(fileItem);
+      });
+    } else {
+      // Only process clipboard items if no direct files found
+      items.forEach((item) => {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            const extension = item.type.split('/')[1] || 'png';
+            const fileItem: FileItem = {
+              id: crypto.randomUUID(),
+              name: `pasted-image-${Date.now()}.${extension}`,
+              file: file,
+              uploaded: false,
+            };
+            newFiles.push(fileItem);
+          }
+        }
+      });
+    }
+
+    if (newFiles.length > 0) {
+      event.preventDefault();
+      addFiles(newFiles);
     }
   };
 
@@ -87,6 +142,7 @@ export default function MessageInput({
             handleSendMessage();
           }
         }}
+        onPaste={handlePaste}
         value={input}
         onChange={(e) => setInput(e.target.value)}
       />
