@@ -1,7 +1,6 @@
 import { pgTable, text, timestamp, boolean, index, pgEnum, integer, jsonb } from "drizzle-orm/pg-core";
 import { desc } from "drizzle-orm";
 
-export const privilegeEnum = pgEnum("privileges", ["admin", "user", "guest"]);
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -16,7 +15,10 @@ export const user = pgTable("user", {
   updatedAt: timestamp("updated_at")
     .$defaultFn(() => /* @__PURE__ */ new Date())
     .notNull(),
-  privileges: privilegeEnum().notNull().default("user"),
+  role: text("role"),
+  banned: boolean("banned"),
+  banReason: text("ban_reason"),
+  banExpires: timestamp("ban_expires"),
 });
 
 export const session = pgTable("session", {
@@ -30,6 +32,7 @@ export const session = pgTable("session", {
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  impersonatedBy: text("impersonated_by"),
 });
 
 export const account = pgTable("account", {
@@ -70,7 +73,7 @@ export const chats = pgTable("chats", {
     .notNull(),
 });
 
-export const roleEnum = pgEnum("role", ["system", "assistant", "user"]);
+export const roleEnum = pgEnum("role", ["system", "assistant", "user", "tool"]);
 export const chatMessages = pgTable(
   "chat_messages",
   {

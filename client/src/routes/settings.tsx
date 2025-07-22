@@ -8,10 +8,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { createFileRoute, Link, Outlet, useCanGoBack, useRouter } from "@tanstack/react-router";
+import { authClient } from "@/lib/auth-client";
+import { createFileRoute, Link, Outlet, useRouter } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Key, User, UserIcon } from "lucide-react";
 import React from "react";
 
@@ -31,6 +31,7 @@ function RouteComponent() {
 function SidebarComponent() {
   const sidebar = useSidebar();
   const router = useRouter();
+  const session = authClient.useSession();
 
   React.useEffect(() => {
     // why the fuck shadcn?? add a setOpenMobile pLEASE
