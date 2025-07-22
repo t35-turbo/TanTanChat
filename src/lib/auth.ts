@@ -2,7 +2,6 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "../db";
 import { admin } from "better-auth/plugins";
-import env from "./env";
 
 export const auth = betterAuth({
   trustedOrigins: ["http://localhost:3001", "http://localhost:3000"],
@@ -12,6 +11,13 @@ export const auth = betterAuth({
   },
 
   plugins: [admin()],
+
+  user: {
+    deleteUser: {
+      enabled: true,
+      deleteTokenExpiresIn: 60,
+    },
+  },
 
   // socialProviders: {
   //   discord:

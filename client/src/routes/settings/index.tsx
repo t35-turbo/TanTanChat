@@ -12,10 +12,8 @@ import { useTheme } from "@/hooks/use-theme";
 import { authClient } from "@/lib/auth-client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useCanGoBack, useNavigate, useRouter } from "@tanstack/react-router";
-import ky from "ky";
 import {
   ArrowLeft,
-  ArrowLeftIcon,
   Check,
   ChevronLeft,
   Info,
@@ -24,14 +22,16 @@ import {
   LogOut,
   Palette,
   RefreshCw,
+  TriangleAlert,
   User,
   Wrench,
 } from "lucide-react";
 import { SessionLoadingScreen } from "@/components/LoadingScreen";
-import { z } from "zod/v4-mini";
 import { __client, queryClient, trpc } from "@/lib/trpc";
 import { useEffect, useRef } from "react";
 import { useSidebar } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
+import DeleteAccountButton from "@/components/settings/DeleteAccountButton";
 
 export const Route = createFileRoute("/settings/")({
   component: RouteComponent,
@@ -121,13 +121,18 @@ function AccountCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-3">
-          <Avatar className="size-12">
+          <Avatar className="size-12 flex">
             {user_sess && user_sess.data?.user?.image && <AvatarImage src={user_sess.data.user.image} />}
-            <AvatarFallback className="text-lg">{user_sess.data?.user?.name?.[0] || "G"}</AvatarFallback>
+            <AvatarFallback className="text-lg">{user_sess.data?.user?.name?.[0]}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <p className="font-medium">{user_sess.data?.user?.name || "Guest User"}</p>
-            <p className="text-sm text-muted-foreground">{user_sess.data?.user?.email || "Unknown Email"}</p>
+            <div className="font-medium my-1">
+              <span>{user_sess.data?.user?.name}</span>
+              <Badge variant={"outline"} className="ml-2">
+                User
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">{user_sess.data?.user?.email}</p>
           </div>
         </div>
 
@@ -156,29 +161,20 @@ function AccountCard() {
               });
               setKey(null);
             }}
-            className="w-full flex items-center gap-2"
+            className="flex items-center gap-2"
           >
             <LogOut className="size-4" />
             Sign Out
           </Button>
         ) : null}
-        {user_sess.isPending || user_sess.error ? (
-          <Button variant="outline" disabled className="w-full flex items-center gap-2">
-            {user_sess.isPending ? "Loading..." : `Error: ${user_sess.error?.message}`}
-          </Button>
-        ) : null}
-        {!user_sess.isPending && !user_sess.error && !user_sess.data ? (
-          <Button variant="outline" asChild className="w-full flex items-center gap-2">
-            <Link to="/login">
-              <LogIn className="size-4" />
-              Log in
-            </Link>
-          </Button>
-        ) : null}
+
+        <h2 className="font-bold mt-12">Danger Zone</h2>
+        {user_sess.data ? <DeleteAccountButton /> : null}
       </CardContent>
     </Card>
   );
 }
+
 function AppearanceCard() {
   const base = useTheme((state) => state.base);
   const color = useTheme((state) => state.color);
