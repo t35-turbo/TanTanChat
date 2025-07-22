@@ -12,11 +12,11 @@ import { authClient } from "@/lib/auth-client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useCanGoBack, useNavigate, useRouter } from "@tanstack/react-router";
 import ky from "ky";
-import { ArrowLeftIcon, Info, KeyIcon, LogIn, LogOut, Palette, User, Wrench } from "lucide-react";
+import { ArrowLeftIcon, Check, Info, KeyIcon, LogIn, LogOut, Palette, RefreshCw, User, Wrench } from "lucide-react";
 import { SessionLoadingScreen } from "@/components/LoadingScreen";
 import { z } from "zod/v4-mini";
 import { __client, queryClient, trpc } from "@/lib/trpc";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export const Route = createFileRoute("/settings")({
   component: RouteComponent,
@@ -296,79 +296,31 @@ function AppearanceCard() {
     </Card>
   );
 }
+
 function SystemPromptCard() {
   const user_sess = authClient.useSession();
 
-  const nameQ = useQuery(
-    trpc.settings.getKey.queryOptions("name", { enabled: !user_sess.isPending && !user_sess.error }),
-  );
-
-  const selfAttrQ = useQuery(
-    trpc.settings.getKey.queryOptions("self-attr", { enabled: !user_sess.isPending && !user_sess.error }),
-  );
-
-  const traitsQ = useQuery(
-    trpc.settings.getKey.queryOptions("traits", { enabled: !user_sess.isPending && !user_sess.error }),
-  );
-
-  const nameMut = useMutation({
-    mutationFn: async (newName: string) => {
-      await __client.settings.setKey.mutate(["name", newName]);
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: trpc.settings.getKey.queryKey("name") }),
+  const settingsQuery = useQuery({
+    ...trpc.settings.get.queryOptions(),
+    enabled: !user_sess.isPending && !user_sess.error,
   });
 
-  const selfAttrMut = useMutation({
-    mutationFn: async (newSelfAttr: string) => {
-      await __client.settings.setKey.mutate(["self-attr", newSelfAttr]);
+  const updateMutation = useMutation({
+    mutationFn: async (updates: { name?: string | null; selfAttr?: string | null; traits?: string | null }) => {
+      await __client.settings.update.mutate(updates);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: trpc.settings.getKey.queryKey("self-attr") }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: trpc.settings.get.queryKey() }),
   });
 
-  const traitsMut = useMutation({
-    mutationFn: async (newTraits: string) => {
-      await __client.settings.setKey.mutate(["traits", newTraits]);
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: trpc.settings.getKey.queryKey("traits") }),
-  });
-
-  let name = "";
-  if (nameQ.isPending) {
-    name = "Loading...";
-  } else if (nameQ.isError) {
-    name = "Error loading data";
-  } else if (nameQ.isSuccess) {
-    name = nameQ.data || "";
-  }
-
-  if (nameMut.isPending && nameMut.variables) {
-    name = nameMut.variables;
-  }
-
-  let selfAttr = "";
-  if (selfAttrQ.isPending) {
-    selfAttr = "Loading...";
-  } else if (selfAttrQ.isError) {
-    selfAttr = "Error loading data";
-  } else if (selfAttrQ.isSuccess) {
-    selfAttr = selfAttrQ.data || "";
-  }
-
-  if (selfAttrMut.isPending && selfAttrMut.variables) {
-    selfAttr = selfAttrMut.variables;
-  }
-
-  let traits = "";
-  if (traitsQ.isPending) {
-    traits = "Loading...";
-  } else if (traitsQ.isError) {
-    traits = "Error loading data";
-  } else if (traitsQ.isSuccess) {
-    traits = traitsQ.data || "";
-  }
-
-  if (traitsMut.isPending && traitsMut.variables) {
-    traits = traitsMut.variables;
+  let [name, selfAttr, traits] = ["", "", ""];
+  if (settingsQuery.isPending) {
+    ((name = "Loading..."), (selfAttr = "Loading..."), (traits = "Loading..."));
+  } else if (settingsQuery.isError) {
+    ((name = "Error loading data"), (selfAttr = "Error loading data"), (traits = "Error loading data"));
+  } else {
+    name = updateMutation.variables?.name || settingsQuery.data?.name || "";
+    selfAttr = updateMutation.variables?.selfAttr || settingsQuery.data?.selfAttr || "";
+    traits = updateMutation.variables?.traits || settingsQuery.data?.traits || "";
   }
 
   return (
@@ -377,6 +329,14 @@ function SystemPromptCard() {
         <CardTitle className="flex items-center gap-2">
           <Wrench className="size-4" />
           Customization
+          <div className="relative ml-auto mr-4">
+            <div className={`absolute ${updateMutation.isPending ? "opacity-100" : "opacity-0"} ${updateMutation.isPending ? "" : "delay-150 duration-50"}`}>
+              <RefreshCw className={`size-4 animate-spin`}/>
+            </div>
+            <div className={`absolute ${updateMutation.isSuccess && !updateMutation.isPending ? "opacity-100" : "opacity-0"} ${updateMutation.isSuccess ? "delay-200" : ""}`}>
+              <Check className={`size-4`}/>
+            </div>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
@@ -385,24 +345,24 @@ function SystemPromptCard() {
           name="name"
           placeholder="Enter Your Name..."
           value={name}
-          onChange={(e) => nameMut.mutate(e.target.value)}
-          onFocus={() => queryClient.invalidateQueries({ queryKey: ["name"] })}
+          onChange={(e) => updateMutation.mutate({ name: e.target.value })}
+          onFocus={() => queryClient.invalidateQueries({ queryKey: trpc.settings.get.queryKey() })}
         />
         <Label htmlFor="self-attr">What do you do?</Label>
         <Input
           name="self-attr"
           placeholder="Scientist, Writer, etc..."
           value={selfAttr}
-          onChange={(e) => selfAttrMut.mutate(e.target.value)}
-          onFocus={() => queryClient.invalidateQueries({ queryKey: ["self-attr"] })}
+          onChange={(e) => updateMutation.mutate({ selfAttr: e.target.value })}
+          onFocus={() => queryClient.invalidateQueries({ queryKey: trpc.settings.get.queryKey() })}
         />
         <Label htmlFor="traits">What Should We Consider When Responding?</Label>
         <Textarea
           name="traits"
           placeholder="Interests or Preferences to keep in mind"
           value={traits}
-          onChange={(e) => traitsMut.mutate(e.target.value)}
-          onFocus={() => queryClient.invalidateQueries({ queryKey: ["traits"] })}
+          onChange={(e) => updateMutation.mutate({ traits: e.target.value })}
+          onFocus={() => queryClient.invalidateQueries({ queryKey: trpc.settings.get.queryKey() })}
         />
       </CardContent>
     </Card>
