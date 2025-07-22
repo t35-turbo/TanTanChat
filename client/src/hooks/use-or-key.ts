@@ -10,7 +10,7 @@ export const useORKey = create<ORKeyState>()(
   persist(
     (set) => ({
       key: null,
-      setKey: (key: string | null) => set({ key }),
+      setKey: (key: string | null) => set({ key: key?.trim() ?? null }),
     }),
     {
       name: "sk-or",
