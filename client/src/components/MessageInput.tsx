@@ -63,7 +63,7 @@ export default function MessageInput({
 
     const files = Array.from(clipboardData.files);
     const items = Array.from(clipboardData.items);
-    
+
     const newFiles: FileItem[] = [];
 
     // Prioritize direct files first
@@ -77,7 +77,7 @@ export default function MessageInput({
         } else if (!fileName) {
           fileName = `pasted-file-${(new Date()).toLocaleTimeString()}`;
         }
-        
+
         const fileItem: FileItem = {
           id: crypto.randomUUID(),
           name: fileName,
@@ -121,7 +121,7 @@ export default function MessageInput({
   );
   return (
     <motion.div
-      className={`w-full ${chatId ? "" : "md:w-1/2"} sticky bottom-0 bg-background`}
+      className={`w-full ${chatId ? "" : "md:w-1/2"} p-2 sticky bottom-0 bg-background`}
       animate={animateProps}
       transition={transitionProps}
     >

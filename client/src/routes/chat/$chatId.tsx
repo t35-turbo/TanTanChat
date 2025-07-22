@@ -141,7 +141,7 @@ export function ChatUI() {
         <motion.div
           animate={{ height: chatId ? "100%" : "auto" }}
           transition={{ duration: 0.2 }}
-          className="flex flex-col w-full items-center overflow-y-scroll"
+          className={`flex flex-col w-full items-center ${chatId ? "overflow-y-scroll" : "overflow-y-hidden"} px-1`}
           ref={scrollContainerRef}
         >
           <div className="mb-auto w-full">
