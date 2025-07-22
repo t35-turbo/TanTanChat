@@ -33,6 +33,13 @@ export default function DeleteAccountButton() {
     });
   }
 
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (password.trim()) {
+      deleteAccount();
+    }
+  }
+
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
@@ -43,22 +50,32 @@ export default function DeleteAccountButton() {
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogTitle>Are you sure you want to delete your account?</AlertDialogTitle>
-        <AlertDialogDescription className="">
-          <p>This action is irreversible and will permanently delete your account and all data associated with it.</p>
-          <p>
-            <b>To Continue, please type your password below:</b>
-          </p>
-          <Input
-            type="password"
-            className="mt-1"
-            placeholder={"Enter Password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+        <AlertDialogDescription asChild>
+          <div>
+            <p>This action is irreversible and will permanently delete your account and all data associated with it.</p>
+            <form onSubmit={handleSubmit} className="mt-4">
+              <label htmlFor="delete-password" className="block font-bold mb-2">
+                To continue, please type your password below:
+              </label>
+              <Input
+                id="delete-password"
+                type="password"
+                placeholder="Enter Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+            </form>
+          </div>
         </AlertDialogDescription>
         <AlertDialogFooter>
           <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
-          <AlertDialogAction className="bg-destructive hover:bg-destructive/70" onClick={deleteAccount}>
+          <AlertDialogAction 
+            className="bg-destructive hover:bg-destructive/70" 
+            onClick={deleteAccount}
+            disabled={!password.trim()}
+          >
             Delete my Account.
           </AlertDialogAction>
         </AlertDialogFooter>
