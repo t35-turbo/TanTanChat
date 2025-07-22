@@ -12,6 +12,7 @@ import { useMutation, useQuery, type UseMutationResult } from "@tanstack/react-q
 import ky from "ky";
 import { queryClient, trpc, type Chat } from "@/lib/trpc";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "./ui/context-menu";
+import Logo from "./ui/Logo";
 
 interface ChatItemProps {
   item: Chat;
@@ -125,11 +126,8 @@ export default function ChatSidebar() {
     <>
       <Sidebar className="select-none">
         <SidebarHeader className="flex items-center content-center mt-2">
-          <h1 className="text-2xl font-bold h-12 font-comic flex items-center">
-            <div>Tan</div>
-            <span className="inline-block rotate-180 self-end">T</span>
-            <div>an</div>
-          </h1>
+          <Logo />
+
           <Button variant={"default"} className="w-full cursor-pointer" asChild>
             <Link to="/chat">New Chat</Link>
           </Button>

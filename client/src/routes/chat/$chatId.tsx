@@ -20,6 +20,7 @@ import Onboarding from "@/components/Onboarding";
 import { EmptyLoadingScreen } from "@/components/LoadingScreen";
 import MessageInput from "@/components/MessageInput";
 import { ChunkData, useActiveId, useActiveMessage } from "@/components/WSManager";
+import Logo from "@/components/ui/Logo";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
@@ -140,7 +141,7 @@ export function ChatUI() {
           <div className="mb-auto w-full">
             <MessageRenderer chatId={chatId} />
           </div>
-          <h1 className={`font-bold text-2xl md:text-4xl ${chatId ? "opacity-0" : "opacity-100"}`}>7o</h1>
+          <div className={`${chatId ? "opacity-0" : "opacity-100"}`}><Logo className="text-4xl" /></div>
           <MessageInput chatId={chatId} sendMessage={sendMessage} isPending={sendMessageMut.isPending} />
         </motion.div>
       </div>
