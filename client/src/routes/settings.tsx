@@ -1,6 +1,9 @@
 import { SidebarBack } from "@/components/settings/BackButtons";
+import SidebarAvatar from "@/components/SidebarAvatar";
 import {
   Sidebar,
+  SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -11,7 +14,7 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { authedRoute } from "@/lib/auth-client";
+import { authClient, authedRoute } from "@/lib/auth-client";
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { ChevronRight, Key, User } from "lucide-react";
 import React from "react";
@@ -34,6 +37,8 @@ function SidebarComponent() {
   const sidebar = useSidebar();
   const location = useLocation();
 
+  const session = authClient.useSession();
+
   React.useEffect(() => {
     // why the fuck shadcn?? add a setOpenMobile pLEASE
     if (sidebar.isMobile) {
@@ -47,45 +52,69 @@ function SidebarComponent() {
         <SidebarBack />
       </SidebarHeader>
 
-      <SidebarGroup>
-        <SidebarGroupLabel>User Settings</SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            <SettingsMenuButton>
-              <Link to="/settings" replace className={`${location.pathname === "/settings" ? "bg-sidebar-accent" : ""}`}>
-                <User />
-                General
-              </Link>
-            </SettingsMenuButton>
-            <SettingsMenuButton>
-              <Link to="/settings/keys" replace className={`${location.pathname === "/settings/keys" ? "bg-sidebar-accent/75" : ""}`}>
-                <Key />
-                Key Management
-              </Link>
-            </SettingsMenuButton>
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>User Settings</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SettingsMenuButton>
+                <Link
+                  to="/settings"
+                  replace
+                  className={`${location.pathname === "/settings" ? "bg-sidebar-accent" : ""}`}
+                >
+                  <User />
+                  General
+                </Link>
+              </SettingsMenuButton>
+              <SettingsMenuButton>
+                <Link
+                  to="/settings/keys"
+                  replace
+                  className={`${location.pathname === "/settings/keys" ? "bg-sidebar-accent/75" : ""}`}
+                >
+                  <Key />
+                  Key Management
+                </Link>
+              </SettingsMenuButton>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-      <SidebarGroup>
-        <SidebarGroupLabel>Admin Settings</SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            <SettingsMenuButton>
-              <Link to="/admin/settings" replace className={`${location.pathname === "/admin/settings" ? "bg-sidebar-accent/75" : ""}`}>
-                <User />
-                General
-              </Link>
-            </SettingsMenuButton>
-            <SettingsMenuButton>
-              <Link to="/admin/keys" replace className={`${location.pathname === "/admin/keys" ? "bg-sidebar-accent/75" : ""}`}>
-                <Key />
-                Key Management
-              </Link>
-            </SettingsMenuButton>
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
+        {session.data?.user.role === "admin" ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin Settings</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SettingsMenuButton>
+                  <Link
+                    to="/admin/settings"
+                    replace
+                    className={`${location.pathname === "/admin/settings" ? "bg-sidebar-accent/75" : ""}`}
+                  >
+                    <User />
+                    General
+                  </Link>
+                </SettingsMenuButton>
+                <SettingsMenuButton>
+                  <Link
+                    to="/admin/keys"
+                    replace
+                    className={`${location.pathname === "/admin/keys" ? "bg-sidebar-accent/75" : ""}`}
+                  >
+                    <Key />
+                    Key Management
+                  </Link>
+                </SettingsMenuButton>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
+      </SidebarContent>
+
+      <SidebarFooter className="flex flex-row mb-4 w-full">
+        <SidebarAvatar />
+      </SidebarFooter>
     </Sidebar>
   );
 }

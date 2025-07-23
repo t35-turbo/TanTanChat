@@ -1,7 +1,10 @@
-import { pgTable, text, timestamp, index, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
 import { user } from "./schema";
+import { createSelectSchema, createUpdateSchema } from "drizzle-zod";
+import z from "zod/v4";
+import { pgEnum } from "drizzle-orm/pg-core";
 
-export const userSettings = pgTable("user_settings", {
+export const user_settings = pgTable("user_settings", {
   user_id: text("user_id")
     .primaryKey()
     .references(() => user.id, { onDelete: "cascade" }),
@@ -17,15 +20,25 @@ export const userSettings = pgTable("user_settings", {
     .notNull(),
 });
 
-export const systemSettings = pgTable("system_settings", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
+export const settings_enum = pgEnum("system_setting", ["setting"])
+export const system_settings = pgTable("system_settings", {
+  key: settings_enum().primaryKey().unique().notNull().default("setting"),
+  allow_new_signups: boolean().default(false).notNull(),
+});
+
+export const SystemSettingsSelect = createSelectSchema(system_settings);
+export type SystemSettingsSelect = z.infer<typeof SystemSettingsSelect>;
+
+export const SystemSettingsUpdate = createUpdateSchema(system_settings);
+export type SystemSettingsUpdate = z.infer<typeof SystemSettingsUpdate>;
+
+export const roles = pgTable("roles", {
+  id: text("id").primaryKey(),
 
   allow_local_keys: boolean().default(true),
   allow_byok: boolean().default(false),
   allow_custom_providers: boolean().default(true),
-  allow_new_signups: boolean().default(false),
+  is_admin: boolean().default(false),
 
   created_at: timestamp("created_at")
     .$defaultFn(() => /* @__PURE__ */ new Date())

@@ -1,5 +1,6 @@
-import { pgTable, text, timestamp, boolean, index, pgEnum, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, index, pgEnum, integer } from "drizzle-orm/pg-core";
 import { desc } from "drizzle-orm";
+import { roles } from "./settings.schema";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -15,7 +16,7 @@ export const user = pgTable("user", {
   updatedAt: timestamp("updated_at")
     .$defaultFn(() => /* @__PURE__ */ new Date())
     .notNull(),
-  role: text("role"),
+  role: text("role").references(() => roles.id),
   banned: boolean("banned"),
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires"),
@@ -73,14 +74,14 @@ export const chats = pgTable("chats", {
     .notNull(),
 });
 
-export const roleEnum = pgEnum("role", ["system", "assistant", "user", "tool"]);
-export const chatMessages = pgTable(
+export const role_enum = pgEnum("role", ["system", "assistant", "user", "tool"]);
+export const chat_messages = pgTable(
   "chat_messages",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    role: roleEnum().notNull(),
+    role: role_enum().notNull(),
     chatId: text("chat_id")
       .notNull()
       .references(() => chats.id, { onDelete: "cascade" }),
@@ -128,4 +129,4 @@ export const api_keys = pgTable("api_keys", {
 });
 
 // Re-export settings schemas
-export { userSettings, systemSettings } from "./settings.schema";
+export * from "./settings.schema";

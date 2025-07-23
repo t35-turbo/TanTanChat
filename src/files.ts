@@ -7,7 +7,7 @@ import { mkdirSync, readdirSync } from "fs";
 import env from "./lib/env";
 import { authProcedure, router } from "./trpc";
 import { TRPCError } from "@trpc/server";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { isBinaryFile } from "isbinaryfile";
 
 if (env.USE_S3 === false) {

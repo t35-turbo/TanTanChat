@@ -35,6 +35,7 @@ export const trpc = createTRPCOptionsProxy<AppRouter>({
 export const { TRPCProvider, useTRPC, useTRPCClient } = createTRPCContext<AppRouter>();
 
 // Type exports
+export type AppRouter = AppRouter;
 export type RouterOutput = inferRouterOutputs<AppRouter>;
 export type Chat = RouterOutput["chats"]["listThreads"][0];
 export type Message = RouterOutput["chats"]["threadHistory"][0];

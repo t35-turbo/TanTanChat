@@ -180,7 +180,7 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
               reasoning_effort: model.thinkingEffort,
                           system_prompt: generateSystemPrompt({
                             name: settingsQuery.data?.name ?? "",
-                            selfAttr: settingsQuery.data?.selfAttr ?? "",
+                            self_attr: settingsQuery.data?.self_attr ?? "",
                             traits: settingsQuery.data?.traits ?? "",
                           }),
             },
@@ -287,7 +287,7 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
                           reasoning_effort: model.thinkingEffort,
                           system_prompt: generateSystemPrompt({
                             name: settingsQuery.data?.name ?? "",
-                            selfAttr: settingsQuery.data?.selfAttr ?? "",
+                            self_attr: settingsQuery.data?.self_attr ?? "",
                             traits: settingsQuery.data?.traits ?? "",
                           }),
                         },
@@ -328,7 +328,7 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
                           reasoning_effort: model.thinkingEffort,
                           system_prompt: generateSystemPrompt({
                             name: settingsQuery.data?.name ?? "",
-                            selfAttr: settingsQuery.data?.selfAttr ?? "",
+                            self_attr: settingsQuery.data?.self_attr ?? "",
                             traits: settingsQuery.data?.traits ?? "",
                           }),
                         },

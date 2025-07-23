@@ -9,6 +9,7 @@
     "better-auth": "^1.2.9",
     "dotenv": "^16.5.0",
     "drizzle-orm": "^0.44.2",
+    "drizzle-zod": "^0.8.2",
     "exa-js": "^1.8.12",
     "hono": "^4.7.11",
     "isbinaryfile": "^5.0.4",

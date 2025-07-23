@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { auth } from "./lib/auth";
 import * as sync from "./sync";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { createBunWebSocket, serveStatic } from "hono/bun";
 import type { ServerWebSocket } from "bun";
 import { filesRouter } from "./files";
@@ -9,15 +9,21 @@ import { chatRouter } from "./chats";
 import { router } from "./trpc";
 import { trpcServer } from "@hono/trpc-server";
 import { settingsRouter } from "./settings";
+import { adminRouter } from "./admin";
+import { seedDefaults } from "./db";
 
 const PORT = 3001;
+
+// Initialize default roles
+await seedDefaults();
 
 const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
 
 const appRouter = router({
   chats: chatRouter,
   files: filesRouter,
-  settings: settingsRouter
+  settings: settingsRouter,
+  admin: adminRouter
 });
 
 export type AppRouter = typeof appRouter;

@@ -1,13 +1,13 @@
 import { queryClient, trpc } from "@/lib/trpc";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { z } from "zod";
+import { z } from "zod/v4-mini";
 
 export const ChunkData = z.object({
   finish_reason: z.string(),
   content: z.string(),
   refusal: z.string(),
   reasoning: z.string(),
-  tool_calls: z.any().optional(),
+  tool_calls: z.optional(z.any()),
 });
 export type ChunkData = z.infer<typeof ChunkData>;
 
@@ -15,13 +15,13 @@ const RpcActiveMessage = z.object({
   jsonrpc: z.literal("2.0"),
   method: z.literal("activeMessage"),
   params: z.string(),
-  id: z.undefined().optional(),
+  id: z.optional(z.undefined()),
 });
 const RpcInvalidate = z.object({
   jsonrpc: z.literal("2.0"),
   method: z.literal("invalidate"),
   params: z.string(),
-  id: z.undefined().optional(),
+  id: z.optional(z.undefined()),
 });
 const RpcChunk = z.object({
   jsonrpc: z.literal("2.0"),

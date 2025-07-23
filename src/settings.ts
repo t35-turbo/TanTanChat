@@ -1,6 +1,6 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 import { authProcedure, router } from "./trpc";
-import { userSettings } from "./db/schema";
+import { user_settings } from "./db/schema";
 import { eq, sql } from "drizzle-orm";
 import { db } from "./db";
 
@@ -8,8 +8,8 @@ export const settingsRouter = router({
   get: authProcedure.query(async (opts) => {
     const result = await db
       .select()
-      .from(userSettings)
-      .where(eq(userSettings.user_id, opts.ctx.user.id));
+      .from(user_settings)
+      .where(eq(user_settings.user_id, opts.ctx.user.id));
 
     return result[0] || {
       user_id: opts.ctx.user.id,
@@ -34,13 +34,13 @@ export const settingsRouter = router({
       };
 
       await db
-        .insert(userSettings)
+        .insert(user_settings)
         .values({
           user_id: opts.ctx.user.id,
           ...updateData,
         })
         .onConflictDoUpdate({
-          target: userSettings.user_id,
+          target: user_settings.user_id,
           set: {
             ...Object.fromEntries(
               Object.entries(updateData).filter(([_, value]) => value !== undefined)

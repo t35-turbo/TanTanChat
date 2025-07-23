@@ -13,6 +13,7 @@ import ky from "ky";
 import { queryClient, trpc, type Chat } from "@/lib/trpc";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "./ui/context-menu";
 import Logo from "./ui/Logo";
+import SidebarAvatar from "./SidebarAvatar";
 
 interface ChatItemProps {
   item: Chat;
@@ -149,22 +150,7 @@ export default function ChatSidebar() {
           {chats.isPending ? "Loading Chats..." : null}
         </SidebarContent>
         <SidebarFooter className="flex flex-row items-center mb-4 w-full">
-          {user_sess.data ? (
-            <Button variant="ghost" className="text-left justify-start items-center p-4 text-md flex-1 min-w-0">
-              <Avatar className="flex-shrink-0">
-                {user_sess.data.user.image ? <AvatarImage src={user_sess.data.user.image} /> : null}
-                <AvatarFallback>{user_sess.data.user.name[0]}</AvatarFallback>
-              </Avatar>
-              <div className="truncate ml-2">{user_sess.data.user.name}</div>
-            </Button>
-          ) : (
-            <Button variant={"ghost"} className="grow text-left justify-start items-center p-4 text-md" asChild>
-              <Link to="/login" params={{ redirect: "/chat" }}>
-                <LogIn />
-                <div>Log In</div>
-              </Link>
-            </Button>
-          )}
+          <SidebarAvatar />
           <Link to="/settings">
             <Settings className="size-5" />
           </Link>

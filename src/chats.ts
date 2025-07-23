@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import { auth } from "./lib/auth";
 import { db } from "./db";
-import { chats, chatMessages } from "./db/schema";
+import { chats, chat_messages } from "./db/schema";
 import { eq, desc, and, asc, gte, inArray } from "drizzle-orm";
 import * as sync from "./sync";
-import { z } from "zod";
+import { z } from "zod/v4";
 import * as crypto from "crypto";
 import { getFile } from "./files";
 import { authProcedure, publicProcedure, router } from "./trpc";
@@ -77,8 +77,8 @@ export const chatRouter = router({
       // Get the message to check if it exists and belongs to this chat
       const message = await db
         .select()
-        .from(chatMessages)
-        .where(and(eq(chatMessages.id, opts.input.msgId), eq(chatMessages.chatId, opts.input.chatId)))
+        .from(chat_messages)
+        .where(and(eq(chat_messages.id, opts.input.msgId), eq(chat_messages.chatId, opts.input.chatId)))
         .limit(1);
 
       if (!message[0]) {
@@ -93,7 +93,7 @@ export const chatRouter = router({
       const updatedFiles = currentFiles.filter((file) => file !== opts.input.fileId);
 
       // Update the message with the new files array
-      await db.update(chatMessages).set({ files: updatedFiles }).where(eq(chatMessages.id, opts.input.msgId));
+      await db.update(chat_messages).set({ files: updatedFiles }).where(eq(chat_messages.id, opts.input.msgId));
 
       return { message: "File removed successfully" };
     }),
@@ -150,11 +150,11 @@ export const chatRouter = router({
       const operations = [];
 
       if (newMsgs.delArr.length > 0) {
-        operations.push(db.delete(chatMessages).where(inArray(chatMessages.id, newMsgs.delArr)));
+        operations.push(db.delete(chat_messages).where(inArray(chat_messages.id, newMsgs.delArr)));
       }
 
       if (opts.input.message) {
-        operations.push(db.update(chatMessages).set({ message: opts.input.message }).where(eq(chatMessages.id, opts.input.msgId)));
+        operations.push(db.update(chat_messages).set({ message: opts.input.message }).where(eq(chat_messages.id, opts.input.msgId)));
       }
 
       await Promise.all(operations);
@@ -167,9 +167,9 @@ export const chatRouter = router({
   threadHistory: chatProcedure.query(async (opts) => {
     return await db
       .select()
-      .from(chatMessages)
-      .where(eq(chatMessages.chatId, opts.input.chatId))
-      .orderBy(asc(chatMessages.createdAt));
+      .from(chat_messages)
+      .where(eq(chat_messages.chatId, opts.input.chatId))
+      .orderBy(asc(chat_messages.createdAt));
   }),
   newMessage: chatProcedure
     .input(
@@ -197,7 +197,7 @@ export const chatRouter = router({
         createdAt: new Date(),
       };
 
-      await db.insert(chatMessages).values(newMessage);
+      await db.insert(chat_messages).values(newMessage);
       let messages: sync.Messages = await getChatMessages(chatId);
       sync.broadcastNewMessage(chatId);
 
@@ -208,9 +208,9 @@ export const chatRouter = router({
 async function getChatMessages(chatId: string): Promise<sync.Messages> {
   let msgs = await db
     .select()
-    .from(chatMessages)
-    .where(eq(chatMessages.chatId, chatId))
-    .orderBy(asc(chatMessages.createdAt));
+    .from(chat_messages)
+    .where(eq(chat_messages.chatId, chatId))
+    .orderBy(asc(chat_messages.createdAt));
   let completions: sync.Messages = [];
   for (const msg of msgs) {
     if (msg.files && msg.files.length > 0) {

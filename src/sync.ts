@@ -1,7 +1,7 @@
 import { OpenAI } from "openai";
 import { z } from "zod/v4";
 import { db } from "./db";
-import { chatMessages, chats } from "./db/schema";
+import { chat_messages, chats } from "./db/schema";
 import { eq } from "drizzle-orm";
 import * as vk from "./db/redis";
 import { WSContext } from "hono/ws";
@@ -296,7 +296,7 @@ async function pgSubscriber(id: string, chatId: string, model: string) {
       finish_reason = chunk.finish_reason;
     }
 
-    await db.insert(chatMessages).values({
+    await db.insert(chat_messages).values({
       id,
       chatId,
       senderId: model, // Ensure senderId is passed correctly
