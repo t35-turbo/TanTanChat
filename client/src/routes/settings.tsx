@@ -1,5 +1,4 @@
 import { SidebarBack } from "@/components/settings/BackButtons";
-import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarGroup,
@@ -12,9 +11,8 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { authClient } from "@/lib/auth-client";
-import { createFileRoute, Link, Outlet, useRouter } from "@tanstack/react-router";
-import { ArrowLeft, ChevronLeft, ChevronRight, Key, User, UserIcon } from "lucide-react";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
+import { ChevronRight, Key, User } from "lucide-react";
 import React from "react";
 
 export const Route = createFileRoute("/settings")({
@@ -32,8 +30,7 @@ function RouteComponent() {
 
 function SidebarComponent() {
   const sidebar = useSidebar();
-  const router = useRouter();
-  const session = authClient.useSession();
+  const location = useLocation();
 
   React.useEffect(() => {
     // why the fuck shadcn?? add a setOpenMobile pLEASE
@@ -53,13 +50,13 @@ function SidebarComponent() {
         <SidebarGroupContent>
           <SidebarMenu>
             <SettingsMenuButton>
-              <Link to="/settings" replace>
+              <Link to="/settings" replace className={`${location.pathname === "/settings" ? "bg-sidebar-accent" : ""}`}>
                 <User />
                 General
               </Link>
             </SettingsMenuButton>
             <SettingsMenuButton>
-              <Link to="/settings/keys" replace>
+              <Link to="/settings/keys" replace className={`${location.pathname === "/settings/keys" ? "bg-sidebar-accent/75" : ""}`}>
                 <Key />
                 Key Management
               </Link>

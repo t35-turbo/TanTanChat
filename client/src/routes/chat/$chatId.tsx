@@ -15,8 +15,6 @@ import { useModel } from "@/hooks/use-model";
 import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
 import { useTools } from "@/hooks/use-tools";
 import { useFiles } from "@/hooks/use-files";
-import { toastEnterAPIKey } from "@/lib/utils";
-import { useKeyInput } from "@/hooks/use-key-input";
 import Onboarding from "@/components/Onboarding";
 import { EmptyLoadingScreen } from "@/components/LoadingScreen";
 import MessageInput from "@/components/MessageInput";
@@ -35,7 +33,6 @@ export function ChatUI() {
   const user_sess = authClient.useSession();
   const or_key = useORKey((state) => state.key);
   const web_search = useTools((state) => state.web_search);
-  const openModal = useKeyInput(state => state.open);
 
   const { chatId } = useParams({
     from: "/chat/$chatId",
@@ -108,7 +105,7 @@ export function ChatUI() {
         toast.error("Please select a model");
       }
     } else {
-      toastEnterAPIKey('missing', openModal);
+      toast.error("Please enter your API Key");
     }
   }
 

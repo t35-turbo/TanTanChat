@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useKeyInput } from "@/hooks/use-key-input";
 import { useORKey } from "@/hooks/use-or-key";
 import { useTheme } from "@/hooks/use-theme";
 import { authClient } from "@/lib/auth-client";
@@ -17,7 +16,6 @@ import {
   Check,
   ChevronLeft,
   Info,
-  KeyIcon,
   LogIn,
   LogOut,
   Palette,
@@ -82,9 +80,7 @@ function RouteComponent() {
 
 function AccountCard() {
   const user_sess = authClient.useSession();
-  const keySet = useORKey((state) => !!state.key);
   const setKey = useORKey((state) => state.setKey);
-  const openKeyInput = useKeyInput((state) => state.open);
   const navigate = useNavigate();
 
   return (
@@ -111,16 +107,6 @@ function AccountCard() {
             <p className="text-sm text-muted-foreground">{user_sess.data?.user?.email}</p>
           </div>
         </div>
-
-        <Separator />
-        <p>
-          OpenRouter API Key: <b>{keySet ? "Activated" : "Not Set"}</b>
-        </p>
-
-        <Button onClick={openKeyInput} variant={"default"}>
-          <KeyIcon />
-          Set Key
-        </Button>
 
         <Separator />
 
