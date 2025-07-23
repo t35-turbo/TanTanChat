@@ -10,27 +10,12 @@ import { useORKey } from "@/hooks/use-or-key";
 import { useTheme } from "@/hooks/use-theme";
 import { authClient } from "@/lib/auth-client";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link, useCanGoBack, useNavigate, useRouter } from "@tanstack/react-router";
-import {
-  ArrowLeft,
-  Check,
-  ChevronLeft,
-  Info,
-  LogIn,
-  LogOut,
-  Palette,
-  RefreshCw,
-  TriangleAlert,
-  User,
-  Wrench,
-} from "lucide-react";
-import { SessionLoadingScreen } from "@/components/LoadingScreen";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Check, Info, LogOut, Palette, RefreshCw, User, Wrench } from "lucide-react";
 import { __client, queryClient, trpc } from "@/lib/trpc";
-import { useEffect, useRef } from "react";
-import { useSidebar } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import DeleteAccountButton from "@/components/settings/DeleteAccountButton";
-import {PageBack} from "@/components/settings/BackButtons";
+import { PageBack } from "@/components/settings/BackButtons";
 
 export const Route = createFileRoute("/settings/")({
   component: RouteComponent,
@@ -38,27 +23,6 @@ export const Route = createFileRoute("/settings/")({
 
 function RouteComponent() {
   const user_sess = authClient.useSession();
-  const canGoBack = useCanGoBack();
-  const navigate = useNavigate();
-  const router = useRouter();
-  const sidebar = useSidebar();
-
-  useEffect(() => {
-    // Only redirect if the session has finished loading and there's no authenticated user
-    if (!user_sess.isPending && !user_sess.data && !user_sess.error) {
-      navigate({ to: "/login" });
-    }
-  }, [user_sess.isPending, user_sess.data, user_sess.error, navigate]);
-
-  // Show loading state while session is being determined
-  if (user_sess.isPending) {
-    return <SessionLoadingScreen />;
-  }
-
-  // Don't render the settings UI if not authenticated
-  if (!user_sess.data && !user_sess.error) {
-    return null; // Will redirect to login
-  }
 
   return (
     <div className="flex flex-col gap-2 p-4 w-full">
@@ -406,20 +370,20 @@ function SystemPromptCard() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (updates: { name?: string | null; selfAttr?: string | null; traits?: string | null }) => {
+    mutationFn: async (updates: { name?: string | null; self_attr?: string | null; traits?: string | null }) => {
       await __client.settings.update.mutate(updates);
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: trpc.settings.get.queryKey() }),
   });
 
-  let [name, selfAttr, traits] = ["", "", ""];
+  let [name, self_attr, traits] = ["", "", ""];
   if (settingsQuery.isPending) {
-    ((name = "Loading..."), (selfAttr = "Loading..."), (traits = "Loading..."));
+    ((name = "Loading..."), (self_attr = "Loading..."), (traits = "Loading..."));
   } else if (settingsQuery.isError) {
-    ((name = "Error loading data"), (selfAttr = "Error loading data"), (traits = "Error loading data"));
+    ((name = "Error loading data"), (self_attr = "Error loading data"), (traits = "Error loading data"));
   } else {
     name = updateMutation.variables?.name || settingsQuery.data?.name || "";
-    selfAttr = updateMutation.variables?.selfAttr || settingsQuery.data?.selfAttr || "";
+    self_attr = updateMutation.variables?.self_attr || settingsQuery.data?.self_attr || "";
     traits = updateMutation.variables?.traits || settingsQuery.data?.traits || "";
   }
 
@@ -456,8 +420,8 @@ function SystemPromptCard() {
         <Input
           name="self-attr"
           placeholder="Scientist, Writer, etc..."
-          value={selfAttr}
-          onChange={(e) => updateMutation.mutate({ selfAttr: e.target.value })}
+          value={self_attr}
+          onChange={(e) => updateMutation.mutate({ self_attr: e.target.value })}
           onFocus={() => queryClient.invalidateQueries({ queryKey: trpc.settings.get.queryKey() })}
         />
         <Label htmlFor="traits">What Should We Consider When Responding?</Label>

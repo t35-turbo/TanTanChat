@@ -6,10 +6,10 @@ interface LoadingScreenProps {
   className?: string;
 }
 
-export function LoadingScreen({ 
-  text = "Loading...", 
+export function LoadingScreen({
+  text = "Loading...",
   variant = "pulse",
-  className 
+  className
 }: LoadingScreenProps) {
   return (
     <div className={cn(
@@ -28,15 +28,6 @@ export function LoadingScreen({
   );
 }
 
-// Specific loading screen variants for common use cases
-export function LoginLoadingScreen() {
-  return <LoadingScreen variant="pulse" text="" />;
-}
-
 export function EmptyLoadingScreen() {
   return <LoadingScreen variant="pulse" text="" />;
-}
-
-export function SessionLoadingScreen() {
-  return <LoadingScreen variant="spinner" text="Loading..." />;
 }

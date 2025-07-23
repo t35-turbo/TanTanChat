@@ -24,7 +24,7 @@ export const settingsRouter = router({
   update: authProcedure
     .input(z.object({
       name: z.string().nullable().optional(),
-      selfAttr: z.string().nullable().optional(),
+      self_attr: z.string().nullable().optional(),
       traits: z.string().nullable().optional(),
     }))
     .mutation(async (opts) => {

@@ -11,15 +11,17 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { authedRoute } from "@/lib/auth-client";
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { ChevronRight, Key, User } from "lucide-react";
 import React from "react";
 
 export const Route = createFileRoute("/settings")({
-  component: RouteComponent,
+  beforeLoad: authedRoute,
+  component: SettingsRouteComponent,
 });
 
-function RouteComponent() {
+export function SettingsRouteComponent() {
   return (
     <SidebarProvider defaultOpen={true} open={true}>
       <SidebarComponent />
@@ -70,13 +72,13 @@ function SidebarComponent() {
         <SidebarGroupContent>
           <SidebarMenu>
             <SettingsMenuButton>
-              <Link to="/settings" replace>
+              <Link to="/admin/settings" replace className={`${location.pathname === "/admin/settings" ? "bg-sidebar-accent/75" : ""}`}>
                 <User />
                 General
               </Link>
             </SettingsMenuButton>
             <SettingsMenuButton>
-              <Link to="/settings/keys" replace>
+              <Link to="/admin/keys" replace className={`${location.pathname === "/admin/keys" ? "bg-sidebar-accent/75" : ""}`}>
                 <Key />
                 Key Management
               </Link>

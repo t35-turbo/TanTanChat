@@ -1,30 +1,26 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 import { Alert, AlertTitle } from "@/components/ui/alert";
-import { LoginLoadingScreen } from "@/components/LoadingScreen";
-
 
 export const Route = createFileRoute("/login")({
+  beforeLoad: async () => {
+    if ((await authClient.getSession()).data) {
+      throw redirect({ to: "/chat" });
+    }
+  },
   component: RouteComponent,
 });
 
-const signIn = async () => {
-  await authClient.signIn.social({
-    provider: "discord"
-  })
-}
+// const signIn = async () => {
+//   await authClient.signIn.social({
+//     provider: "discord"
+//   })
+// }
 
 function RouteComponent() {
   const [email, setEmail] = useState("");
@@ -32,12 +28,6 @@ function RouteComponent() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const userSession = authClient.useSession();
-
-  useEffect(() => {
-    if (!userSession.isPending && userSession.data) {
-      navigate({ to: "/chat" });
-    }
-  }, [userSession.isPending, userSession.data, navigate]);
 
   async function login() {
     setError("");
@@ -51,10 +41,6 @@ function RouteComponent() {
     } else if (error) {
       setError(error.message ?? error.statusText);
     }
-  }
-
-  if (userSession.isPending) {
-    return <LoginLoadingScreen />;
   }
 
   return (
@@ -126,4 +112,3 @@ function RouteComponent() {
     </form>
   );
 }
-
