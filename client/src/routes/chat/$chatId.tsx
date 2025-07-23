@@ -6,8 +6,6 @@ import React from "react";
 import { authClient } from "@/lib/auth-client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { __client, queryClient, trpc } from "@/lib/trpc";
-import { z } from "zod/v4-mini";
-import ky from "ky";
 
 import { toast } from "sonner";
 import { useORKey } from "@/hooks/use-or-key";
@@ -18,7 +16,6 @@ import { useFiles } from "@/hooks/use-files";
 import Onboarding from "@/components/Onboarding";
 import { EmptyLoadingScreen } from "@/components/LoadingScreen";
 import MessageInput from "@/components/MessageInput";
-import { ChunkData, useActiveId, useActiveMessage } from "@/components/WSManager";
 import Logo from "@/components/ui/Logo";
 
 export const Route = createFileRoute("/chat/$chatId")({
@@ -32,7 +29,6 @@ export function ChatUI() {
   const navigate = useNavigate();
   const user_sess = authClient.useSession();
   const or_key = useORKey((state) => state.key);
-  const web_search = useTools((state) => state.web_search);
 
   const { chatId } = useParams({
     from: "/chat/$chatId",
@@ -72,10 +68,12 @@ export function ChatUI() {
         message,
         opts: {
           apiKey: or_key,
+          api_format: "openai",
           model: model.id,
+          baseUrl: "https://openrouter.ai/api/v1",
           system_prompt: generateSystemPrompt({
             name: settingsQuery.data?.name,
-            selfAttr: settingsQuery.data?.selfAttr,
+            self_attr: settingsQuery.data?.self_attr,
             traits: settingsQuery.data?.traits,
           }),
           tools: null,

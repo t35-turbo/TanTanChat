@@ -10,7 +10,7 @@ import { default_prompt } from "./lib/sys_prompts";
 
 export type Messages = {
   id: string;
-  role: "user" | "system" | "assistant";
+  role: "user" | "system" | "assistant" | "tool";
   chatId: string;
   senderId: string;
   message: string;

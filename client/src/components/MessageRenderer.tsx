@@ -177,6 +177,8 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
             opts: {
               apiKey: or_key ?? "",
               model: model.id,
+              baseUrl: "https://openrouter.ai/api/v1",
+              api_format: "openai",
               reasoning_effort: model.thinkingEffort,
                           system_prompt: generateSystemPrompt({
                             name: settingsQuery.data?.name ?? "",
@@ -284,6 +286,8 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
                         opts: {
                           apiKey: or_key ?? "",
                           model: model.id,
+                          baseUrl: "https://openrouter.ai/api/v1",
+                          api_format: "openai",
                           reasoning_effort: model.thinkingEffort,
                           system_prompt: generateSystemPrompt({
                             name: settingsQuery.data?.name ?? "",
@@ -324,7 +328,9 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
                         msgId: message.id,
                         opts: {
                           apiKey: or_key ?? "",
+                          api_format: "openai",
                           model: model.id,
+                          baseUrl: "https://openrouter.ai/api/v1",
                           reasoning_effort: model.thinkingEffort,
                           system_prompt: generateSystemPrompt({
                             name: settingsQuery.data?.name ?? "",

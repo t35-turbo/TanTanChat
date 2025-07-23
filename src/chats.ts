@@ -71,43 +71,45 @@ export const chatRouter = router({
       .set({ title: opts.input.name })
       .where(and(eq(chats.id, opts.input.chatId), eq(chats.userId, opts.ctx.user.id)));
   }),
-  removeFile: chatProcedure
-    .input(z.object({ msgId: z.string(), fileId: z.string() }))
-    .mutation(async (opts) => {
-      // Get the message to check if it exists and belongs to this chat
-      const message = await db
-        .select()
-        .from(chat_messages)
-        .where(and(eq(chat_messages.id, opts.input.msgId), eq(chat_messages.chatId, opts.input.chatId)))
-        .limit(1);
+  removeFile: chatProcedure.input(z.object({ msgId: z.string(), fileId: z.string() })).mutation(async (opts) => {
+    // Get the message to check if it exists and belongs to this chat
+    const message = await db
+      .select()
+      .from(chat_messages)
+      .where(and(eq(chat_messages.id, opts.input.msgId), eq(chat_messages.chatId, opts.input.chatId)))
+      .limit(1);
 
-      if (!message[0]) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Message not found",
-        });
-      }
+    if (!message[0]) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Message not found",
+      });
+    }
 
-      // Remove the file from the files array
-      const currentFiles = message[0].files || [];
-      const updatedFiles = currentFiles.filter((file) => file !== opts.input.fileId);
+    // Remove the file from the files array
+    const currentFiles = message[0].files || [];
+    const updatedFiles = currentFiles.filter((file) => file !== opts.input.fileId);
 
-      // Update the message with the new files array
-      await db.update(chat_messages).set({ files: updatedFiles }).where(eq(chat_messages.id, opts.input.msgId));
+    // Update the message with the new files array
+    await db.update(chat_messages).set({ files: updatedFiles }).where(eq(chat_messages.id, opts.input.msgId));
 
-      return { message: "File removed successfully" };
-    }),
+    return { message: "File removed successfully" };
+  }),
   retryMessage: chatProcedure
-    .input(z.object({
-      msgId: z.string(),
-      message: z.string().optional(),
-      opts: z.object({
-        apiKey: z.string(),
-        model: z.string(),
-        reasoning_effort: z.enum(["low", "medium", "high"]).optional(),
-        system_prompt: z.string(),
-      })
-    }))
+    .input(
+      z.object({
+        msgId: z.string(),
+        message: z.string().optional(),
+        opts: z.object({
+          apiKey: z.string(),
+          model: z.string(),
+          api_format: z.literal("openai"),
+          baseUrl: z.literal("https://openrouter.ai/api/v1"),
+          reasoning_effort: z.enum(["low", "medium", "high"]).optional(),
+          system_prompt: z.string(),
+        }),
+      }),
+    )
     .mutation(async (opts) => {
       // search for the message in the messages
       const allMessages = await getChatMessages(opts.input.chatId);
@@ -154,7 +156,9 @@ export const chatRouter = router({
       }
 
       if (opts.input.message) {
-        operations.push(db.update(chat_messages).set({ message: opts.input.message }).where(eq(chat_messages.id, opts.input.msgId)));
+        operations.push(
+          db.update(chat_messages).set({ message: opts.input.message }).where(eq(chat_messages.id, opts.input.msgId)),
+        );
       }
 
       await Promise.all(operations);
@@ -177,6 +181,8 @@ export const chatRouter = router({
         message: z.string(),
         opts: z.object({
           apiKey: z.string(),
+          baseUrl: z.literal("https://openrouter.ai/api/v1"),
+          api_format: z.literal("openai"),
           model: z.string(),
           system_prompt: z.string(),
           tools: z.null(),

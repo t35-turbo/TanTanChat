@@ -1,4 +1,3 @@
-import { useKeyInput } from "@/hooks/use-key-input";
 import { createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import React from "react";
 import { toast } from "sonner";
@@ -12,7 +11,6 @@ export const Route = createFileRoute("/or_auth")({
 function RouteComponent() {
   const location = useLocation();
   const navigate = useNavigate();
-  const open = useKeyInput((state) => state.open);
   const setKey = useORKey((state) => state.setKey);
   const hasExchanged = React.useRef(false); // jank
 
