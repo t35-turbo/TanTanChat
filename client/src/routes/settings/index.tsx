@@ -32,6 +32,7 @@ import { useEffect, useRef } from "react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import DeleteAccountButton from "@/components/settings/DeleteAccountButton";
+import {PageBack} from "@/components/settings/BackButtons";
 
 export const Route = createFileRoute("/settings/")({
   component: RouteComponent,
@@ -63,34 +64,9 @@ function RouteComponent() {
 
   return (
     <div className="flex flex-col gap-2 p-4 w-full">
-      {sidebar.isMobile ? (
-        <Button
-          variant="ghost"
-          className="mr-auto p-0 max-w-4"
-          onClick={() => {
-            sidebar.setOpenMobile(true);
-          }}
-        >
-          <ChevronLeft className="size-6" />
-        </Button>
-      ) : (
-        <Button
-          variant="ghost"
-          className="max-w-32"
-          onClick={() => {
-            if (canGoBack) {
-              router.history.back();
-            } else {
-              navigate({ to: "/chat" });
-            }
-          }}
-        >
-          <ArrowLeft />
-          Back to chat
-        </Button>
-      )}
+      <PageBack />
 
-      <h1 className="text-2xl font-bold p-2 md:mt-8">
+      <h1 className="text-2xl font-bold p-2">
         Settings for&nbsp;
         {user_sess.isPending ? "Loading User data..." : null}
         {user_sess.data?.user ? user_sess.data?.user.name : "Guest User"}
