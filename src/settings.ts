@@ -9,15 +9,15 @@ export const settingsRouter = router({
     const result = await db
       .select()
       .from(userSettings)
-      .where(eq(userSettings.userId, opts.ctx.user.id));
+      .where(eq(userSettings.user_id, opts.ctx.user.id));
 
     return result[0] || {
-      userId: opts.ctx.user.id,
+      user_id: opts.ctx.user.id,
       name: null,
-      selfAttr: null,
+      self_attr: null,
       traits: null,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      created_at: new Date(),
+      updated_at: new Date()
     };
   }),
 
@@ -36,11 +36,11 @@ export const settingsRouter = router({
       await db
         .insert(userSettings)
         .values({
-          userId: opts.ctx.user.id,
+          user_id: opts.ctx.user.id,
           ...updateData,
         })
         .onConflictDoUpdate({
-          target: userSettings.userId,
+          target: userSettings.user_id,
           set: {
             ...Object.fromEntries(
               Object.entries(updateData).filter(([_, value]) => value !== undefined)

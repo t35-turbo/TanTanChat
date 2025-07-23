@@ -31,12 +31,16 @@ export type Messages = {
   }[];
 }[];
 
-export type Options = {
-  apiKey: string;
-  model: string;
-  reasoning_effort?: "low" | "medium" | "high";
-  system_prompt: string;
-};
+export const Options = z.object({
+  api_format: z.enum(["openai"]),
+  apiKey: z.string(),
+  baseUrl: z.string(),
+  model: z.string(),
+  reasoning_effort: z.enum(["low", "medium", "high"]).optional(),
+  system_prompt: z.string(),
+});
+
+export type Options = z.infer<typeof Options>;
 
 const RedisMessageResponse = z.object({
   name: z.string(),
@@ -77,6 +81,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
     baseURL: "https://openrouter.ai/api/v1",
     apiKey: opts.apiKey,
     defaultHeaders: {
+      "HTTP-Referer": "https://tantan.konkon.pablonara.com/",
       "X-Title": "TanTan Chat",
     },
   });
