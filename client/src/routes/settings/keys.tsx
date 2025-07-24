@@ -1,7 +1,7 @@
+import { createFileRoute } from "@tanstack/react-router";
 import { PageBack } from "@/components/settings/BackButtons";
 import { LocalKey } from "@/components/settings/LocalKey";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/settings/keys")({
   component: RouteComponent,
@@ -36,5 +36,3 @@ function KeysTable() {
     </Table>
   );
 }
-
-

@@ -1,11 +1,11 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState, useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
-import { Alert, AlertTitle } from "@/components/ui/alert";
 
 export const Route = createFileRoute("/login")({
   beforeLoad: async () => {
@@ -16,18 +16,11 @@ export const Route = createFileRoute("/login")({
   component: RouteComponent,
 });
 
-// const signIn = async () => {
-//   await authClient.signIn.social({
-//     provider: "discord"
-//   })
-// }
-
 function RouteComponent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const userSession = authClient.useSession();
 
   async function login() {
     setError("");

@@ -1,5 +1,5 @@
-import { useTheme } from "@/hooks/use-theme";
 import { useEffect } from "react";
+import { useTheme } from "@/hooks/use-theme";
 
 type ThemeProviderProps = {
   children: React.ReactNode;
@@ -21,7 +21,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       return;
     }
 
-    let clsList: string[] = [base, `accent-${color}`];
+    const clsList: string[] = [base, `accent-${color}`];
     if (base !== "white" && base !== "dark") {
       clsList.push("ctp-theme");
     }

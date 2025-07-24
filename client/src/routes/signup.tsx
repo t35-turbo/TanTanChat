@@ -1,11 +1,11 @@
+import { Label } from "@radix-ui/react-label";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardAction } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
-import { Label } from "@radix-ui/react-label";
-import { createFileRoute, Link, retainSearchParams, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
 
 export const Route = createFileRoute("/signup")({
   component: RouteComponent,

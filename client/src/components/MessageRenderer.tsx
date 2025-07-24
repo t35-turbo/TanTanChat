@@ -1,22 +1,21 @@
+import { useMutation, useMutationState, useQuery } from "@tanstack/react-query";
+import { Check, ChevronDown, ChevronRight, Copy, Paperclip, RefreshCw, SquarePen, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { PrismAsyncLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Check, ChevronDown, ChevronRight, Copy, Paperclip, RefreshCw, SquarePen, X } from "lucide-react";
+import { z } from "zod/v4-mini";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useTheme } from "@/hooks/use-theme";
-
-import React, { useEffect, useState } from "react";
-import { Button } from "./ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import { useMutation, useQuery, useMutationState } from "@tanstack/react-query";
-import { trpc, queryClient, type Message, __client } from "@/lib/trpc";
-import { useORKey } from "@/hooks/use-or-key";
 import { useModel } from "@/hooks/use-model";
-import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
+import { useORKey } from "@/hooks/use-or-key";
+import { useTheme } from "@/hooks/use-theme";
 import { authClient } from "@/lib/auth-client";
+import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
+import { __client, type Message, queryClient, trpc } from "@/lib/trpc";
+import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
-import { z } from "zod/v4-mini";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { useActiveId, useActiveMessage } from "./WSManager";
 
 interface MessageRendererProps {
@@ -24,7 +23,6 @@ interface MessageRendererProps {
 }
 
 export function MessageRenderer({ chatId }: MessageRendererProps) {
-
   const { chunks: activeMessage, setChunks: setActiveMessage } = useActiveMessage();
   const activeId = useActiveId();
 
@@ -47,7 +45,7 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
     },
   });
 
-  let messages = [...(messagePages.data ?? [])];
+  const messages = [...(messagePages.data ?? [])];
 
   if (sendMessageVariables) {
     messages.push({
@@ -382,7 +380,7 @@ function MarkdownRenderer({ children }: { children: string | null | undefined })
       const remarkPlugins = [(await import("remark-math")).default];
       setRehypePlugins(rehypePlugins);
       setRemarkPlugins(remarkPlugins);
-    })()
+    })();
   }, []);
 
   const preprocessMathBlocks = React.useCallback((text: string): string => {
@@ -401,25 +399,23 @@ function MarkdownRenderer({ children }: { children: string | null | undefined })
     <ReactMarkdown
       components={{
         code(props) {
-          const { children, className, node, ...rest } = props;
+          const { children, className, ...rest } = props;
           const match = /language-(\w+)/.exec(className || "");
           return match ? (
-            <>
-              <SyntaxHighlighter
-                PreTag="div"
-                children={String(children).replace(/\n$/, "")}
-                language={match[1]}
-                style={{
-                  ...(base === "white" || base === "latte" ? oneLight : oneDark),
-                  'pre[class*="language-"]': {
-                    background: "transparent",
-                  },
-                  'code[class*="language-"]': {
-                    background: "transparent",
-                  },
-                }}
-              />
-            </>
+            <SyntaxHighlighter
+              PreTag="div"
+              children={String(children).replace(/\n$/, "")}
+              language={match[1]}
+              style={{
+                ...(base === "white" || base === "latte" ? oneLight : oneDark),
+                'pre[class*="language-"]': {
+                  background: "transparent",
+                },
+                'code[class*="language-"]': {
+                  background: "transparent",
+                },
+              }}
+            />
           ) : (
             <code {...rest} className={className}>
               {children}

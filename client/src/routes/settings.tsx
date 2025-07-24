@@ -1,5 +1,8 @@
-import { SidebarBack } from "@/components/settings/BackButtons";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
+import { ChevronRight, Key, LayoutDashboard, SlidersHorizontal, User } from "lucide-react";
+import React from "react";
 import SidebarAvatar from "@/components/SidebarAvatar";
+import { SidebarBack } from "@/components/settings/BackButtons";
 import {
   Sidebar,
   SidebarContent,
@@ -15,9 +18,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { authClient, authedRoute } from "@/lib/auth-client";
-import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
-import { ChevronRight, Key, LayoutDashboard, SlidersHorizontal, User } from "lucide-react";
-import React from "react";
 
 export const Route = createFileRoute("/settings")({
   beforeLoad: authedRoute,
@@ -44,7 +44,7 @@ function SidebarComponent() {
     if (sidebar.isMobile) {
       sidebar.setOpenMobile(true);
     }
-  }, [sidebar.isMobile]);
+  }, [sidebar.isMobile, sidebar.setOpenMobile]);
 
   return (
     <Sidebar>

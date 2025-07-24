@@ -1,17 +1,17 @@
-import { PageBack } from "@/components/settings/BackButtons";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
+  type ColumnDef,
   flexRender,
   getCoreRowModel,
-  useReactTable,
-  type ColumnDef,
   type HeaderGroup,
   type Row,
+  useReactTable,
 } from "@tanstack/react-table";
-import { ContactRound, ShieldUser, SquareUser } from "lucide-react";
+import { ShieldUser } from "lucide-react";
+import { PageBack } from "@/components/settings/BackButtons";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { type RouterOutput, trpc } from "@/lib/trpc";
 
 export const Route = createFileRoute("/admin/roles")({
   component: RouteComponent,
@@ -100,8 +100,6 @@ function HeaderRows<TData>({ headerGroup }: { headerGroup: HeaderGroup<TData> })
 }
 
 function DataRows({ row }: { row: Row<Role> }) {
-  const cells = row.getVisibleCells();
-
   return (
     <TableRow data-state={row.getIsSelected() && "selected"}>
       {row.getVisibleCells().map((cell) => (

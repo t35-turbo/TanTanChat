@@ -1,38 +1,28 @@
-import { useORKey } from "@/hooks/use-or-key";
-import { useState } from "react";
 import { Buffer } from "buffer";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "@/components/ui/dialog";
-import { TableCell, TableRow } from "@/components/ui/table";
 import { Pencil } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { TableCell, TableRow } from "@/components/ui/table";
+import { useORKey } from "@/hooks/use-or-key";
 
 export function LocalKey() {
   const key = useORKey((state) => state.key);
 
   return (
     <TableRow className="group">
-      <TableCell>
-        Local OpenRouter
-      </TableCell>
-      <TableCell>
-        OpenAI
-      </TableCell>
-      <TableCell>
-        https://openrouter.ai/api/v1
-      </TableCell>
-      <TableCell>
-        {key ? key.slice(0, 10) + '•'.repeat(20) : "Not Set"}
-      </TableCell>
+      <TableCell>Local OpenRouter</TableCell>
+      <TableCell>OpenAI</TableCell>
+      <TableCell>https://openrouter.ai/api/v1</TableCell>
+      <TableCell>{key ? key.slice(0, 10) + "•".repeat(20) : "Not Set"}</TableCell>
       <TableCell>
         <Dialog>
           <DialogTrigger>
             <Pencil className={`size-4 text-foreground/50 group-hover:text-foreground`} />
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader>
-              Edit Local OpenRouter Key
-            </DialogHeader>
+            <DialogHeader>Edit Local OpenRouter Key</DialogHeader>
             <LocalKeyInput />
           </DialogContent>
         </Dialog>

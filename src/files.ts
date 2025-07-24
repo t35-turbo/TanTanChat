@@ -1,21 +1,22 @@
+import * as crypto from "node:crypto";
+import { mkdirSync, readdirSync } from "node:fs";
+import { TRPCError } from "@trpc/server";
+import type { BunFile } from "bun";
+import { and, eq } from "drizzle-orm";
+import { isBinaryFile } from "isbinaryfile";
+import mime from "mime";
+import { z } from "zod/v4";
 import { db } from "./db";
 import { files } from "./db/schema";
-import { eq, and } from "drizzle-orm";
-import * as crypto from "crypto";
-import mime from "mime";
-import { mkdirSync, readdirSync } from "fs";
 import env from "./lib/env";
 import { authProcedure, router } from "./trpc";
-import { TRPCError } from "@trpc/server";
-import { z } from "zod/v4";
-import { isBinaryFile } from "isbinaryfile";
 
 if (env.USE_S3 === false) {
   try {
-    readdirSync(env.LOCAL_FILE_STORE_PATH + "/store");
+    readdirSync(`${env.LOCAL_FILE_STORE_PATH}/store`);
   } catch {
     /* Create local store directory for attachments */
-    mkdirSync(env.LOCAL_FILE_STORE_PATH + "/store", { recursive: true });
+    mkdirSync(`${env.LOCAL_FILE_STORE_PATH}/store`, { recursive: true });
   }
 }
 
@@ -30,7 +31,7 @@ export async function getFile(id: string) {
     throw new Error("File downloads are not supported when USE_S3 is true currently");
   }
 
-  let fileData;
+  let fileData: BunFile;
   try {
     fileData = Bun.file(`${file[0].filePath}`);
   } catch (error) {

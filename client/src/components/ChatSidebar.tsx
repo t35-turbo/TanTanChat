@@ -1,19 +1,16 @@
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, useSidebar } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { Eraser, LogIn, PanelLeftIcon, SearchIcon, Settings, TextCursor, XIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import React, { useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { type UseMutationResult, useMutation, useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import fuzzysort from "fuzzysort";
-import { Input } from "./ui/input";
-import { authClient } from "@/lib/auth-client";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { useMutation, useQuery, type UseMutationResult } from "@tanstack/react-query";
-import ky from "ky";
-import { queryClient, trpc, type Chat } from "@/lib/trpc";
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "./ui/context-menu";
-import Logo from "./ui/Logo";
+import { Eraser, PanelLeftIcon, SearchIcon, Settings, TextCursor, XIcon } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, useSidebar } from "@/components/ui/sidebar";
+import { type Chat, queryClient, trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import SidebarAvatar from "./SidebarAvatar";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "./ui/context-menu";
+import { Input } from "./ui/input";
+import Logo from "./ui/Logo";
 
 interface ChatItemProps {
   item: Chat;
@@ -93,13 +90,6 @@ function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
 
 export default function ChatSidebar() {
   const [searchQuery, setSearchQuery] = React.useState("");
-  const user_sess = authClient.useSession();
-
-  const { chatId } = useParams({
-    from: "/chat/$chatId",
-    shouldThrow: false,
-  }) ?? { chatId: undefined };
-  const navigate = useNavigate();
 
   // CHROME PLEASE FINISH TEMPORAL ALREADY
   const chats = useQuery(trpc.chats.listThreads.queryOptions());
@@ -185,7 +175,7 @@ function BetterTrigger() {
 }
 
 function timeDelta(date: Date) {
-  let days = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+  const days = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
 
   if (days === 0) {
     return "Today";
@@ -205,7 +195,7 @@ function renderChatOutput(
   deleteChat: UseMutationResult<boolean, any, { chatId: string }, undefined>,
   renameChat: UseMutationResult<void, any, { chatId: string; name: string }, unknown>,
 ) {
-  let renderOutput: {
+  const renderOutput: {
     component: React.ReactElement;
     item: { title: string; id: string; updated_at: Date } | null;
   }[] = chats.map((item) => {
@@ -223,9 +213,9 @@ function renderChatOutput(
   });
   let lastUpdateValue = "";
   let pos = 0;
-  for (let component of renderOutput) {
-    if (component.item && timeDelta(component.item.updated_at) != lastUpdateValue) {
-      let tDelta = timeDelta(component.item.updated_at);
+  for (const component of renderOutput) {
+    if (component.item && timeDelta(component.item.updated_at) !== lastUpdateValue) {
+      const tDelta = timeDelta(component.item.updated_at);
       renderOutput.splice(pos, 0, {
         component: (
           <div className="text-accent-foreground font-bold border-b border-primary/25" key={tDelta}>

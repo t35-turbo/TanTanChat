@@ -1,9 +1,9 @@
-import { createTRPCContext, createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
-import { createTRPCClient, httpBatchLink, httpLink, isNonJsonSerializable, splitLink } from "@trpc/client";
-import type { AppRouter } from "../../../src/index";
 import { QueryClient } from "@tanstack/react-query";
+import { createTRPCClient, httpBatchLink, httpLink, isNonJsonSerializable, splitLink } from "@trpc/client";
 import type { inferRouterOutputs } from "@trpc/server";
+import { createTRPCContext, createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import superjson from "superjson";
+import type { AppRouter } from "../../../src/index";
 
 export const queryClient = new QueryClient();
 

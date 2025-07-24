@@ -1,22 +1,20 @@
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
-import MessageRenderer from "@/components/MessageRenderer";
-import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import React from "react";
-import { authClient } from "@/lib/auth-client";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { __client, queryClient, trpc } from "@/lib/trpc";
-
 import { toast } from "sonner";
-import { useORKey } from "@/hooks/use-or-key";
-import { useModel } from "@/hooks/use-model";
-import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
-import { useTools } from "@/hooks/use-tools";
-import { useFiles } from "@/hooks/use-files";
-import Onboarding from "@/components/Onboarding";
 import { EmptyLoadingScreen } from "@/components/LoadingScreen";
 import MessageInput from "@/components/MessageInput";
+import MessageRenderer from "@/components/MessageRenderer";
+import Onboarding from "@/components/Onboarding";
+import { Button } from "@/components/ui/button";
 import Logo from "@/components/ui/Logo";
+import { useFiles } from "@/hooks/use-files";
+import { useModel } from "@/hooks/use-model";
+import { useORKey } from "@/hooks/use-or-key";
+import { authClient } from "@/lib/auth-client";
+import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
+import { __client, queryClient, trpc } from "@/lib/trpc";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
@@ -138,7 +136,9 @@ export function ChatUI() {
           <div className="mb-auto w-full">
             <MessageRenderer chatId={chatId} />
           </div>
-          <div className={`${chatId ? "opacity-0" : "opacity-100"}`}><Logo className="text-4xl" /></div>
+          <div className={`${chatId ? "opacity-0" : "opacity-100"}`}>
+            <Logo className="text-4xl" />
+          </div>
           <MessageInput chatId={chatId} sendMessage={sendMessage} isPending={sendMessageMut.isPending} />
         </motion.div>
       </div>

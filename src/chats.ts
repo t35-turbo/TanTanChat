@@ -1,14 +1,12 @@
-import { Hono } from "hono";
-import { auth } from "./lib/auth";
-import { db } from "./db";
-import { chats, chat_messages } from "./db/schema";
-import { eq, desc, and, asc, gte, inArray } from "drizzle-orm";
-import * as sync from "./sync";
-import { z } from "zod/v4";
-import * as crypto from "crypto";
-import { getFile } from "./files";
-import { authProcedure, publicProcedure, router } from "./trpc";
+import * as crypto from "node:crypto";
 import { TRPCError } from "@trpc/server";
+import { and, asc, eq, inArray } from "drizzle-orm";
+import { z } from "zod/v4";
+import { db } from "./db";
+import { chat_messages, chats } from "./db/schema";
+import { getFile } from "./files";
+import * as sync from "./sync";
+import { authProcedure, router } from "./trpc";
 
 type Message = {
   id: string;
@@ -203,7 +201,7 @@ export const chatRouter = router({
       };
 
       await db.insert(chat_messages).values(newMessage);
-      let messages: sync.Messages = await getChatMessages(chatId);
+      const messages: sync.Messages = await getChatMessages(chatId);
       sync.broadcastNewMessage(chatId);
 
       return await sync.newMessage(chatId, messages, opts.input.opts);
@@ -211,15 +209,15 @@ export const chatRouter = router({
 });
 
 async function getChatMessages(chatId: string): Promise<sync.Messages> {
-  let msgs = await db
+  const msgs = await db
     .select()
     .from(chat_messages)
     .where(eq(chat_messages.chatId, chatId))
     .orderBy(asc(chat_messages.createdAt));
-  let completions: sync.Messages = [];
+  const completions: sync.Messages = [];
   for (const msg of msgs) {
     if (msg.files && msg.files.length > 0) {
-      let files = await Promise.all(msg.files.map((file) => getFile(file)));
+      const files = await Promise.all(msg.files.map((file) => getFile(file)));
       completions.push({
         ...msg,
         files: files.filter((file) => !!file),

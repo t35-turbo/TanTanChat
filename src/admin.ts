@@ -1,9 +1,8 @@
-import { db } from "./db";
-import { adminProcedure, router } from "./trpc";
+import { count, eq } from "drizzle-orm";
 import { z } from "zod/v4";
-import { eq, count } from "drizzle-orm";
-
-import { system_settings, SystemSettingsSelect, SystemSettingsUpdate, user, roles } from "./db/schema";
+import { db } from "./db";
+import { roles, SystemSettingsSelect, SystemSettingsUpdate, system_settings, user } from "./db/schema";
+import { adminProcedure, router } from "./trpc";
 
 const systemSettingsKeys = z.enum(
   Object.keys(SystemSettingsSelect.shape) as [keyof SystemSettingsSelect, ...Array<keyof SystemSettingsSelect>],
@@ -25,7 +24,7 @@ export const adminRouter = router({
         if (!opts.input) {
           return (await db.query.system_settings.findFirst()) as GetSettingsReturn<T>;
         } else {
-          let columns: Record<string, boolean> = {};
+          const columns: Record<string, boolean> = {};
 
           opts.input.forEach((col) => {
             columns[col] = true;
@@ -58,6 +57,6 @@ export const adminRouter = router({
         .from(roles)
         .leftJoin(user, eq(roles.id, user.role))
         .groupBy(roles.id);
-    })
-  }
+    }),
+  },
 });

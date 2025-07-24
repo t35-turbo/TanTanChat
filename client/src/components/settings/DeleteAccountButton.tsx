@@ -1,3 +1,7 @@
+import { useNavigate } from "@tanstack/react-router";
+import { TriangleAlert } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,11 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
-import { TriangleAlert } from "lucide-react";
-import { useState } from "react";
 import { Input } from "../ui/input";
-import { useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
 
 export default function DeleteAccountButton() {
   const navigate = useNavigate();
@@ -71,8 +71,8 @@ export default function DeleteAccountButton() {
         </AlertDialogDescription>
         <AlertDialogFooter>
           <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
-          <AlertDialogAction 
-            className="bg-destructive hover:bg-destructive/70" 
+          <AlertDialogAction
+            className="bg-destructive hover:bg-destructive/70"
             onClick={deleteAccount}
             disabled={!password.trim()}
           >

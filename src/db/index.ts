@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
-import * as schema from "./schema";
 import env from "../lib/env";
+import * as schema from "./schema";
 
 const db = drizzle(env.DATABASE_URL, { schema });
 
@@ -29,12 +29,15 @@ export async function seedDefaults() {
     await db.insert(schema.roles).values(role).onConflictDoNothing();
   }
 
-  let settings = await db.query.system_settings.findFirst();
+  const settings = await db.query.system_settings.findFirst();
   if (!settings) {
-    await db.insert(schema.system_settings).values({
-      key: "setting",
-      allow_new_signups: true,
-    }).onConflictDoNothing();
+    await db
+      .insert(schema.system_settings)
+      .values({
+        key: "setting",
+        allow_new_signups: true,
+      })
+      .onConflictDoNothing();
   }
 }
 

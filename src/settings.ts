@@ -1,7 +1,7 @@
-import { authProcedure, router } from "./trpc";
-import { user_settings, UserSettingsUpdate } from "./db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "./db";
+import { UserSettingsUpdate, user_settings } from "./db/schema";
+import { authProcedure, router } from "./trpc";
 
 export const settingsRouter = router({
   get: authProcedure.query(async (opts) => {

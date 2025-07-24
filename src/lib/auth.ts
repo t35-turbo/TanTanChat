@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { db } from "../db";
 import { admin } from "better-auth/plugins";
+import { db } from "../db";
 
 export const auth = betterAuth({
   trustedOrigins: ["http://localhost:3001", "http://localhost:3000"],

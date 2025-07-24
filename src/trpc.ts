@@ -1,14 +1,14 @@
 import { initTRPC, TRPCError } from "@trpc/server";
-import { auth } from "./lib/auth";
+import { and, eq } from "drizzle-orm";
 import superjson from "superjson";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
 import { roles } from "./db/settings.schema";
+import type { auth } from "./lib/auth";
 
 type Context = {
   user: typeof auth.$Infer.Session.user | null;
   session: typeof auth.$Infer.Session.session | null;
-}
+};
 
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
@@ -37,7 +37,10 @@ export const authProcedure = publicProcedure.use(async (opts) => {
 });
 
 export const adminProcedure = authProcedure.use(async (opts) => {
-  const role = await db.select().from(roles).where(and(eq(roles.id, opts.ctx.user?.role ?? ""), eq(roles.is_admin, true)));
+  const role = await db
+    .select()
+    .from(roles)
+    .where(and(eq(roles.id, opts.ctx.user?.role ?? ""), eq(roles.is_admin, true)));
 
   if (!role.length) {
     throw new TRPCError({

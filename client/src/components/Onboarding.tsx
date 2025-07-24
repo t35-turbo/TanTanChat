@@ -1,7 +1,5 @@
-import { KeyIcon } from "lucide-react";
-import { Button } from "./ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { useNavigate } from "@tanstack/react-router";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 export default function Onboarding() {
   const navigate = useNavigate();

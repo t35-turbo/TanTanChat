@@ -1,7 +1,7 @@
-import { useSidebar } from "../ui/sidebar";
-import { Button } from "../ui/button";
-import { ArrowLeft, ChevronLeft } from "lucide-react";
 import { useRouter } from "@tanstack/react-router";
+import { ArrowLeft, ChevronLeft } from "lucide-react";
+import { Button } from "../ui/button";
+import { useSidebar } from "../ui/sidebar";
 
 export function PageBack() {
   const sidebar = useSidebar();

@@ -15,8 +15,8 @@ export const useModel = create<UseModelState>()(
     }),
     {
       name: "model-storage",
-    }
-  )
+    },
+  ),
 );
 export const Model = z.object({
   name: z.string(),

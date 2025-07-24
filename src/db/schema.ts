@@ -1,5 +1,5 @@
-import { pgTable, text, timestamp, boolean, index, pgEnum, integer } from "drizzle-orm/pg-core";
 import { desc } from "drizzle-orm";
+import { boolean, index, integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { roles } from "./settings.schema";
 
 export const user = pgTable("user", {

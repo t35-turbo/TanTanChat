@@ -1,8 +1,8 @@
-import { authClient } from "@/lib/auth-client";
-import { Button } from "./ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Link } from "@tanstack/react-router";
 import { LogIn } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Button } from "./ui/button";
 
 export default function SidebarAvatar() {
   const session = authClient.useSession();

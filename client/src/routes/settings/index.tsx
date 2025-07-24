@@ -1,22 +1,22 @@
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import type { inferProcedureInput } from "@trpc/server";
+import { Check, Info, LogOut, Palette, RefreshCw, User, Wrench } from "lucide-react";
+import { PageBack } from "@/components/settings/BackButtons";
+import DeleteAccountButton from "@/components/settings/DeleteAccountButton";
+import { ThemeSelector } from "@/components/settings/ThemeSelector";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useORKey } from "@/hooks/use-or-key";
 import { authClient } from "@/lib/auth-client";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Check, Info, LogOut, Palette, RefreshCw, User, Wrench } from "lucide-react";
-import { __client, queryClient, trpc, type AppRouter } from "@/lib/trpc";
-import { Badge } from "@/components/ui/badge";
-import DeleteAccountButton from "@/components/settings/DeleteAccountButton";
-import { PageBack } from "@/components/settings/BackButtons";
-import { ThemeSelector } from "@/components/settings/ThemeSelector";
-import { Switch } from "@/components/ui/switch";
-import type { inferProcedureInput } from "@trpc/server";
+import { __client, type AppRouter, queryClient, trpc } from "@/lib/trpc";
 
 export const Route = createFileRoute("/settings/")({
   component: RouteComponent,
@@ -59,7 +59,7 @@ function AccountCard() {
       <CardContent className="space-y-4">
         <div className="flex items-center gap-3">
           <Avatar className="size-12 flex">
-            {user_sess && user_sess.data?.user?.image && <AvatarImage src={user_sess.data.user.image} />}
+            {user_sess?.data?.user?.image && <AvatarImage src={user_sess.data.user.image} />}
             <AvatarFallback className="text-lg">{user_sess.data?.user?.name?.[0]}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
@@ -103,7 +103,7 @@ function AccountCard() {
 }
 
 function AppearanceCard() {
-  const updateMutation = useMutation(trpc.settings.);
+  // const updateMutation = useMutation(trpc.settings.);
 
   return (
     <Card>

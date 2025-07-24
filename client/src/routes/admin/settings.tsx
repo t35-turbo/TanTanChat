@@ -1,11 +1,10 @@
-import { PageBack } from "@/components/settings/BackButtons";
-import { default as RawSettingsToggle } from "@/components/settings/SettingsToggle";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { queryClient, trpc, type AppRouter } from "@/lib/trpc";
-import type { inferProcedureInput, inferProcedureOutput } from "@trpc/server";
-
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import type { inferProcedureOutput } from "@trpc/server";
+import { PageBack } from "@/components/settings/BackButtons";
+import { default as RawSettingsToggle } from "@/components/settings/SettingsToggle";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { type AppRouter, queryClient, trpc } from "@/lib/trpc";
 
 export const Route = createFileRoute("/admin/settings")({
   component: RouteComponent,

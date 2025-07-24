@@ -1,11 +1,11 @@
+import { motion } from "framer-motion";
+import { ArrowUpIcon, LoaderCircle, SquareIcon } from "lucide-react";
+import React from "react";
+import FileDisplay from "@/components/FileDisplay";
+import ModelSelector from "@/components/ModelSelector";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowUpIcon, LoaderCircle, SquareIcon } from "lucide-react";
-import { motion } from "framer-motion";
-import React from "react";
-import ModelSelector from "@/components/ModelSelector";
-import FileDisplay from "@/components/FileDisplay";
-import { useFiles, type FileItem } from "@/hooks/use-files";
+import { type FileItem, useFiles } from "@/hooks/use-files";
 import { useActiveId } from "./WSManager";
 
 interface MessageInputProps {
@@ -15,12 +15,7 @@ interface MessageInputProps {
   pendingVariables?: string;
 }
 
-export default function MessageInput({
-  chatId,
-  sendMessage,
-  isPending,
-  pendingVariables,
-}: MessageInputProps) {
+export default function MessageInput({ chatId, sendMessage, isPending, pendingVariables }: MessageInputProps) {
   const [input, setInput] = React.useState("");
   const files = useFiles((state) => state.files);
   const addFiles = useFiles((state) => state.addFiles);
@@ -71,8 +66,14 @@ export default function MessageInput({
       files.forEach((file) => {
         // Check if it's a generic pasted image name and replace with timestamp
         let fileName = file.name;
-        if (fileName === 'image.png' || fileName === 'image.jpg' || fileName === 'image.jpeg' || fileName === 'image.webp' || fileName === 'image.gif') {
-          const extension = file.type.split('/')[1] || fileName.split('.').pop() || 'png';
+        if (
+          fileName === "image.png" ||
+          fileName === "image.jpg" ||
+          fileName === "image.jpeg" ||
+          fileName === "image.webp" ||
+          fileName === "image.gif"
+        ) {
+          const extension = file.type.split("/")[1] || fileName.split(".").pop() || "png";
           fileName = `pasted-image-${(new Date()).toLocaleTimeString()}.${extension}`;
         } else if (!fileName) {
           fileName = `pasted-file-${(new Date()).toLocaleTimeString()}`;
@@ -89,10 +90,10 @@ export default function MessageInput({
     } else {
       // Only process clipboard items if no direct files found
       items.forEach((item) => {
-        if (item.kind === 'file' && item.type.startsWith('image/')) {
+        if (item.kind === "file" && item.type.startsWith("image/")) {
           const file = item.getAsFile();
           if (file) {
-            const extension = item.type.split('/')[1] || 'png';
+            const extension = item.type.split("/")[1] || "png";
             const fileItem: FileItem = {
               id: crypto.randomUUID(),
               name: `pasted-image-${Date.now()}.${extension}`,
@@ -111,14 +112,8 @@ export default function MessageInput({
     }
   };
 
-  const animateProps = React.useMemo(
-    () => ({ width: chatId ? "100%" : undefined }),
-    [chatId]
-  );
-  const transitionProps = React.useMemo(
-    () => ({ duration: 0.2 }),
-    []
-  );
+  const animateProps = React.useMemo(() => ({ width: chatId ? "100%" : undefined }), [chatId]);
+  const transitionProps = React.useMemo(() => ({ duration: 0.2 }), []);
   return (
     <motion.div
       className={`w-full ${chatId ? "" : "md:w-1/2"} p-2 sticky bottom-0 bg-background`}
@@ -153,9 +148,7 @@ export default function MessageInput({
           className="ml-auto p-0 cursor-pointer"
           onClick={handleSendMessage}
           disabled={
-            !!activeId ||
-            input.trim() === "" ||
-            files.reduce((prev, cur) => (prev ? prev : !cur.uploaded), false)
+            !!activeId || input.trim() === "" || files.reduce((prev, cur) => (prev ? prev : !cur.uploaded), false)
           }
         >
           {!activeId ? <ArrowUpIcon /> : <SquareIcon className="fill-background" />}

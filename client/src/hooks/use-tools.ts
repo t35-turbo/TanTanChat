@@ -5,7 +5,7 @@ type ToolsState = {
   setWebSearch: (webSearch: boolean) => void;
 };
 
-export const useTools = create<ToolsState>(set => ({
+export const useTools = create<ToolsState>((set) => ({
   web_search: false,
   setWebSearch: (webSearch: boolean) => set({ web_search: webSearch }),
-}))
+}));

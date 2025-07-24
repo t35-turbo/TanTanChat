@@ -1,6 +1,6 @@
-import { queryClient, trpc } from "@/lib/trpc";
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { z } from "zod/v4-mini";
+import { queryClient, trpc } from "@/lib/trpc";
 
 export const ChunkData = z.object({
   finish_reason: z.string(),
@@ -31,12 +31,6 @@ const RpcChunk = z.object({
 });
 const WSMessageSchema = z.union([RpcActiveMessage, RpcInvalidate, RpcChunk]);
 
-interface WSEventMap {
-  activeMessage: CustomEvent<{ messageId: string }>;
-  invalidate: CustomEvent<{ cacheKey: string }>;
-  chunk: CustomEvent<{ chunk: ChunkData; id: string }>;
-}
-
 /**
  * WSClient opens a WebSocket to the given URL and
  * re-emits incoming JSON-RPC messages as Typed Events.
@@ -44,14 +38,12 @@ interface WSEventMap {
 class WSClient extends EventTarget {
   private ws!: WebSocket;
   private url: string;
-  private chatId?: string;
   private reconnectAttempts = 0;
   private maxReconnectDelay = 250;
   private baseReconnectDelay = 5;
 
   constructor(chatId?: string) {
     super();
-    this.chatId = chatId;
     const isDev = import.meta.env.MODE === "development";
     const protocol = isDev || window.location.protocol === "http:" ? "ws" : "wss";
     this.url = `${protocol}://${window.location.host}/api/chats/${chatId}/ws`;
@@ -119,7 +111,7 @@ class WSClient extends EventTarget {
 
   private attemptReconnect() {
     this.reconnectAttempts++;
-    const delay = Math.min(this.maxReconnectDelay, this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1));
+    const delay = Math.min(this.maxReconnectDelay, this.baseReconnectDelay * 2 ** (this.reconnectAttempts - 1));
 
     setTimeout(() => {
       this.connect();
@@ -137,7 +129,6 @@ class WSClient extends EventTarget {
    * Disconnect from current WebSocket and connect to a new chat endpoint.
    */
   public reconnectTo(newChatId?: string) {
-    this.chatId = newChatId;
     const isDev = import.meta.env.MODE === "development";
     const protocol = isDev || window.location.protocol === "http:" ? "ws" : "wss";
     this.url = `${protocol}://${window.location.host}/api/chats/${newChatId}/ws`;

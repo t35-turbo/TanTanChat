@@ -1,8 +1,7 @@
-import { pgTable, text, timestamp, boolean, json } from "drizzle-orm/pg-core";
-import { user } from "./schema";
+import { boolean, json, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { createSelectSchema, createUpdateSchema } from "drizzle-zod";
-import z from "zod/v4";
-import { pgEnum } from "drizzle-orm/pg-core";
+import type z from "zod/v4";
+import { user } from "./schema";
 
 export type Theme = {
   base: "white" | "latte" | "frappe" | "macchiato" | "mocha" | "dark" | "system";

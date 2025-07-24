@@ -1,7 +1,7 @@
-import { useFiles, type FileItem } from "@/hooks/use-files";
 import { useMutation } from "@tanstack/react-query";
 import { LoaderCircle, Paperclip, X } from "lucide-react";
 import { useEffect } from "react";
+import { type FileItem, useFiles } from "@/hooks/use-files";
 import { __client } from "@/lib/trpc";
 
 export default function FileDisplay() {
