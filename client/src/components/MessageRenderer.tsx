@@ -1,17 +1,15 @@
 import ReactMarkdown from "react-markdown";
 import { PrismAsyncLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Check, ChevronDown, ChevronRight, Copy, Paperclip, RefreshCw, SquarePen, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Copy, Paperclip, RefreshCw, SquarePen, X } from "lucide-react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useTheme } from "@/hooks/use-theme";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import "katex/dist/katex.min.css";
+
 import React, { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import { useMutation, useQuery, useInfiniteQuery, useMutationState } from "@tanstack/react-query";
+import { useMutation, useQuery, useMutationState } from "@tanstack/react-query";
 import { trpc, queryClient, type Message, __client } from "@/lib/trpc";
 import { useORKey } from "@/hooks/use-or-key";
 import { useModel } from "@/hooks/use-model";
@@ -19,7 +17,6 @@ import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
 import { authClient } from "@/lib/auth-client";
 import { Textarea } from "./ui/textarea";
 import { z } from "zod/v4-mini";
-import { useNavigate } from "@tanstack/react-router";
 import { useActiveId, useActiveMessage } from "./WSManager";
 
 interface MessageRendererProps {
@@ -27,8 +24,6 @@ interface MessageRendererProps {
 }
 
 export function MessageRenderer({ chatId }: MessageRendererProps) {
-  const navigate = useNavigate();
-  const user_sess = authClient.useSession();
 
   const { chunks: activeMessage, setChunks: setActiveMessage } = useActiveMessage();
   const activeId = useActiveId();
@@ -180,11 +175,11 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
               baseUrl: "https://openrouter.ai/api/v1",
               api_format: "openai",
               reasoning_effort: model.thinkingEffort,
-                          system_prompt: generateSystemPrompt({
-                            name: settingsQuery.data?.name ?? "",
-                            self_attr: settingsQuery.data?.self_attr ?? "",
-                            traits: settingsQuery.data?.traits ?? "",
-                          }),
+              system_prompt: generateSystemPrompt({
+                name: settingsQuery.data?.name ?? "",
+                self_attr: settingsQuery.data?.self_attr ?? "",
+                traits: settingsQuery.data?.traits ?? "",
+              }),
             },
           });
           evt.preventDefault();
@@ -377,6 +372,19 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
 function MarkdownRenderer({ children }: { children: string | null | undefined }) {
   const base = useTheme((state) => state.base);
 
+  const [rehypePlugins, setRehypePlugins] = useState<any[]>([]);
+  const [remarkPlugins, setRemarkPlugins] = useState<any[]>([]);
+  // Dynamically load KaTeX CSS only when this component is mounted
+  useEffect(() => {
+    (async () => {
+      import("katex/dist/katex.min.css");
+      const rehypePlugins = [(await import("rehype-katex")).default];
+      const remarkPlugins = [(await import("remark-math")).default];
+      setRehypePlugins(rehypePlugins);
+      setRemarkPlugins(remarkPlugins);
+    })()
+  }, []);
+
   const preprocessMathBlocks = React.useCallback((text: string): string => {
     // Convert display math wrapped in \[ ... \] to $$ blocks so that remark-math can parse them
     // Supports multiline content inside the delimiters.
@@ -386,6 +394,8 @@ function MarkdownRenderer({ children }: { children: string | null | undefined })
   const processedChildren = React.useMemo(() => {
     return typeof children === "string" ? preprocessMathBlocks(children) : (children ?? "");
   }, [children, preprocessMathBlocks]);
+
+  console.log(rehypePlugins, remarkPlugins);
 
   return (
     <ReactMarkdown
@@ -417,8 +427,8 @@ function MarkdownRenderer({ children }: { children: string | null | undefined })
           );
         },
       }}
-      remarkPlugins={[remarkMath]}
-      rehypePlugins={[rehypeKatex]}
+      remarkPlugins={remarkPlugins}
+      rehypePlugins={rehypePlugins}
     >
       {processedChildren}
     </ReactMarkdown>

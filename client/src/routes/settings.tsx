@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 import { authClient, authedRoute } from "@/lib/auth-client";
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
-import { ChevronRight, Key, User } from "lucide-react";
+import { ChevronRight, Key, LayoutDashboard, SlidersHorizontal, User } from "lucide-react";
 import React from "react";
 
 export const Route = createFileRoute("/settings")({
@@ -63,7 +63,7 @@ function SidebarComponent() {
                   replace
                   className={`${location.pathname === "/settings" ? "bg-sidebar-accent" : ""}`}
                 >
-                  <User />
+                  <SlidersHorizontal />
                   General
                 </Link>
               </SettingsMenuButton>
@@ -83,17 +83,37 @@ function SidebarComponent() {
 
         {session.data?.user.role === "admin" ? (
           <SidebarGroup>
-            <SidebarGroupLabel>Admin Settings</SidebarGroupLabel>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
+                <SettingsMenuButton>
+                  <Link
+                    to="/admin"
+                    replace
+                    className={`${location.pathname === "/admin" ? "bg-sidebar-accent/75" : ""}`}
+                  >
+                    <LayoutDashboard />
+                    Dashboard
+                  </Link>
+                </SettingsMenuButton>
                 <SettingsMenuButton>
                   <Link
                     to="/admin/settings"
                     replace
                     className={`${location.pathname === "/admin/settings" ? "bg-sidebar-accent/75" : ""}`}
                   >
-                    <User />
+                    <SlidersHorizontal />
                     General
+                  </Link>
+                </SettingsMenuButton>
+                <SettingsMenuButton>
+                  <Link
+                    to="/admin/roles"
+                    replace
+                    className={`${location.pathname === "/admin/roles" ? "bg-sidebar-accent/75" : ""}`}
+                  >
+                    <User />
+                    Role Management
                   </Link>
                 </SettingsMenuButton>
                 <SettingsMenuButton>

@@ -9,6 +9,7 @@ export async function seedDefaults() {
   const defaultRoles = [
     {
       id: "user",
+      name: "User",
       allow_local_keys: true,
       allow_byok: false,
       allow_custom_providers: true,
@@ -16,6 +17,7 @@ export async function seedDefaults() {
     },
     {
       id: "admin",
+      name: "Admin",
       allow_local_keys: true,
       allow_byok: true,
       allow_custom_providers: true,

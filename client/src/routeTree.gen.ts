@@ -24,6 +24,7 @@ import { Route as AdminIndexImport } from './routes/admin/index'
 import { Route as SettingsKeysImport } from './routes/settings/keys'
 import { Route as ChatChatIdImport } from './routes/chat/$chatId'
 import { Route as AdminSettingsImport } from './routes/admin/settings'
+import { Route as AdminRolesImport } from './routes/admin/roles'
 import { Route as AdminKeysImport } from './routes/admin/keys'
 
 // Create/Update Routes
@@ -106,6 +107,12 @@ const AdminSettingsRoute = AdminSettingsImport.update({
   getParentRoute: () => AdminRoute,
 } as any)
 
+const AdminRolesRoute = AdminRolesImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => AdminRoute,
+} as any)
+
 const AdminKeysRoute = AdminKeysImport.update({
   id: '/keys',
   path: '/keys',
@@ -172,6 +179,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminKeysImport
       parentRoute: typeof AdminImport
     }
+    '/admin/roles': {
+      id: '/admin/roles'
+      path: '/roles'
+      fullPath: '/admin/roles'
+      preLoaderRoute: typeof AdminRolesImport
+      parentRoute: typeof AdminImport
+    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/settings'
@@ -221,12 +235,14 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminKeysRoute: typeof AdminKeysRoute
+  AdminRolesRoute: typeof AdminRolesRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminKeysRoute: AdminKeysRoute,
+  AdminRolesRoute: AdminRolesRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
@@ -268,6 +284,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/admin/keys': typeof AdminKeysRoute
+  '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/chat/$chatId': typeof ChatChatIdRoute
   '/settings/keys': typeof SettingsKeysRoute
@@ -282,6 +299,7 @@ export interface FileRoutesByTo {
   '/or_auth': typeof OrauthRoute
   '/signup': typeof SignupRoute
   '/admin/keys': typeof AdminKeysRoute
+  '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/chat/$chatId': typeof ChatChatIdRoute
   '/settings/keys': typeof SettingsKeysRoute
@@ -300,6 +318,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/admin/keys': typeof AdminKeysRoute
+  '/admin/roles': typeof AdminRolesRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/chat/$chatId': typeof ChatChatIdRoute
   '/settings/keys': typeof SettingsKeysRoute
@@ -319,6 +338,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/admin/keys'
+    | '/admin/roles'
     | '/admin/settings'
     | '/chat/$chatId'
     | '/settings/keys'
@@ -332,6 +352,7 @@ export interface FileRouteTypes {
     | '/or_auth'
     | '/signup'
     | '/admin/keys'
+    | '/admin/roles'
     | '/admin/settings'
     | '/chat/$chatId'
     | '/settings/keys'
@@ -348,6 +369,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/admin/keys'
+    | '/admin/roles'
     | '/admin/settings'
     | '/chat/$chatId'
     | '/settings/keys'
@@ -403,6 +425,7 @@ export const routeTree = rootRoute
       "filePath": "admin.tsx",
       "children": [
         "/admin/keys",
+        "/admin/roles",
         "/admin/settings",
         "/admin/"
       ]
@@ -432,6 +455,10 @@ export const routeTree = rootRoute
     },
     "/admin/keys": {
       "filePath": "admin/keys.tsx",
+      "parent": "/admin"
+    },
+    "/admin/roles": {
+      "filePath": "admin/roles.tsx",
       "parent": "/admin"
     },
     "/admin/settings": {
