@@ -47,7 +47,6 @@ export const chatRouter = router({
         id: crypto.randomUUID(),
         userId: opts.ctx.user.id,
         title: "New Chat",
-        lastUpdated: new Date(),
       };
 
       sync.titleGenerator(newChat.id, opts.input.message, [opts.ctx.user.id], opts.input.opts);

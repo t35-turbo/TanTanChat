@@ -36,7 +36,7 @@ function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
   }
 
   return (
-    <ContextMenu key={item.id + item.lastUpdated.getTime()}>
+    <ContextMenu key={item.id + item.updated_at.getTime()}>
       <div className={`group/chat`}>
         <ContextMenuTrigger>
           <Button asChild variant={"ghost"} className="w-full max-w-full relative justify-start px-2">
@@ -120,7 +120,7 @@ export default function ChatSidebar() {
     .map((item) => item.obj)
     .filter((item) => item.id !== deleteChat.variables?.chatId)
     .map((item) => (item.id === renameChat.variables?.chatId ? { ...item, title: renameChat.variables?.name } : item))
-    .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
+    .sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
   const renderOutput = renderChatOutput(filtered, deleteChat, renameChat);
 
   return (
@@ -207,12 +207,12 @@ function renderChatOutput(
 ) {
   let renderOutput: {
     component: React.ReactElement;
-    item: { title: string; id: string; lastUpdated: Date } | null;
+    item: { title: string; id: string; updated_at: Date } | null;
   }[] = chats.map((item) => {
     return {
       component: (
         <ChatItem
-          key={item.id + item.lastUpdated.getTime()}
+          key={item.id + item.updated_at.getTime()}
           item={item}
           deleteChat={deleteChat}
           renameChat={renameChat}
@@ -224,8 +224,8 @@ function renderChatOutput(
   let lastUpdateValue = "";
   let pos = 0;
   for (let component of renderOutput) {
-    if (component.item && timeDelta(component.item.lastUpdated) != lastUpdateValue) {
-      let tDelta = timeDelta(component.item.lastUpdated);
+    if (component.item && timeDelta(component.item.updated_at) != lastUpdateValue) {
+      let tDelta = timeDelta(component.item.updated_at);
       renderOutput.splice(pos, 0, {
         component: (
           <div className="text-accent-foreground font-bold border-b border-primary/25" key={tDelta}>
