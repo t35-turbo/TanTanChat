@@ -21,6 +21,11 @@ RUN npm install -g pnpm
 
 COPY client/package.json client/pnpm-lock.yaml* ./
 COPY --from=deps /app/node_modules ./node_modules
+
+# Copy server source code first (needed for type imports)
+COPY src/ ../src/
+
+# Copy client source code
 COPY client/ .
 
 # Install deps (backup)

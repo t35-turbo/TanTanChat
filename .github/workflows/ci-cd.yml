@@ -62,6 +62,9 @@ jobs:
       - name: Build application
         run: pnpm run build
         continue-on-error: false
+        env:
+          # Ensure server types are available during build
+          NODE_PATH: ../
 
   build-and-push:
     needs: [test-backend, test-frontend]
