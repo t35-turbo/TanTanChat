@@ -35,9 +35,6 @@ jobs:
 
   test-frontend:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./client
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,19 +49,22 @@ jobs:
         with:
           version: 8
 
-      - name: Install dependencies
-        run: pnpm install && pnpm add better-auth -w
+      - name: Install server dependencies (needed for type imports)
+        run: pnpm install
+
+      - name: Install client dependencies
+        working-directory: ./client
+        run: pnpm install && pnpm add better-auth
 
       - name: Run tests
+        working-directory: ./client
         run: pnpm run test || echo "No tests found, skipping..."
         continue-on-error: true
 
       - name: Build application
+        working-directory: ./client
         run: pnpm run build
         continue-on-error: false
-        env:
-          # Ensure server types are available during build
-          NODE_PATH: ../
 
   build-and-push:
     needs: [test-backend, test-frontend]
