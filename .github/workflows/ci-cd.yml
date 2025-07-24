@@ -54,7 +54,7 @@ jobs:
 
       - name: Install client dependencies
         working-directory: ./client
-        run: pnpm install && pnpm add better-auth
+        run: pnpm install
 
       - name: Run tests
         working-directory: ./client

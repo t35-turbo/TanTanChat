@@ -37,7 +37,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY client/ .
 
 # Install deps (backup)
-RUN pnpm install && pnpm add better-auth
+RUN pnpm install
 
 # Build the application
 RUN pnpm run build
