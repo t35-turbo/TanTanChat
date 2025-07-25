@@ -17,6 +17,7 @@ function RouteComponent() {
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -28,16 +29,22 @@ function RouteComponent() {
       return;
     }
 
-    const { data, error } = await authClient.signUp.email({
-      email,
-      password,
-      name: username,
-    });
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await authClient.signUp.email({
+        email,
+        password,
+        name: username,
+      });
 
-    if (data) {
-      navigate({ to: "/chat", search: { onboarding: true } });
-    } else if (error) {
-      setError(error.message ?? error.statusText);
+      if (data) {
+        navigate({ to: "/chat", search: { onboarding: true } });
+      } else if (error) {
+        setError(error.message ?? error.statusText);
+      }
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -111,8 +118,15 @@ function RouteComponent() {
           </div>
         </CardContent>
         <CardFooter className="flex-col gap-2">
-          <Button type="submit" className="w-full">
-            Sign Up
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                Loading...
+              </>
+            ) : (
+              "Sign Up"
+            )}
           </Button>
           {/* <Button variant="outline" className="w-full">
             Login with Discord

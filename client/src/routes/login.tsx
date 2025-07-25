@@ -20,19 +20,26 @@ function RouteComponent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   async function login() {
     setError("");
-    const { data, error } = await authClient.signIn.email({
-      email,
-      password,
-    });
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await authClient.signIn.email({
+        email,
+        password,
+      });
 
-    if (data) {
-      navigate({ to: "/chat" });
-    } else if (error) {
-      setError(error.message ?? error.statusText);
+      if (data) {
+        navigate({ to: "/chat" });
+      } else if (error) {
+        setError(error.message ?? error.statusText);
+      }
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -82,8 +89,15 @@ function RouteComponent() {
           </div>
         </CardContent>
         <CardFooter className="flex-col gap-2">
-          <Button type="submit" className="w-full">
-            Login
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                Loading...
+              </>
+            ) : (
+              "Login"
+            )}
           </Button>
 
           {/* TODO: ADD THIS BACK WITH A PROPER SETTINGS API <div className="text-center text-sm text-muted-foreground">
