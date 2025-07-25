@@ -18,7 +18,7 @@ export const settingsRouter = router({
     );
   }),
 
-  update: authProcedure.input(UserSettingsUpdate.omit({ api_keys: true })).mutation(async (opts) => {
+  set: authProcedure.input(UserSettingsUpdate.omit({ api_keys: true })).mutation(async (opts) => {
     const updateData = {
       ...opts.input,
     };

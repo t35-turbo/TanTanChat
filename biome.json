@@ -45,6 +45,10 @@
         "noChildrenProp": {
           "level": "off",
           "options": {}
+        },
+        "noUnusedVariables": {
+          "options": {},
+          "level": "info"
         }
       },
       "suspicious": {

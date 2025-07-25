@@ -1,23 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { Theme } from "@/../../src/db/settings.schema";
 
-export type ThemeState = {
-  base: "white" | "latte" | "frappe" | "macchiato" | "mocha" | "dark" | "system";
-  color:
-    | "rosewater"
-    | "flamingo"
-    | "pink"
-    | "mauve"
-    | "red"
-    | "maroon"
-    | "peach"
-    | "yellow"
-    | "green"
-    | "teal"
-    | "sky"
-    | "sapphire"
-    | "blue"
-    | "lavender";
+export type ThemeState = Theme & {
   setBase: (base: ThemeState["base"]) => void;
   setColor: (color: ThemeState["color"]) => void;
 };

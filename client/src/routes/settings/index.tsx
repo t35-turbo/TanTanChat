@@ -15,8 +15,9 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useORKey } from "@/hooks/use-or-key";
+import { useTheme } from "@/hooks/use-theme";
 import { authClient } from "@/lib/auth-client";
-import { __client, type AppRouter, queryClient, trpc } from "@/lib/trpc";
+import { __client, type AppRouter, queryClient, type RouterOutput, trpc } from "@/lib/trpc";
 
 export const Route = createFileRoute("/settings/")({
   component: RouteComponent,
@@ -103,7 +104,36 @@ function AccountCard() {
 }
 
 function AppearanceCard() {
-  // const updateMutation = useMutation(trpc.settings.);
+  const theme = useTheme.getState();
+  const setBase = useTheme((state) => state.setBase);
+  const setColor = useTheme((state) => state.setColor);
+
+  const appQuery = useQuery({
+    queryKey: trpc.settings.get.queryKey(),
+    queryFn: async () => {
+      const settings = (await __client.settings.get.query()).theme;
+      if (settings?.sync) {
+        return settings;
+      } else {
+        return { ...theme, sync: false };
+      }
+    },
+  });
+
+  const mutation = useMutation({
+    mutationKey: trpc.settings.set.mutationKey(),
+    mutationFn: async (newTheme: NonNullable<RouterOutput["settings"]["get"]["theme"]>) => {
+      if (!newTheme.sync) {
+        setBase(newTheme.base);
+        setColor(newTheme.color);
+      }
+
+      await __client.settings.set.mutate({ theme: newTheme });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: trpc.settings.get.queryKey() }),
+  });
+
+  const appearance = mutation.variables ?? appQuery.data ?? { base: "mocha", color: "sapphire", sync: false };
 
   return (
     <Card>
@@ -117,9 +147,17 @@ function AppearanceCard() {
         <div className="flex justify-between">
           <p>Sync Across Devices</p>
 
-          <Switch />
+          <Switch
+            checked={appearance.sync}
+            onCheckedChange={(checked) => mutation.mutate({ ...appearance, sync: checked })}
+          />
         </div>
-        <ThemeSelector />
+        <ThemeSelector
+          base={appearance.base}
+          color={appearance.color}
+          onBaseChange={(base) => mutation.mutate({ ...appearance, base })}
+          onColorChange={(color) => mutation.mutate({ ...appearance, color })}
+        />
       </CardContent>
     </Card>
   );
@@ -134,8 +172,8 @@ function SystemPromptCard() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (updates: inferProcedureInput<AppRouter["settings"]["update"]>) => {
-      await __client.settings.update.mutate(updates);
+    mutationFn: async (updates: inferProcedureInput<AppRouter["settings"]["set"]>) => {
+      await __client.settings.set.mutate(updates);
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: trpc.settings.get.queryKey() }),
   });
