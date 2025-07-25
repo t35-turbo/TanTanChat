@@ -26,6 +26,7 @@ RUN adduser --system --uid 1001 bunjs
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
+RUN mkdir -p ./client/dist && echo "<!DOCTYPE html><html><head><title>Dummy</title></head><body><h1>If you're seeing this on the ArgoCD server, something went wrong</h1></body></html>" > ./client/dist/index.html # Placeholder HTML file
 # Copy drizzle files (migrations) if they exist
 COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
 RUN mkdir -p ./drizzle
