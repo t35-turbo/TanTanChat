@@ -15,7 +15,7 @@ export default function SettingsToggle({
     <div className="flex justify-between">
       <div>
         <p className="text-sm font-medium">{header}</p>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <p className="text-muted-foreground text-sm">{description}</p>
       </div>
 
       <div className="flex items-center self-start">

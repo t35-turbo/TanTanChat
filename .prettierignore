@@ -1,0 +1,5 @@
+**/dist
+bun.lock
+**/pnpm-*
+file_store/**/*
+.github/**/*

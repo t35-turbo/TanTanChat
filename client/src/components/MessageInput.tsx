@@ -1,11 +1,11 @@
-import { motion } from "framer-motion";
-import { ArrowUpIcon, LoaderCircle, SquareIcon } from "lucide-react";
-import React from "react";
 import FileDisplay from "@/components/FileDisplay";
 import ModelSelector from "@/components/ModelSelector";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { type FileItem, useFiles } from "@/hooks/use-files";
+import { motion } from "framer-motion";
+import { ArrowUpIcon, LoaderCircle, SquareIcon } from "lucide-react";
+import React from "react";
 import { useActiveId } from "./WSManager";
 
 interface MessageInputProps {
@@ -74,9 +74,9 @@ export default function MessageInput({ chatId, sendMessage, isPending, pendingVa
           fileName === "image.gif"
         ) {
           const extension = file.type.split("/")[1] || fileName.split(".").pop() || "png";
-          fileName = `pasted-image-${(new Date()).toLocaleTimeString()}.${extension}`;
+          fileName = `pasted-image-${new Date().toLocaleTimeString()}.${extension}`;
         } else if (!fileName) {
-          fileName = `pasted-file-${(new Date()).toLocaleTimeString()}`;
+          fileName = `pasted-file-${new Date().toLocaleTimeString()}`;
         }
 
         const fileItem: FileItem = {
@@ -116,7 +116,7 @@ export default function MessageInput({ chatId, sendMessage, isPending, pendingVa
   const transitionProps = React.useMemo(() => ({ duration: 0.2 }), []);
   return (
     <motion.div
-      className={`w-full ${chatId ? "" : "md:w-1/2"} p-2 sticky bottom-0 bg-background`}
+      className={`w-full ${chatId ? "" : "md:w-1/2"} bg-background sticky bottom-0 p-2`}
       animate={animateProps}
       transition={transitionProps}
     >
@@ -125,7 +125,7 @@ export default function MessageInput({ chatId, sendMessage, isPending, pendingVa
           className={`w-full ${chatId ? "flex" : "hidden"} justify-end p-2 ${isPending ? "items-end" : "items-start"}`}
           key={pendingVariables}
         >
-          <LoaderCircle className="animate-spin size-4" />
+          <LoaderCircle className="size-4 animate-spin" />
         </div>
       ) : null}
       <FileDisplay />
@@ -141,11 +141,11 @@ export default function MessageInput({ chatId, sendMessage, isPending, pendingVa
         value={input}
         onChange={(e) => setInput(e.target.value)}
       />
-      <div className="flex mt-2 gap-1">
+      <div className="mt-2 flex gap-1">
         <ModelSelector />
 
         <Button
-          className="ml-auto p-0 cursor-pointer"
+          className="ml-auto cursor-pointer p-0"
           onClick={handleSendMessage}
           disabled={
             !!activeId || input.trim() === "" || files.reduce((prev, cur) => (prev ? prev : !cur.uploaded), false)

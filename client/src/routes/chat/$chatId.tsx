@@ -1,8 +1,3 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
-import { motion } from "framer-motion";
-import React from "react";
-import { toast } from "sonner";
 import { EmptyLoadingScreen } from "@/components/LoadingScreen";
 import MessageInput from "@/components/MessageInput";
 import MessageRenderer from "@/components/MessageRenderer";
@@ -15,6 +10,11 @@ import { useORKey } from "@/hooks/use-or-key";
 import { authClient } from "@/lib/auth-client";
 import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
 import { __client, queryClient, trpc } from "@/lib/trpc";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
+import { motion } from "framer-motion";
+import React from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/chat/$chatId")({
   component: ChatUI,
@@ -112,7 +112,7 @@ export function ChatUI() {
 
   if (user_sess.error) {
     return (
-      <div className="flex flex-col grow items-center w-full h-screen justify-center p-2">
+      <div className="flex h-screen w-full grow flex-col items-center justify-center p-2">
         <div>
           Error Loading User Sessions{" "}
           <Button onClick={() => window.location.reload()} variant={"link"}>
@@ -126,11 +126,11 @@ export function ChatUI() {
 
   return (
     <>
-      <div className={`flex flex-col grow items-center w-full h-screen justify-center p-2 relative`}>
+      <div className={`relative flex h-screen w-full grow flex-col items-center justify-center p-2`}>
         <motion.div
           animate={{ height: chatId ? "100%" : "auto" }}
           transition={{ duration: 0.2 }}
-          className={`flex flex-col w-full items-center ${chatId ? "overflow-y-scroll" : "overflow-y-hidden"} px-1`}
+          className={`flex w-full flex-col items-center ${chatId ? "overflow-y-scroll" : "overflow-y-hidden"} px-1`}
           ref={scrollContainerRef}
         >
           <div className="mb-auto w-full">

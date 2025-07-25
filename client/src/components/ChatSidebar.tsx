@@ -1,12 +1,12 @@
+import { Button } from "@/components/ui/button";
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, useSidebar } from "@/components/ui/sidebar";
+import { type Chat, queryClient, trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import { type UseMutationResult, useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import fuzzysort from "fuzzysort";
 import { Eraser, PanelLeftIcon, SearchIcon, Settings, TextCursor, XIcon } from "lucide-react";
 import React, { useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, useSidebar } from "@/components/ui/sidebar";
-import { type Chat, queryClient, trpc } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
 import SidebarAvatar from "./SidebarAvatar";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "./ui/context-menu";
 import { Input } from "./ui/input";
@@ -36,7 +36,7 @@ function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
     <ContextMenu key={item.id + item.updated_at.getTime()}>
       <div className={`group/chat`}>
         <ContextMenuTrigger>
-          <Button asChild variant={"ghost"} className="w-full max-w-full relative justify-start px-2">
+          <Button asChild variant={"ghost"} className="relative w-full max-w-full justify-start px-2">
             {renaming ? (
               <Input
                 value={renameInput}
@@ -49,7 +49,7 @@ function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
                 <span className="truncate" title={item.title}>
                   {item.title}
                 </span>
-                <div className={`hidden group-hover/chat:block ml-auto right-0`}>
+                <div className={`right-0 ml-auto hidden group-hover/chat:block`}>
                   <Button
                     variant="ghost"
                     onClick={(e) => {
@@ -116,18 +116,18 @@ export default function ChatSidebar() {
   return (
     <>
       <Sidebar className="select-none">
-        <SidebarHeader className="flex items-center content-center mt-2">
+        <SidebarHeader className="mt-2 flex content-center items-center">
           <Logo />
 
           <Button variant={"default"} className="w-full cursor-pointer" asChild>
             <Link to="/chat">New Chat</Link>
           </Button>
 
-          <div className="flex items-center border-b border-primary/65 mx-2">
+          <div className="border-primary/65 mx-2 flex items-center border-b">
             <SearchIcon size={16} />
             <Input
               type="text"
-              className="border-0 outline-0 p-2 focus-visible:border-0 focus-visible:ring-0"
+              className="border-0 p-2 outline-0 focus-visible:border-0 focus-visible:ring-0"
               placeholder="Search Chats..."
               value={searchQuery}
               onChange={(evt) => setSearchQuery(evt.target.value)}
@@ -139,7 +139,7 @@ export default function ChatSidebar() {
           {chats.isError ? "Error Loading Chats" : null}
           {chats.isPending ? "Loading Chats..." : null}
         </SidebarContent>
-        <SidebarFooter className="flex flex-row items-center mb-4 w-full">
+        <SidebarFooter className="mb-4 flex w-full flex-row items-center">
           <SidebarAvatar />
           <Link to="/settings">
             <Settings className="size-5" />
@@ -162,11 +162,11 @@ function BetterTrigger() {
       data-slot="sidebar-trigger"
       variant="ghost"
       size="icon"
-      className={cn("size-12 fixed top-2 left-2 bg-background border z-10 group")}
+      className={cn("bg-background group fixed left-2 top-2 z-10 size-12 border")}
       onClick={toggleSidebar}
     >
       <PanelLeftIcon className="transition-opacity duration-200 group-hover:opacity-0" />
-      <span className="absolute font-mono transform translate-x-8 opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100">
+      <span className="absolute translate-x-8 transform font-mono opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100">
         {/Mac/i.test(navigator.userAgent) ? "⌘+B" : <span className="text-xs">CTRL+B</span>}
       </span>
       <span className="sr-only">CTRL-B</span>
@@ -218,7 +218,7 @@ function renderChatOutput(
       const tDelta = timeDelta(component.item.updated_at);
       renderOutput.splice(pos, 0, {
         component: (
-          <div className="text-accent-foreground font-bold border-b border-primary/25" key={tDelta}>
+          <div className="text-accent-foreground border-primary/25 border-b font-bold" key={tDelta}>
             {tDelta}
           </div>
         ),

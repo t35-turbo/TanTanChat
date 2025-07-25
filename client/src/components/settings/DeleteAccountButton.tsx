@@ -1,7 +1,3 @@
-import { useNavigate } from "@tanstack/react-router";
-import { TriangleAlert } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +10,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
+import { useNavigate } from "@tanstack/react-router";
+import { TriangleAlert } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Input } from "../ui/input";
 
 export default function DeleteAccountButton() {
@@ -54,7 +54,7 @@ export default function DeleteAccountButton() {
           <div>
             <p>This action is irreversible and will permanently delete your account and all data associated with it.</p>
             <form onSubmit={handleSubmit} className="mt-4">
-              <label htmlFor="delete-password" className="block font-bold mb-2">
+              <label htmlFor="delete-password" className="mb-2 block font-bold">
                 To continue, please type your password below:
               </label>
               <Input

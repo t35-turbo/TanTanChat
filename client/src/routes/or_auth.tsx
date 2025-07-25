@@ -1,8 +1,8 @@
+import { useORKey } from "@/hooks/use-or-key";
 import { createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import ky from "ky";
 import React from "react";
 import { toast } from "sonner";
-import { useORKey } from "@/hooks/use-or-key";
 
 export const Route = createFileRoute("/or_auth")({
   component: RouteComponent,

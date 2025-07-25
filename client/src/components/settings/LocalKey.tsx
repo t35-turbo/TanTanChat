@@ -1,11 +1,11 @@
-import { Buffer } from "buffer";
-import { Pencil } from "lucide-react";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useORKey } from "@/hooks/use-or-key";
+import { Buffer } from "buffer";
+import { Pencil } from "lucide-react";
+import { useState } from "react";
 
 export function LocalKey() {
   const key = useORKey((state) => state.key);
@@ -19,7 +19,7 @@ export function LocalKey() {
       <TableCell>
         <Dialog>
           <DialogTrigger>
-            <Pencil className={`size-4 text-foreground/50 group-hover:text-foreground`} />
+            <Pencil className={`text-foreground/50 group-hover:text-foreground size-4`} />
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>Edit Local OpenRouter Key</DialogHeader>

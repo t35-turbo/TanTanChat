@@ -1,6 +1,6 @@
+import type { Theme } from "@/../../src/db/settings.schema";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Theme } from "@/../../src/db/settings.schema";
 
 export type ThemeState = Theme & {
   setBase: (base: ThemeState["base"]) => void;

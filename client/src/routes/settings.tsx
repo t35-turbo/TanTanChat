@@ -1,6 +1,3 @@
-import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
-import { ChevronRight, Key, LayoutDashboard, SlidersHorizontal, User } from "lucide-react";
-import React from "react";
 import SidebarAvatar from "@/components/SidebarAvatar";
 import { SidebarBack } from "@/components/settings/BackButtons";
 import {
@@ -18,6 +15,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { authClient, authedRoute } from "@/lib/auth-client";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
+import { ChevronRight, Key, LayoutDashboard, SlidersHorizontal, User } from "lucide-react";
+import React from "react";
 
 export const Route = createFileRoute("/settings")({
   beforeLoad: authedRoute,
@@ -132,7 +132,7 @@ function SidebarComponent() {
         ) : null}
       </SidebarContent>
 
-      <SidebarFooter className="flex flex-row mb-4 w-full">
+      <SidebarFooter className="mb-4 flex w-full flex-row">
         <SidebarAvatar />
       </SidebarFooter>
     </Sidebar>
@@ -147,7 +147,7 @@ function SettingsMenuButton({ children }: { children: React.ReactNode }) {
       <SidebarMenuButton
         asChild
         children={children}
-        className="text-lg font-semibold z-10"
+        className="z-10 text-lg font-semibold"
         onClick={() => sidebar.setOpenMobile(false)}
       />
       {sidebar.isMobile ? <ChevronRight className="absolute right-0 h-full" /> : null}

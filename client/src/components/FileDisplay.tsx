@@ -1,8 +1,8 @@
+import { type FileItem, useFiles } from "@/hooks/use-files";
+import { __client } from "@/lib/trpc";
 import { useMutation } from "@tanstack/react-query";
 import { LoaderCircle, Paperclip, X } from "lucide-react";
 import { useEffect } from "react";
-import { type FileItem, useFiles } from "@/hooks/use-files";
-import { __client } from "@/lib/trpc";
 
 export default function FileDisplay() {
   const files = useFiles((state) => state.files);
@@ -37,8 +37,8 @@ function File({ file }: { file: FileItem }) {
   }, [file, uploader]);
 
   return (
-    <div className="border p-2 rounded-xl flex items-center group relative cursor-default">
-      {uploader.isPending ? <LoaderCircle className="animate-spin size-4" /> : <Paperclip className="size-4 mr-1" />}{" "}
+    <div className="group relative flex cursor-default items-center rounded-xl border p-2">
+      {uploader.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Paperclip className="mr-1 size-4" />}{" "}
       {file.name}
       <button onClick={() => removeFile(file.id)} className="absolute -right-1 -top-1 hidden group-hover:block">
         <X className="size-3" />

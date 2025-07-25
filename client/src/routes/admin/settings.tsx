@@ -1,10 +1,10 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import type { inferProcedureOutput } from "@trpc/server";
 import { PageBack } from "@/components/settings/BackButtons";
 import { default as RawSettingsToggle } from "@/components/settings/SettingsToggle";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type AppRouter, queryClient, trpc } from "@/lib/trpc";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import type { inferProcedureOutput } from "@trpc/server";
 
 export const Route = createFileRoute("/admin/settings")({
   component: RouteComponent,
@@ -12,10 +12,10 @@ export const Route = createFileRoute("/admin/settings")({
 
 function RouteComponent() {
   return (
-    <div className="flex flex-col gap-2 p-4 w-full">
+    <div className="flex w-full flex-col gap-2 p-4">
       <PageBack />
 
-      <h1 className="text-2xl font-bold p-2">Admin Settings</h1>
+      <h1 className="p-2 text-2xl font-bold">Admin Settings</h1>
 
       <UserManagement />
     </div>

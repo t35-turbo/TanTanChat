@@ -1,11 +1,11 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 
 export const Route = createFileRoute("/login")({
   beforeLoad: async () => {
@@ -26,7 +26,7 @@ function RouteComponent() {
   async function login() {
     setError("");
     setIsLoading(true);
-    
+
     try {
       const { data, error } = await authClient.signIn.email({
         email,
@@ -45,7 +45,7 @@ function RouteComponent() {
 
   return (
     <form
-      className={`flex justify-center items-center w-full h-full`}
+      className={`flex h-full w-full items-center justify-center`}
       onSubmit={(e) => {
         login();
         e.preventDefault();
@@ -92,7 +92,7 @@ function RouteComponent() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-current" />
                 Loading...
               </>
             ) : (
@@ -108,7 +108,7 @@ function RouteComponent() {
             Login with Discord
           </Button> */}
 
-          <CardAction className="text-center w-full">
+          <CardAction className="w-full text-center">
             <span className="text-sm">Not Registered? </span>
             <Button variant="link" className="px-0" asChild>
               <Link to={"/signup"}>Sign Up</Link>

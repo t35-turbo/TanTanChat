@@ -9,7 +9,7 @@ export function PageBack() {
   return sidebar.isMobile ? (
     <Button
       variant="ghost"
-      className="mr-auto p-0 max-w-4"
+      className="mr-auto max-w-4 p-0"
       onClick={() => {
         sidebar.setOpenMobile(true);
       }}
@@ -24,7 +24,7 @@ export function SidebarBack() {
   const router = useRouter();
 
   return sidebar.isMobile ? (
-    <div className="flex items-center justify-between w-full mt-3">
+    <div className="mt-3 flex w-full items-center justify-between">
       <Button
         variant="ghost"
         onClick={() => {
@@ -38,7 +38,7 @@ export function SidebarBack() {
         <ChevronLeft className="size-6" />
       </Button>
 
-      <h1 className="absolute left-1/2 transform -translate-x-1/2 font-bold text-lg">Settings</h1>
+      <h1 className="absolute left-1/2 -translate-x-1/2 transform text-lg font-bold">Settings</h1>
     </div>
   ) : (
     <Button

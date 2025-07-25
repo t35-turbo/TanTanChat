@@ -1,5 +1,10 @@
+import { PageBack } from "@/components/settings/BackButtons";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { type RouterOutput, trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   type ColumnDef,
   flexRender,
@@ -8,12 +13,9 @@ import {
   type Row,
   useReactTable,
 } from "@tanstack/react-table";
-import { ShieldUser } from "lucide-react";
-import { PageBack } from "@/components/settings/BackButtons";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { type RouterOutput, trpc } from "@/lib/trpc";
+import { Pencil, ShieldUser } from "lucide-react";
 
-export const Route = createFileRoute("/admin/roles")({
+export const Route = createFileRoute("/admin/roles/")({
   component: RouteComponent,
 });
 
@@ -25,10 +27,10 @@ function RouteComponent() {
   console.log(roles.data);
 
   return (
-    <div className="flex flex-col gap-2 p-4 w-full">
+    <div className="flex w-full flex-col gap-2 p-4">
       <PageBack />
 
-      <h1 className="text-2xl font-bold p-2">Role Management</h1>
+      <h1 className="p-2 text-2xl font-bold">Role Management</h1>
 
       <RolesTable />
     </div>
@@ -44,7 +46,7 @@ function RolesTable() {
       header: `Roles - ${roles.data?.length ?? 0}`,
       cell: ({ row }) => {
         return (
-          <div className="flex gap-1 items-center font-semibold">
+          <div className="flex items-center gap-1 font-semibold">
             <ShieldUser color={row.getValue("color")} />
             {row.getValue("name")}
           </div>
@@ -54,6 +56,32 @@ function RolesTable() {
     {
       accessorKey: "user_count",
       header: "Users",
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        return (
+          <div className="flex justify-end">
+            <Tooltip>
+              <TooltipTrigger>
+                <Button variant="ghost" title="Edit Role" asChild>
+                  <Link to="/admin/roles/$role" params={{ role: row.original.id }}>
+                    <Pencil className="stroke-foreground/30 group-hover:stroke-foreground" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Edit Role</TooltipContent>
+            </Tooltip>
+            {/* TODO: role impersonation <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost">
+                  <Ellipsis />
+                </Button>
+              </DropdownMenuTrigger>
+            </DropdownMenu> */}
+          </div>
+        );
+      },
     },
   ];
 
@@ -100,8 +128,15 @@ function HeaderRows<TData>({ headerGroup }: { headerGroup: HeaderGroup<TData> })
 }
 
 function DataRows({ row }: { row: Row<Role> }) {
+  const navigate = useNavigate();
+
   return (
-    <TableRow data-state={row.getIsSelected() && "selected"}>
+    <TableRow
+      data-state={row.getIsSelected() && "selected"}
+      className="group cursor-pointer"
+      role="link"
+      onClick={() => navigate({ to: "/admin/roles/$role", params: { role: row.original.id } })}
+    >
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
       ))}

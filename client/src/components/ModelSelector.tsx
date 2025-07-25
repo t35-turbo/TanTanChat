@@ -1,9 +1,9 @@
-import { ChevronDownIcon, Paperclip } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
 import { useFiles } from "@/hooks/use-files";
 import { type Models, useModel } from "@/hooks/use-model";
 import { useORKey } from "@/hooks/use-or-key";
+import { ChevronDownIcon, Paperclip } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 

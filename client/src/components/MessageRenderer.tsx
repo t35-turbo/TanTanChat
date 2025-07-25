@@ -1,10 +1,3 @@
-import { useMutation, useMutationState, useQuery } from "@tanstack/react-query";
-import { Check, ChevronDown, ChevronRight, Copy, Paperclip, RefreshCw, SquarePen, X } from "lucide-react";
-import React, { useEffect, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import { PrismAsyncLight as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { z } from "zod/v4-mini";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useModel } from "@/hooks/use-model";
@@ -13,6 +6,13 @@ import { useTheme } from "@/hooks/use-theme";
 import { authClient } from "@/lib/auth-client";
 import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
 import { __client, type Message, queryClient, trpc } from "@/lib/trpc";
+import { useMutation, useMutationState, useQuery } from "@tanstack/react-query";
+import { Check, ChevronDown, ChevronRight, Copy, Paperclip, RefreshCw, SquarePen, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import { PrismAsyncLight as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { z } from "zod/v4-mini";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -78,7 +78,7 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
   if (messagePages.isPending && chatId) {
     return (
       <div className="flex space-x-2 p-10">
-        <div className="bg-border rounded-full h-8 w-8 motion-safe:animate-pulse"></div>
+        <div className="bg-border h-8 w-8 rounded-full motion-safe:animate-pulse"></div>
       </div>
     );
   }
@@ -187,19 +187,19 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
 
   return (
     <div
-      className={`w-full flex flex-col gap-1 ${last ? "min-h-[calc(100vh-20rem)]" : ""} ${message.role === "user" ? "items-end" : "items-start"}`}
+      className={`flex w-full flex-col gap-1 ${last ? "min-h-[calc(100vh-20rem)]" : ""} ${message.role === "user" ? "items-end" : "items-start"}`}
       key={message.id}
     >
       {files.data && files.data.length > 0
         ? files.data.map((file) => (
             <div
               key={file.fileId}
-              className="text-sm border rounded-lg italic p-1 flex items-center group cursor-default relative"
+              className="group relative flex cursor-default items-center rounded-lg border p-1 text-sm italic"
             >
               <Paperclip className="size-3" />
               {file.fileName}
               <button
-                className="absolute -bottom-1 -left-1 hidden group-hover:block text-destructive-foreground rounded-full p-0.5 hover:bg-destructive/80"
+                className="text-destructive-foreground hover:bg-destructive/80 absolute -bottom-1 -left-1 hidden rounded-full p-0.5 group-hover:block"
                 onClick={() => deleteFile.mutate({ chatId: message.chatId, msgId: message.id, fileId: file.fileId })}
               >
                 <X className="size-3" />
@@ -221,12 +221,12 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
           </div>
         ) : (
           <div
-            className={`${message.role === "user" ? "border p-2 rounded-lg ml-auto" : "px-2 py-1"} bg-background mb-1 prose`}
+            className={`${message.role === "user" ? "ml-auto rounded-lg border p-2" : "px-2 py-1"} bg-background prose mb-1`}
           >
             {message.reasoning ? (
               <Collapsible>
                 <CollapsibleTrigger
-                  className="flex items-center gap-1 transition-all text-foreground/50 hover:text-foreground"
+                  className="text-foreground/50 hover:text-foreground flex items-center gap-1 transition-all"
                   onClick={() => setShowThink(!showThink)}
                 >
                   {showThink ? <ChevronDown /> : <ChevronRight />} {showThink ? "Hide Thinking" : "Show Thinking"}
@@ -247,7 +247,7 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
           </div>
         )}
         <div
-          className={`flex items-center opacity-0 transition-opacity absolute ${message.role === "user" ? "right-0" : "left-0"} group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100 text-foreground/80`}
+          className={`absolute flex items-center opacity-0 transition-opacity ${message.role === "user" ? "right-0" : "left-0"} text-foreground/80 group-focus-within:opacity-100 group-hover:opacity-100 group-focus:opacity-100`}
         >
           {editingMessage ? (
             <>

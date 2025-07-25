@@ -1,6 +1,6 @@
+import { queryClient, trpc } from "@/lib/trpc";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { z } from "zod/v4-mini";
-import { queryClient, trpc } from "@/lib/trpc";
 
 export const ChunkData = z.object({
   finish_reason: z.string(),

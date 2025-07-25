@@ -1,8 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
 import type { Theme } from "@/../../src/db/settings.schema";
 import { useTheme } from "@/hooks/use-theme";
 import { __client, trpc } from "@/lib/trpc";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 type ThemeProviderProps = {
   children: React.ReactNode;

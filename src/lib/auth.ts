@@ -3,7 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
-import { system_settings, user_settings, files } from "../db/schema";
+import { files, system_settings, user_settings } from "../db/schema";
 import env from "./env";
 
 export const auth = betterAuth({
@@ -21,10 +21,7 @@ export const auth = betterAuth({
       deleteTokenExpiresIn: 60,
       afterDelete: async (user) => {
         try {
-          const userFiles = await db
-            .select()
-            .from(files)
-            .where(eq(files.ownedBy, user.id));
+          const userFiles = await db.select().from(files).where(eq(files.ownedBy, user.id));
 
           for (const file of userFiles) {
             try {
