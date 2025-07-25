@@ -98,9 +98,7 @@ export const chat_messages = pgTable(
       .$defaultFn(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => ({
-    chatIdCreatedAtIndex: index("idx_messages_chat_id_created_at").on(table.chatId, desc(table.createdAt)),
-  }),
+  (table) => [index("idx_messages_chat_id_created_at").on(table.chatId, desc(table.createdAt))],
 );
 
 export const files = pgTable("files", {
