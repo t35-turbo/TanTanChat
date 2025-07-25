@@ -111,7 +111,7 @@ export const files = pgTable("files", {
   mime: text("mime").notNull(),
   ownedBy: text("owned_by")
     .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
+    .references(() => user.id),
   onS3: boolean("on_s3")
     .$defaultFn(() => false)
     .notNull(),

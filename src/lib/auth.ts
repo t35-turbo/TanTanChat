@@ -1,8 +1,10 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin } from "better-auth/plugins";
+import { eq } from "drizzle-orm";
 import { db } from "../db";
-import { system_settings, user_settings } from "../db/schema";
+import { system_settings, user_settings, files } from "../db/schema";
+import env from "./env";
 
 export const auth = betterAuth({
   trustedOrigins: ["http://localhost:3001", "http://localhost:3000"],
@@ -17,6 +19,33 @@ export const auth = betterAuth({
     deleteUser: {
       enabled: true,
       deleteTokenExpiresIn: 60,
+      afterDelete: async (user) => {
+        try {
+          const userFiles = await db
+            .select()
+            .from(files)
+            .where(eq(files.ownedBy, user.id));
+
+          for (const file of userFiles) {
+            try {
+              if (env.USE_S3) {
+                console.warn(`S3 file deletion not yet implemented for file: ${file.id}`);
+              } else {
+                await Bun.file(file.filePath).delete();
+                console.log(`Deleted file: ${file.filePath}`);
+              }
+            } catch (fileError) {
+              console.error(`Failed to delete file ${file.id} at ${file.filePath}:`, fileError);
+            }
+          }
+
+          await db.delete(files).where(eq(files.ownedBy, user.id));
+
+          console.log(`Cleaned up ${userFiles.length} files for deleted user: ${user.id}`);
+        } catch (error) {
+          console.error(`Error during file cleanup for user ${user.id}:`, error);
+        }
+      },
     },
   },
 
