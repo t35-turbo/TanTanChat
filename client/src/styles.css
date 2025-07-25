@@ -8,8 +8,8 @@
 @custom-variant dark (&:is(.dark *));
 @custom-variant mocha (&:is(.mocha *));
 @custom-variant macchiato (&:is(.macchiato *));
-@custom-variant latte (&:is(.macchiato *));
-@custom-variant frappe (&:is(.macchiato *));
+@custom-variant latte (&:is(.latte *));
+@custom-variant frappe (&:is(.frappe *));
 
 body {
   @apply m-0;

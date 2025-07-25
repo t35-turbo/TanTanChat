@@ -173,7 +173,7 @@ export function ThemeSelector({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    className={`accent-maroon rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${color === "maroon" ? "border-accent border-4" : ""}`}
+                    className={`accent-maroon rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${realColor === "maroon" ? "border-accent border-4" : ""}`}
                     variant="outline"
                     onClick={() => setColor("maroon")}
                   ></Button>
@@ -185,7 +185,7 @@ export function ThemeSelector({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    className={`accent-yellow rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${color === "yellow" ? "border-accent border-4" : ""}`}
+                    className={`accent-yellow rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${realColor === "yellow" ? "border-accent border-4" : ""}`}
                     variant="outline"
                     onClick={() => setColor("yellow")}
                   ></Button>
@@ -197,7 +197,7 @@ export function ThemeSelector({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    className={`accent-green rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${color === "green" ? "border-accent border-4" : ""}`}
+                    className={`accent-green rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${realColor === "green" ? "border-accent border-4" : ""}`}
                     variant="outline"
                     onClick={() => setColor("green")}
                   ></Button>
@@ -209,7 +209,7 @@ export function ThemeSelector({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    className={`accent-teal rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${color === "teal" ? "border-accent border-4" : ""}`}
+                    className={`accent-teal rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${realColor === "teal" ? "border-accent border-4" : ""}`}
                     variant="outline"
                     onClick={() => setColor("teal")}
                   ></Button>
@@ -221,7 +221,7 @@ export function ThemeSelector({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    className={`accent-sky rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${color === "sky" ? "border-accent border-4" : ""}`}
+                    className={`accent-sky rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${realColor === "sky" ? "border-accent border-4" : ""}`}
                     variant="outline"
                     onClick={() => setColor("sky")}
                   ></Button>
@@ -233,7 +233,7 @@ export function ThemeSelector({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    className={`accent-sapphire rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${color === "sapphire" ? "border-accent border-4" : ""}`}
+                    className={`accent-sapphire rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${realColor === "sapphire" ? "border-accent border-4" : ""}`}
                     variant="outline"
                     onClick={() => setColor("sapphire")}
                   ></Button>
@@ -245,7 +245,7 @@ export function ThemeSelector({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    className={`accent-blue rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${color === "blue" ? "border-accent border-4" : ""}`}
+                    className={`accent-blue rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${realColor === "blue" ? "border-accent border-4" : ""}`}
                     variant="outline"
                     onClick={() => setColor("blue")}
                   ></Button>
@@ -257,7 +257,7 @@ export function ThemeSelector({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    className={`accent-lavender rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${color === "lavender" ? "border-accent border-4" : ""}`}
+                    className={`accent-lavender rounded-full w-12 h-12 bg-[rgba(var(--ctp-accent))] hover:bg-[rgba(var(--ctp-accent))] hover:border-4 ${realColor === "lavender" ? "border-accent border-4" : ""}`}
                     variant="outline"
                     onClick={() => setColor("lavender")}
                   ></Button>

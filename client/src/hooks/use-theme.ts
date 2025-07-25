@@ -11,7 +11,7 @@ export const useTheme = create<ThemeState>()(
   persist(
     (set) => ({
       base: "mocha",
-      color: "mauve",
+      color: "sapphire",
       setBase: (base: ThemeState["base"]) => set({ base }),
       setColor: (color: ThemeState["color"]) => set({ color }),
     }),

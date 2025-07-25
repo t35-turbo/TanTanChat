@@ -6,11 +6,11 @@ import { queryClient } from "@/lib/trpc";
 
 export const Route = createRootRoute({
   component: () => (
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
         <Toaster position="top-center" />
         <Outlet />
-      </QueryClientProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   ),
 });
