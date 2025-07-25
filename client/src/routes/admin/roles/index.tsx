@@ -47,7 +47,7 @@ function RolesTable() {
       cell: ({ row }) => {
         return (
           <div className="flex items-center gap-1 font-semibold">
-            <ShieldUser color={row.getValue("color")} />
+            <ShieldUser color={row.original.color ?? undefined} />
             {row.getValue("name")}
           </div>
         );
