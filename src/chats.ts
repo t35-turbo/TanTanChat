@@ -7,6 +7,7 @@ import { chat_messages, chats } from "./db/schema";
 import { getFile } from "./files";
 import * as sync from "./sync";
 import { authProcedure, router } from "./trpc";
+import { generateId } from "./utils/id";
 
 type Message = {
   id: string;
@@ -42,7 +43,7 @@ export const chatRouter = router({
     )
     .mutation(async (opts) => {
       const newChat = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         userId: opts.ctx.user.id,
         title: "New Chat",
       };
@@ -191,7 +192,7 @@ export const chatRouter = router({
       const chatId = opts.input.chatId;
 
       const newMessage: Message = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         chatId,
         senderId: opts.ctx.user.id,
         role: "user",

@@ -7,6 +7,7 @@ import { db } from "./db";
 import * as vk from "./db/redis";
 import { chat_messages, chats } from "./db/schema";
 import { default_prompt } from "./lib/sys_prompts";
+import { generateId } from "./utils/id";
 
 export type Messages = {
   id: string;
@@ -61,7 +62,7 @@ const RedisMessageResponse = z.object({
 const vk_client = vk.createClient();
 
 export async function newMessage(chatId: string, messages: Messages, opts: Options) {
-  const uuid = crypto.randomUUID();
+  const uuid = generateId();
 
   newCompletion(uuid, chatId, messages, opts);
   pgSubscriber(uuid, chatId, opts.model);

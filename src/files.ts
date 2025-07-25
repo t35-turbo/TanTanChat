@@ -8,6 +8,7 @@ import { mkdirSync, readdirSync } from "node:fs";
 import { z } from "zod/v4";
 import { db } from "./db";
 import { files } from "./db/schema";
+import { generateId } from "./utils/id";
 import env from "./lib/env";
 import { authProcedure, router } from "./trpc";
 
@@ -57,7 +58,7 @@ export const filesRouter = router({
     }
 
     const file = z.instanceof(File).parse(opts.input.get("file"));
-    const fileId = crypto.randomUUID();
+    const fileId = generateId();
     const filePath = `${env.LOCAL_FILE_STORE_PATH}/store/${fileId}`;
     const buffer = Buffer.from(await file.arrayBuffer());
     let fileType = file.type;

@@ -1,5 +1,6 @@
 import { desc } from "drizzle-orm";
 import { boolean, index, integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { generateId } from "../utils/id";
 import { roles } from "./settings.schema";
 
 export const user = pgTable("user", {
@@ -84,7 +85,7 @@ export const chat_messages = pgTable(
   {
     id: text("id")
       .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
+      .$defaultFn(() => generateId()),
     role: role_enum().notNull(),
     chatId: text("chat_id")
       .notNull()
@@ -104,7 +105,7 @@ export const chat_messages = pgTable(
 export const files = pgTable("files", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
+    .$defaultFn(() => generateId()),
   filename: text("filename").notNull(),
   size: integer("size").notNull(),
   hash: text("hash").notNull(),
@@ -124,7 +125,7 @@ export const files = pgTable("files", {
 export const api_keys = pgTable("api_keys", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
+    .$defaultFn(() => generateId()),
   provider: text("provider").notNull(),
   key: text("key").notNull(),
   custom_url: text("custom_url"),
