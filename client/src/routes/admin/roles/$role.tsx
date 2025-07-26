@@ -1,5 +1,16 @@
 import { PageBack } from "@/components/settings/BackButtons";
 import { default as RawSettingsToggle } from "@/components/settings/SettingsToggle";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,7 +20,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import type { inferProcedureOutput } from "@trpc/server";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export const Route = createFileRoute("/admin/roles/$role")({
   component: RouteComponent,
@@ -199,47 +210,116 @@ const columns: ColumnDef<RoleMember>[] = [
   },
 ];
 
-function UserSearch() {
+function UserSearch({ roleId }: { roleId: string }) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<RouterOutput["admin"]["users"]["search"][number] | null>(null);
+  const roleQuery = useQuery(trpc.admin.roles.get.queryOptions(roleId));
+
   const searchQuery = useQuery({
     ...trpc.admin.users.search.queryOptions(search),
     placeholderData: (previousData) => previousData,
   });
 
+  const setMemberRoleMutation = useMutation(
+    trpc.admin.roles.setMemberRole.mutationOptions({
+      onSettled: () => {
+        queryClient.invalidateQueries({ queryKey: trpc.admin.roles.getMembers.queryKey(roleId) });
+        setSelectedUser(null);
+        setSearch("");
+        setIsFocused(false);
+      },
+    }),
+  );
+
   return (
-    <div className="relative h-9 overflow-visible rounded">
-      <div className="bg-background group absolute z-10 w-full">
-        <Input
-          type="text"
-          placeholder="Search users to add..."
-          className={`${isFocused && "rounded-b-none border-b-0"} focus-visible:ring-0`}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-        />
-        {isFocused && (
-          <div className="border-ring rounded-b-md border-x border-b p-1 space-y-1">
+    <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <div className="relative h-9 overflow-visible rounded">
+        <div className="bg-background group absolute z-10 w-full">
+          <Input
+            ref={inputRef}
+            type="text"
+            placeholder="Search users to add..."
+            className={`${isFocused && "rounded-b-none border-b-0"} focus-visible:ring-0`}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+          />
+          <div className={`border-ring space-y-1 rounded-b-md border-x border-b p-1 ${!isFocused && "hidden"}`}>
             {searchQuery.isSuccess &&
+              roleQuery.isSuccess &&
               (searchQuery.data.length > 0 ? (
                 searchQuery.data.map((user) => (
-                  <div key={user.id} className="flex cursor-pointer items-center space-x-2 px-1">
-                    <div className="text-lg">{user.name}</div>
-                    <div className="text-muted-foreground text-sm">{user.email}</div>
-                    <div className="ml-auto">
-                      {user.role}
+                  <AlertDialogTrigger
+                    key={user.id}
+                    asChild
+                    onMouseDown={() => {
+                      setSelectedUser(user);
+                      setDialogOpen(true);
+                    }}
+                  >
+                    <div
+                      className="hover:bg-accent flex cursor-pointer items-center space-x-2 rounded px-1"
+                      onMouseDown={() => console.log("test")}
+                    >
+                      <div className="text-lg">{user.name}</div>
+                      <div className="text-muted-foreground text-sm">{user.email}</div>
+                      <div className="ml-auto">{user.role}</div>
                     </div>
-                  </div>
+                  </AlertDialogTrigger>
                 ))
               ) : (
                 <p>No results found.</p>
               ))}
-            {searchQuery.isPending && <p>Searching...</p>}
+            {(searchQuery.isPending || roleQuery.isPending) && <p>Searching...</p>}
           </div>
-        )}
+        </div>
       </div>
-    </div>
+
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Add User to Role</AlertDialogTitle>
+          <AlertDialogDescription>
+            {selectedUser?.role === roleId ? (
+              <>
+                <strong>{selectedUser?.name}</strong> ({selectedUser?.email}) already has the role{" "}
+                <strong>{roleQuery.data?.name}</strong>.
+              </>
+            ) : (
+              <>
+                Are you sure you want to set <strong>{selectedUser?.name}</strong>'s ({selectedUser?.email}) role to{" "}
+                <strong>{roleQuery.data?.name}</strong>?
+              </>
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          {selectedUser?.role === roleId ? (
+            <AlertDialogCancel onClick={() => setTimeout(() => inputRef.current?.focus())}>Close</AlertDialogCancel>
+          ) : (
+            <>
+              <AlertDialogCancel onClick={() => setTimeout(() => inputRef.current?.focus())}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (selectedUser) {
+                    setMemberRoleMutation.mutate({
+                      roleId,
+                      userId: selectedUser.id,
+                    });
+                  }
+                }}
+                disabled={setMemberRoleMutation.isPending}
+              >
+                {setMemberRoleMutation.isPending ? "Adding..." : "Confirm"}
+              </AlertDialogAction>
+            </>
+          )}
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -262,7 +342,7 @@ function RoleMembers({ roleId }: { roleId: string }) {
       <div className="mt-4">
         <div className="space-y-4">
           {/* Add Member Section */}
-          <UserSearch />
+          <UserSearch roleId={roleId} />
 
           {/* Members Table */}
           <div className="overflow-hidden rounded-md border">

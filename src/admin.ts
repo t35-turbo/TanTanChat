@@ -86,7 +86,7 @@ export const adminRouter = router({
       return db.select().from(user).where(eq(user.role, opts.input));
     }),
 
-    addMember: adminProcedure.input(z.object({ roleId: z.string(), userId: z.string() })).mutation(async (opts) => {
+    setMemberRole: adminProcedure.input(z.object({ roleId: z.string(), userId: z.string() })).mutation(async (opts) => {
       await db.update(user).set({ role: opts.input.roleId }).where(eq(user.id, opts.input.userId));
       return { success: true };
     }),
