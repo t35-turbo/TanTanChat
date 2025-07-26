@@ -1,5 +1,6 @@
 import { PageBack } from "@/components/settings/BackButtons";
 import { Button } from "@/components/ui/button";
+import { useSidebar } from "@/components/ui/sidebar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { type RouterOutput, trpc } from "@/lib/trpc";
@@ -13,7 +14,7 @@ import {
   type Row,
   useReactTable,
 } from "@tanstack/react-table";
-import { Pencil, ShieldUser } from "lucide-react";
+import { Pencil, ShieldUser, User, Users } from "lucide-react";
 
 export const Route = createFileRoute("/admin/roles/")({
   component: RouteComponent,
@@ -46,7 +47,7 @@ function RolesTable() {
       header: `Roles - ${roles.data?.length ?? 0}`,
       cell: ({ row }) => {
         return (
-          <div className="flex items-center gap-1 font-semibold">
+          <div className="flex items-center gap-1">
             <ShieldUser color={row.original.color ?? undefined} />
             {row.getValue("name")}
           </div>
@@ -56,6 +57,12 @@ function RolesTable() {
     {
       accessorKey: "user_count",
       header: "Users",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1">
+          {row.getValue("user_count")}
+          {parseInt(row.getValue("user_count")) > 1 ? <Users className="size-4" /> : <User className="size-5" />}
+        </div>
+      ),
     },
     {
       id: "actions",
@@ -65,8 +72,8 @@ function RolesTable() {
             <Tooltip>
               <TooltipTrigger>
                 <Button variant="ghost" title="Edit Role" asChild>
-                  <Link to="/admin/roles/$role" params={{ role: row.original.id }}>
-                    <Pencil className="stroke-foreground/30 group-hover:stroke-foreground" />
+                  <Link to="/admin/roles/$role" params={{ role: row.original.id }} replace>
+                    <Pencil className="md:stroke-foreground/30 group-hover:stroke-foreground" />
                   </Link>
                 </Button>
               </TooltipTrigger>

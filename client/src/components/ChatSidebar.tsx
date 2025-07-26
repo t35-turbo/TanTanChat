@@ -141,7 +141,7 @@ export default function ChatSidebar() {
         </SidebarContent>
         <SidebarFooter className="mb-4 flex w-full flex-row items-center">
           <SidebarAvatar />
-          <Link to="/settings">
+          <Link to="/settings" replace={false}>
             <Settings className="size-5" />
           </Link>
         </SidebarFooter>

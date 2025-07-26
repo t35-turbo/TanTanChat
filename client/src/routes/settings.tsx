@@ -24,27 +24,19 @@ export const Route = createFileRoute("/settings")({
   component: SettingsRouteComponent,
 });
 
-export function SettingsRouteComponent() {
+function SettingsRouteComponent() {
   return (
-    <SidebarProvider defaultOpen={true} open={true}>
+    <SidebarProvider defaultOpen={true} defaultOpenMobile={true}>
       <SidebarComponent />
       <Outlet />
     </SidebarProvider>
   );
 }
 
-function SidebarComponent() {
-  const sidebar = useSidebar();
+export function SidebarComponent() {
   const location = useLocation();
 
   const session = authClient.useSession();
-
-  React.useEffect(() => {
-    // why the fuck shadcn?? add a setOpenMobile pLEASE
-    if (sidebar.isMobile) {
-      sidebar.setOpenMobile(true);
-    }
-  }, [sidebar.isMobile, sidebar.setOpenMobile]);
 
   return (
     <Sidebar>
@@ -58,11 +50,7 @@ function SidebarComponent() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SettingsMenuButton>
-                <Link
-                  to="/settings"
-                  replace
-                  className={`${location.pathname === "/settings" ? "bg-sidebar-accent" : ""}`}
-                >
+                <Link to="/settings" className={`${location.pathname === "/settings" ? "bg-sidebar-accent" : ""}`}>
                   <SlidersHorizontal />
                   General
                 </Link>
@@ -70,7 +58,6 @@ function SidebarComponent() {
               <SettingsMenuButton>
                 <Link
                   to="/settings/keys"
-                  replace
                   className={`${location.pathname === "/settings/keys" ? "bg-sidebar-accent/75" : ""}`}
                 >
                   <Key />
@@ -87,11 +74,7 @@ function SidebarComponent() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SettingsMenuButton>
-                  <Link
-                    to="/admin"
-                    replace
-                    className={`${location.pathname === "/admin" ? "bg-sidebar-accent/75" : ""}`}
-                  >
+                  <Link to="/admin" className={`${location.pathname === "/admin" ? "bg-sidebar-accent/75" : ""}`}>
                     <LayoutDashboard />
                     Dashboard
                   </Link>
@@ -99,7 +82,6 @@ function SidebarComponent() {
                 <SettingsMenuButton>
                   <Link
                     to="/admin/settings"
-                    replace
                     className={`${location.pathname === "/admin/settings" ? "bg-sidebar-accent/75" : ""}`}
                   >
                     <SlidersHorizontal />
@@ -109,7 +91,6 @@ function SidebarComponent() {
                 <SettingsMenuButton>
                   <Link
                     to="/admin/roles"
-                    replace
                     className={`${location.pathname === "/admin/roles" ? "bg-sidebar-accent/75" : ""}`}
                   >
                     <User />
@@ -119,7 +100,6 @@ function SidebarComponent() {
                 <SettingsMenuButton>
                   <Link
                     to="/admin/keys"
-                    replace
                     className={`${location.pathname === "/admin/keys" ? "bg-sidebar-accent/75" : ""}`}
                   >
                     <Key />
@@ -148,7 +128,10 @@ function SettingsMenuButton({ children }: { children: React.ReactNode }) {
         asChild
         children={children}
         className="z-10 text-lg font-semibold"
-        onClick={() => sidebar.setOpenMobile(false)}
+        onClick={() => {
+          sidebar.setOpenMobile(false);
+          sidebar.setOpen(false);
+        }}
       />
       {sidebar.isMobile ? <ChevronRight className="absolute right-0 h-full" /> : null}
     </SidebarMenuItem>

@@ -68,7 +68,7 @@ export const roles = pgTable("roles", {
 
   allow_local_keys: boolean().default(true).notNull(),
   allow_byok: boolean().default(false).notNull(),
-  allow_custom_providers: boolean().default(true).notNull(),
+  allow_custom_providers: boolean().default(false).notNull(),
   is_admin: boolean().default(false).notNull(),
 
   created_at: timestamp("created_at")

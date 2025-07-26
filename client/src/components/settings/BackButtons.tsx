@@ -1,4 +1,4 @@
-import { useRouter } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { ArrowLeft, ChevronLeft } from "lucide-react";
 import { Button } from "../ui/button";
 import { useSidebar } from "../ui/sidebar";
@@ -13,8 +13,11 @@ export function PageBack() {
       onClick={() => {
         sidebar.setOpenMobile(true);
       }}
+      asChild
     >
-      <ChevronLeft className="size-6" />
+      <Link to="/settings">
+        <ChevronLeft className="size-6" />
+      </Link>
     </Button>
   ) : null;
 }
@@ -28,8 +31,8 @@ export function SidebarBack() {
       <Button
         variant="ghost"
         onClick={() => {
-          if (router.history.canGoBack()) {
-            router.history.back();
+          if (router.history.length > 1) {
+            router.history.go(-2);
           } else {
             router.navigate({ to: "/" });
           }

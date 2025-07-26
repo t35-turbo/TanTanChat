@@ -1,5 +1,6 @@
 import { PageBack } from "@/components/settings/BackButtons";
 import { default as RawSettingsToggle } from "@/components/settings/SettingsToggle";
+import { MemberDateCell, MemberRow } from "@/components/settings/admin/MemberRows";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,15 +12,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useSidebar } from "@/components/ui/sidebar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type AppRouter, queryClient, type RouterOutput, trpc } from "@/lib/trpc";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import type { inferProcedureOutput } from "@trpc/server";
+import { ChevronLeft } from "lucide-react";
 import { useRef, useState } from "react";
 
 export const Route = createFileRoute("/admin/roles/$role")({
@@ -31,9 +35,20 @@ function RouteComponent() {
 
   const role = useQuery(trpc.admin.roles.get.queryOptions(roleId));
 
+  const sidebar = useSidebar();
+
   return (
     <div className="flex w-full flex-col gap-2 p-4">
       <PageBack />
+
+      {!sidebar.isMobile && (
+        <Button variant={"ghost"} className="text-md mr-auto flex items-center" asChild>
+          <Link to="/admin/roles">
+            <ChevronLeft className="size-5" />
+            Back to Roles
+          </Link>
+        </Button>
+      )}
 
       <h1 className="p-2 text-2xl font-bold">Edit Role - {role.data?.name ?? "Loading..."}</h1>
 
@@ -136,22 +151,14 @@ function RoleSettings({ roleId }: { roleId: string }) {
         <div className="space-y-4">
           <h3 className="text-lg font-medium">Permissions</h3>
 
-          <div className="flex justify-between">
-            <div>
-              <p className="text-sm font-medium">Allow Local API Keys</p>
-              <p className="text-muted-foreground text-sm">Allow users in this role to use local API keys</p>
-            </div>
-            <div className="flex items-center self-start">
-              <RawSettingsToggle
-                header=""
-                description=""
-                checked={role.allow_local_keys}
-                onCheckedChange={(checked) => {
-                  updateRoleMutation.mutate({ ...role, allow_local_keys: checked });
-                }}
-              />
-            </div>
-          </div>
+          <RawSettingsToggle
+            header="Allow Local API Keys"
+            description="Allow users to use OpenRouter keys stored locally on their device"
+            checked={role.allow_local_keys}
+            onCheckedChange={(checked) => {
+              updateRoleMutation.mutate({ ...role, allow_local_keys: checked });
+            }}
+          />
 
           <RawSettingsToggle
             header="Allow Bring Your Own Key"
@@ -183,14 +190,7 @@ const columns: ColumnDef<RoleMember>[] = [
     accessorKey: "name",
     header: "User",
     cell: ({ row }) => {
-      const name = row.getValue("name") as string;
-      const email = row.original.email;
-      return (
-        <div>
-          <div className="font-medium">{name || "No name"}</div>
-          <div className="text-muted-foreground text-sm">{email}</div>
-        </div>
-      );
+      return <MemberRow member={row.original} />;
     },
   },
   {
@@ -201,11 +201,7 @@ const columns: ColumnDef<RoleMember>[] = [
     accessorKey: "created_at",
     header: "Created",
     cell: ({ row }) => {
-      return new Intl.DateTimeFormat("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      }).format(row.original.createdAt);
+      return <MemberDateCell member={row.original} />;
     },
   },
 ];

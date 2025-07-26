@@ -11,8 +11,8 @@ export async function seedDefaults() {
       id: "user",
       name: "User",
       allow_local_keys: true,
-      allow_byok: false,
-      allow_custom_providers: true,
+      allow_byok: true,
+      allow_custom_providers: false,
       allow_new_signups: false,
     },
     {
