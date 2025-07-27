@@ -1,6 +1,5 @@
 import { PageBack } from "@/components/settings/BackButtons";
 import { default as RawSettingsToggle } from "@/components/settings/SettingsToggle";
-import { MemberDateCell, MemberRow } from "@/components/settings/admin/MemberRows";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +26,9 @@ import { ChevronLeft } from "lucide-react";
 import { useRef, useState } from "react";
 
 export const Route = createFileRoute("/admin/roles/$role")({
+  head: () => {
+    return { meta: [{ title: `Edit Role | TanTan` }] };
+  },
   component: RouteComponent,
 });
 
@@ -53,7 +55,7 @@ function RouteComponent() {
       <h1 className="p-2 text-2xl font-bold">Edit Role - {role.data?.name ?? "Loading..."}</h1>
 
       <Tabs defaultValue="settings" className="w-full">
-        <TabsList className="h-auto w-fit gap-2 border-b bg-transparent p-0">
+        <TabsList className="h-auto w-fit gap-2 rounded-none border-b bg-transparent p-0">
           <TabsTrigger
             value="settings"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-foreground hover:bg-accent hover:text-accent-foreground rounded-b-none data-[state=inactive]:bg-transparent"
@@ -189,9 +191,7 @@ const columns: ColumnDef<RoleMember>[] = [
   {
     accessorKey: "name",
     header: "User",
-    cell: ({ row }) => {
-      return <MemberRow member={row.original} />;
-    },
+    cell: ({ row }) => <div>{row.original.name}</div>,
   },
   {
     accessorKey: "email",
@@ -201,7 +201,11 @@ const columns: ColumnDef<RoleMember>[] = [
     accessorKey: "created_at",
     header: "Created",
     cell: ({ row }) => {
-      return <MemberDateCell member={row.original} />;
+      return new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }).format(row.original.createdAt);
     },
   },
 ];
@@ -321,6 +325,8 @@ function UserSearch({ roleId }: { roleId: string }) {
 
 function RoleMembers({ roleId }: { roleId: string }) {
   const members = useQuery(trpc.admin.roles.getMembers.queryOptions(roleId));
+
+  console.log(members.data);
 
   const table = useReactTable({
     data: members.data ?? [],

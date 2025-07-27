@@ -1,6 +1,5 @@
 import { PageBack } from "@/components/settings/BackButtons";
 import { Button } from "@/components/ui/button";
-import { useSidebar } from "@/components/ui/sidebar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { type RouterOutput, trpc } from "@/lib/trpc";
@@ -17,6 +16,7 @@ import {
 import { Pencil, ShieldUser, User, Users } from "lucide-react";
 
 export const Route = createFileRoute("/admin/roles/")({
+  head: () => ({ meta: [{ title: `Roles | TanTan` }] }),
   component: RouteComponent,
 });
 

@@ -17,7 +17,7 @@ export const Route = createFileRoute("/admin")({
 
 function AdminRouteComponent() {
   return (
-    <SidebarProvider defaultOpen={true} defaultOpenMobile={false}>
+    <SidebarProvider open={true} defaultOpen={true} defaultOpenMobile={false}>
       <SidebarComponent />
       <Outlet />
     </SidebarProvider>

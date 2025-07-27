@@ -26,7 +26,7 @@
     "@radix-ui/react-toggle": "^1.1.9",
     "@radix-ui/react-tooltip": "^1.2.7",
     "@tailwindcss/vite": "^4.0.6",
-    "@tanstack/react-query": "^5.80.6",
+    "@tanstack/react-query": "^5.83.0",
     "@tanstack/react-router": "^1.114.3",
     "@tanstack/react-router-devtools": "^1.114.3",
     "@tanstack/react-table": "^8.21.3",
@@ -64,6 +64,7 @@
   "devDependencies": {
     "@catppuccin/tailwindcss": "^0.1.6",
     "@tailwindcss/typography": "^0.5.16",
+    "@tanstack/react-query-devtools": "5",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.2.0",
     "@types/react": "^19.0.8",

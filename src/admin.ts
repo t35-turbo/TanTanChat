@@ -1,4 +1,4 @@
-import { count, eq, ilike } from "drizzle-orm";
+import { and, count, eq, gt, ilike } from "drizzle-orm";
 import { createSelectSchema, createUpdateSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { db } from "./db";
@@ -99,6 +99,44 @@ export const adminRouter = router({
         .from(user)
         .where(ilike(user.name, `%${opts.input}%`))
         .limit(10);
+    }),
+
+    paginatedSearchList: adminProcedure
+      .input(
+        z.object({
+          limit: z.number().min(10).max(100),
+          query: z.string(),
+          cursor: z.string().nullish(),
+        }),
+      )
+      .query(async (opts) => {
+        const items = await db
+          .select({ name: user.name, id: user.id, role: roles.name, email: user.email, createdAt: user.createdAt })
+          .from(user)
+          .where(
+            opts.input.cursor
+              ? and(ilike(user.name, `%${opts.input.query}%`), gt(user.createdAt, new Date(opts.input.cursor)))
+              : ilike(user.name, `%${opts.input.query}%`),
+          )
+          .orderBy(user.createdAt)
+          .limit(opts.input.limit)
+          .leftJoin(roles, eq(user.role, roles.id));
+
+        return {
+          items,
+          nextCursor: items.length === opts.input.limit ? items[items.length - 1]?.createdAt.toISOString() : null,
+        };
+      }),
+
+    pagesCount: adminProcedure.input(z.object({ limit: z.number(), query: z.string() })).query(async (opts) => {
+      return Math.ceil(
+        (
+          await db
+            .select({ count: count() })
+            .from(user)
+            .where(ilike(user.name, `%${opts.input.query}%`))
+        )[0].count / opts.input.limit,
+      );
     }),
   },
 });

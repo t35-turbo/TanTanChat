@@ -48,7 +48,7 @@ export function SidebarBack() {
       variant="ghost"
       className="justify-start"
       onClick={() => {
-        if (router.history.canGoBack()) {
+        if (router.history.length > 0) {
           router.history.back();
         } else {
           router.navigate({ to: "/chat" });
