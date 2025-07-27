@@ -29,6 +29,9 @@ export default function DeleteAccountButton() {
           toast.success("Account deleted successfully");
           navigate({ to: "/" });
         },
+        onError: () => {
+          toast.error("Password Incorrect or Failed to Delete Account.");
+        },
       },
     });
   }

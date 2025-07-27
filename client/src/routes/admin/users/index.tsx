@@ -1,4 +1,15 @@
+import RoleSearch from "@/components/settings/admin/RoleSearch";
 import { PageBack } from "@/components/settings/BackButtons";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -13,8 +24,14 @@ import { useSettings } from "@/hooks/use-admin-users";
 import { type RouterOutput, trpc } from "@/lib/trpc";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import { ChevronDown, ChevronLeft, ChevronRight, User } from "lucide-react";
+import {
+  type ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  type Table as TanstackTable,
+  useReactTable,
+} from "@tanstack/react-table";
+import { ChevronDown, ChevronLeft, ChevronRight, Trash2, User, Wrench } from "lucide-react";
 import { useState } from "react";
 
 export const Route = createFileRoute("/admin/users/")({
@@ -28,12 +45,14 @@ type User = RouterOutput["admin"]["users"]["paginatedSearchList"]["items"][numbe
 
 function RouteComponent() {
   return (
-    <div className="flex w-full flex-col gap-2 p-4">
-      <PageBack />
+    <div className="relative h-screen w-full">
+      <div className="flex w-full flex-col gap-2 p-4">
+        <PageBack />
 
-      <h1 className="p-2 text-2xl font-bold">User Management</h1>
+        <h1 className="p-2 text-2xl font-bold">User Management</h1>
 
-      <UsersTable />
+        <UsersTable />
+      </div>
     </div>
   );
 }
@@ -88,8 +107,8 @@ const columns: ColumnDef<User>[] = [
 ];
 
 function UsersTable() {
-  const pageLimit = useSettings(state => state.pageLimit);
-  const setPageLimit = useSettings(state => state.setPageLimit);
+  const pageLimit = useSettings((state) => state.pageLimit);
+  const setPageLimit = useSettings((state) => state.setPageLimit);
   const [search, setSearch] = useState("");
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
@@ -116,6 +135,7 @@ function UsersTable() {
     columns: columns,
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true,
+    enableRowSelection: true,
   });
 
   // Handle page navigation
@@ -153,82 +173,149 @@ function UsersTable() {
 
   const pageSizeOptions = [10, 25, 50, 100];
 
+  // Selection state
+
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between">
-        <div className="w-full max-w-sm">
-          <Input placeholder="Search users..." value={search} onChange={(e) => handleSearchChange(e.target.value)} />
-        </div>
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2">
-                Showing {pageLimit} Users
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {pageSizeOptions.map((size) => (
-                <DropdownMenuItem
-                  key={size}
-                  onClick={() => handlePageSizeChange(size)}
-                  className={pageLimit === size ? "bg-accent" : ""}
-                >
-                  Showing {size} Users
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Button variant={"ghost"} className="p-2" onClick={goToPreviousPage} disabled={!canGoPrevious}>
-            <ChevronLeft />
-          </Button>
-          <p className="text-sm">
-            Page {currentPageIndex + 1} of {pagesCount.data ?? 0}
-          </p>
-          <Button variant={"ghost"} className="p-2" onClick={goToNextPage} disabled={!canGoNext || isLoadingNextPage}>
-            {isLoadingNextPage ? "..." : <ChevronRight />}
-          </Button>
-        </div>
-      </div>
-
-      <div className="overflow-hidden rounded-md border">
-        <Table>
-          <TableHeader className="text-lg h-10">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="font-bold">
-                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
+    <>
+      <div className="h-full space-y-4 overflow-scroll">
+        <div className="flex justify-between">
+          <div className="w-full max-w-sm">
+            <Input placeholder="Search users..." value={search} onChange={(e) => handleSearchChange(e.target.value)} />
+          </div>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  Showing {pageLimit} Users
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {pageSizeOptions.map((size) => (
+                  <DropdownMenuItem
+                    key={size}
+                    onClick={() => handlePageSizeChange(size)}
+                    className={pageLimit === size ? "bg-accent" : ""}
+                  >
+                    Showing {size} Users
+                  </DropdownMenuItem>
                 ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {usersQuery.isLoading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  Loading users...
-                </TableCell>
-              </TableRow>
-            ) : table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="group">
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button variant={"ghost"} className="p-2" onClick={goToPreviousPage} disabled={!canGoPrevious}>
+              <ChevronLeft />
+            </Button>
+            <p className="text-sm">
+              Page {currentPageIndex + 1} of {pagesCount.data ?? 0}
+            </p>
+            <Button variant={"ghost"} className="p-2" onClick={goToNextPage} disabled={!canGoNext || isLoadingNextPage}>
+              {isLoadingNextPage ? "..." : <ChevronRight />}
+            </Button>
+          </div>
+        </div>
+
+        <div className="rounded border">
+          <Table>
+            <TableHeader className="h-10 text-lg">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id} className="font-bold">
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
                   ))}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No users found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {usersQuery.isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    Loading users...
+                  </TableCell>
+                </TableRow>
+              ) : table.getRowModel().rows.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id} className="group">
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    No users found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+      <UserActionBar table={table} />
+    </>
+  );
+}
+
+function UserActionBar({
+  table,
+}: {
+  table: TanstackTable<RouterOutput["admin"]["users"]["paginatedSearchList"]["items"][number]>;
+}) {
+  const selectedRowModel = table.getSelectedRowModel();
+  const selectedCount = selectedRowModel.rows.length;
+
+  const userText = selectedCount === 1 ? "User" : "Users";
+
+  return (
+    <div
+      className={`absolute bottom-10 flex w-full transform justify-center transition-all duration-300 ease-in-out ${
+        table.getIsSomeRowsSelected() ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"
+      }`}
+    >
+      <div className="bg-accent min-w-3/5 max-w-11/12 flex items-center rounded-md border px-4 py-2 shadow-lg">
+        <span className="font-medium">
+          {selectedCount} {userText} Selected
+        </span>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" className="ml-auto h-full">
+              <Wrench />
+              Set Role
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader className="font-bold">Assigning Role to {selectedCount} Users</AlertDialogHeader>
+            <AlertDialogDescription className="space-y-2">
+              <p>What role would you like to assign?</p>
+              <RoleSearch />
+            </AlertDialogDescription>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" className="ml-2">
+              <Trash2 />
+              Delete {selectedCount} {userText}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader className="text-xl font-bold">
+              Are you sure you want to delete {selectedCount} users?
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction asChild>
+                <Button variant="destructive">Yes, I want to delete {selectedCount} users.</Button>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
