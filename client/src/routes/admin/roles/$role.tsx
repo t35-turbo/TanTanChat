@@ -326,8 +326,6 @@ function UserSearch({ roleId }: { roleId: string }) {
 function RoleMembers({ roleId }: { roleId: string }) {
   const members = useQuery(trpc.admin.roles.getMembers.queryOptions(roleId));
 
-  console.log(members.data);
-
   const table = useReactTable({
     data: members.data ?? [],
     columns,

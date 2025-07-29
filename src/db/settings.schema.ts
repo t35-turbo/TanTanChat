@@ -61,7 +61,7 @@ export const SystemSettingsUpdate = createUpdateSchema(system_settings);
 export type SystemSettingsUpdate = z.infer<typeof SystemSettingsUpdate>;
 
 export const roles = pgTable("roles", {
-  id: text("id").primaryKey(),
+  id: text("id").primaryKey().unique().notNull(),
   name: text("name").notNull(),
 
   color: text("color"),

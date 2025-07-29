@@ -1,4 +1,4 @@
-import { and, count, eq, gt, ilike } from "drizzle-orm";
+import { and, count, eq, gt, ilike, inArray, or } from "drizzle-orm";
 import { createSelectSchema, createUpdateSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { db } from "./db";
@@ -86,9 +86,23 @@ export const adminRouter = router({
       return db.select().from(user).where(eq(user.role, opts.input));
     }),
 
-    setMemberRole: adminProcedure.input(z.object({ roleId: z.string(), userId: z.string() })).mutation(async (opts) => {
-      await db.update(user).set({ role: opts.input.roleId }).where(eq(user.id, opts.input.userId));
-      return { success: true };
+    setMemberRole: adminProcedure
+      .input(z.object({ roleId: z.string(), userId: z.union([z.string(), z.string().array()]) }))
+      .mutation(async (opts) => {
+        if (Array.isArray(opts.input.userId)) {
+          await db.update(user).set({ role: opts.input.roleId }).where(inArray(user.id, opts.input.userId));
+        } else {
+          await db.update(user).set({ role: opts.input.roleId }).where(eq(user.id, opts.input.userId));
+        }
+        return { success: true };
+      }),
+
+    search: adminProcedure.input(z.string()).query(async (opts) => {
+      return db
+        .select()
+        .from(roles)
+        .where(or(ilike(roles.name, `%${opts.input}%`), ilike(roles.name, `%${opts.input}%`)))
+        .limit(5);
     }),
   },
 

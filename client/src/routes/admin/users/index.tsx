@@ -8,6 +8,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -21,8 +22,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useSettings } from "@/hooks/use-admin-users";
-import { type RouterOutput, trpc } from "@/lib/trpc";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { queryClient, type RouterOutput, trpc } from "@/lib/trpc";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   type ColumnDef,
@@ -33,6 +34,7 @@ import {
 } from "@tanstack/react-table";
 import { ChevronDown, ChevronLeft, ChevronRight, Trash2, User, Wrench } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/users/")({
   head: () => ({
@@ -269,31 +271,69 @@ function UserActionBar({
 
   const userText = selectedCount === 1 ? "User" : "Users";
 
+  const [roleDiaOpen, setRoleDiaOpen] = useState(false);
+  const [role, setRole] = useState<RouterOutput["admin"]["roles"]["search"][number] | undefined>(undefined);
+
+  const assignRole = useMutation(
+    trpc.admin.roles.setMemberRole.mutationOptions({
+      onSettled: async () => {
+        setRole(undefined);
+        await queryClient.invalidateQueries({ queryKey: trpc.admin.users.paginatedSearchList.infiniteQueryKey() });
+        await queryClient.invalidateQueries({ queryKey: trpc.admin.users.pagesCount.queryKey() });
+        table.toggleAllRowsSelected(false);
+        setRoleDiaOpen(false);
+      },
+    }),
+  );
+
   return (
     <div
       className={`absolute bottom-10 flex w-full transform justify-center transition-all duration-300 ease-in-out ${
-        table.getIsSomeRowsSelected() ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"
+        table.getSelectedRowModel().rows.length > 0 ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"
       }`}
     >
       <div className="bg-accent min-w-3/5 max-w-11/12 flex items-center rounded-md border px-4 py-2 shadow-lg">
         <span className="font-medium">
           {selectedCount} {userText} Selected
         </span>
-        <AlertDialog>
+        <AlertDialog open={roleDiaOpen} onOpenChange={setRoleDiaOpen}>
           <AlertDialogTrigger asChild>
             <Button variant="outline" className="ml-auto h-full">
               <Wrench />
               Set Role
             </Button>
           </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader className="font-bold">Assigning Role to {selectedCount} Users</AlertDialogHeader>
+          <AlertDialogContent
+            onEscapeKeyDown={(e) => {
+              if (document.activeElement?.closest("[data-role-search]")) {
+                e.preventDefault();
+              }
+            }}
+          >
+            <AlertDialogTitle className="font-bold">Assigning Role to {selectedCount} Users</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
-              <p>What role would you like to assign?</p>
-              <RoleSearch />
+              <div className="mb-1">What role would you like to assign?</div>
+              <RoleSearch role={role} onRoleChange={setRole} />
             </AlertDialogDescription>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={!role}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (role) {
+                    assignRole.mutate({
+                      userId: table.getSelectedRowModel().rows.map((row) => row.original.id),
+                      roleId: role?.id,
+                    });
+                  } else {
+                    toast.error("Please select a role.");
+                  }
+                }}
+              >
+                {assignRole.isIdle && role ? `Assign role "${role.name}"` : "Assign"}
+                {assignRole.isPending && "Assigning..."}
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

@@ -27,6 +27,7 @@ import { Route as AdminSettingsImport } from './routes/admin/settings'
 import { Route as AdminKeysImport } from './routes/admin/keys'
 import { Route as AdminUsersIndexImport } from './routes/admin/users/index'
 import { Route as AdminRolesIndexImport } from './routes/admin/roles/index'
+import { Route as AdminUsersUserIdImport } from './routes/admin/users/$userId'
 import { Route as AdminRolesRoleImport } from './routes/admin/roles/$role'
 
 // Create/Update Routes
@@ -124,6 +125,12 @@ const AdminUsersIndexRoute = AdminUsersIndexImport.update({
 const AdminRolesIndexRoute = AdminRolesIndexImport.update({
   id: '/roles/',
   path: '/roles/',
+  getParentRoute: () => AdminRoute,
+} as any)
+
+const AdminUsersUserIdRoute = AdminUsersUserIdImport.update({
+  id: '/users/$userId',
+  path: '/users/$userId',
   getParentRoute: () => AdminRoute,
 } as any)
 
@@ -242,6 +249,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRolesRoleImport
       parentRoute: typeof AdminImport
     }
+    '/admin/users/$userId': {
+      id: '/admin/users/$userId'
+      path: '/users/$userId'
+      fullPath: '/admin/users/$userId'
+      preLoaderRoute: typeof AdminUsersUserIdImport
+      parentRoute: typeof AdminImport
+    }
     '/admin/roles/': {
       id: '/admin/roles/'
       path: '/roles'
@@ -266,6 +280,7 @@ interface AdminRouteChildren {
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminRolesRoleRoute: typeof AdminRolesRoleRoute
+  AdminUsersUserIdRoute: typeof AdminUsersUserIdRoute
   AdminRolesIndexRoute: typeof AdminRolesIndexRoute
   AdminUsersIndexRoute: typeof AdminUsersIndexRoute
 }
@@ -275,6 +290,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminSettingsRoute: AdminSettingsRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminRolesRoleRoute: AdminRolesRoleRoute,
+  AdminUsersUserIdRoute: AdminUsersUserIdRoute,
   AdminRolesIndexRoute: AdminRolesIndexRoute,
   AdminUsersIndexRoute: AdminUsersIndexRoute,
 }
@@ -323,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/chat/': typeof ChatIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/admin/roles/$role': typeof AdminRolesRoleRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
   '/admin/roles': typeof AdminRolesIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
 }
@@ -340,6 +357,7 @@ export interface FileRoutesByTo {
   '/chat': typeof ChatIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/admin/roles/$role': typeof AdminRolesRoleRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
   '/admin/roles': typeof AdminRolesIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
 }
@@ -361,6 +379,7 @@ export interface FileRoutesById {
   '/chat/': typeof ChatIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/admin/roles/$role': typeof AdminRolesRoleRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
   '/admin/roles/': typeof AdminRolesIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
 }
@@ -383,6 +402,7 @@ export interface FileRouteTypes {
     | '/chat/'
     | '/settings/'
     | '/admin/roles/$role'
+    | '/admin/users/$userId'
     | '/admin/roles'
     | '/admin/users'
   fileRoutesByTo: FileRoutesByTo
@@ -399,6 +419,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/settings'
     | '/admin/roles/$role'
+    | '/admin/users/$userId'
     | '/admin/roles'
     | '/admin/users'
   id:
@@ -418,6 +439,7 @@ export interface FileRouteTypes {
     | '/chat/'
     | '/settings/'
     | '/admin/roles/$role'
+    | '/admin/users/$userId'
     | '/admin/roles/'
     | '/admin/users/'
   fileRoutesById: FileRoutesById
@@ -472,6 +494,7 @@ export const routeTree = rootRoute
         "/admin/settings",
         "/admin/",
         "/admin/roles/$role",
+        "/admin/users/$userId",
         "/admin/roles/",
         "/admin/users/"
       ]
@@ -529,6 +552,10 @@ export const routeTree = rootRoute
     },
     "/admin/roles/$role": {
       "filePath": "admin/roles/$role.tsx",
+      "parent": "/admin"
+    },
+    "/admin/users/$userId": {
+      "filePath": "admin/users/$userId.tsx",
       "parent": "/admin"
     },
     "/admin/roles/": {
