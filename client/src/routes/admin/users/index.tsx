@@ -48,7 +48,7 @@ type User = RouterOutput["admin"]["users"]["paginatedSearchList"]["items"][numbe
 function RouteComponent() {
   return (
     <div className="relative h-screen w-full">
-      <div className="flex w-full flex-col gap-2 p-4">
+      <div className="flex h-screen w-full flex-col gap-2 overflow-scroll p-4">
         <PageBack />
 
         <h1 className="p-2 text-2xl font-bold">User Management</h1>
@@ -179,7 +179,7 @@ function UsersTable() {
 
   return (
     <>
-      <div className="h-full space-y-4 overflow-scroll">
+      <div className="space-y-4">
         <div className="flex justify-between">
           <div className="w-full max-w-sm">
             <Input placeholder="Search users..." value={search} onChange={(e) => handleSearchChange(e.target.value)} />
@@ -331,7 +331,7 @@ function UserActionBar({
                   }
                 }}
               >
-                {assignRole.isIdle && role ? `Assign role "${role.name}"` : "Assign"}
+                {(assignRole.isIdle || assignRole.isSuccess) && (role ? `Assign role "${role.name}"` : "Assign")}
                 {assignRole.isPending && "Assigning..."}
               </AlertDialogAction>
             </AlertDialogFooter>
