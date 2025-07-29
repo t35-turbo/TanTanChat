@@ -34,8 +34,6 @@ function SettingsRouteComponent() {
 }
 
 export function SidebarComponent() {
-  const location = useLocation();
-
   const session = authClient.useSession();
 
   return (

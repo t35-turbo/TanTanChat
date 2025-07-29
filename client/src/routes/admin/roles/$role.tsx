@@ -1,3 +1,4 @@
+import UsersTable from "@/components/settings/admin/UsersTable";
 import { PageBack } from "@/components/settings/BackButtons";
 import { default as RawSettingsToggle } from "@/components/settings/SettingsToggle";
 import {
@@ -15,12 +16,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSidebar } from "@/components/ui/sidebar";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type AppRouter, queryClient, type RouterOutput, trpc } from "@/lib/trpc";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import type { inferProcedureOutput } from "@trpc/server";
 import { ChevronLeft } from "lucide-react";
 import { useRef, useState } from "react";
@@ -73,7 +72,8 @@ function RouteComponent() {
           <RoleSettings roleId={roleId} />
         </TabsContent>
         <TabsContent value="members">
-          <RoleMembers roleId={roleId} />
+          <UserSearch roleId={roleId} />
+          <UsersTable roleId={roleId} />
         </TabsContent>
       </Tabs>
     </div>
@@ -185,31 +185,6 @@ function RoleSettings({ roleId }: { roleId: string }) {
   );
 }
 
-type RoleMember = inferProcedureOutput<AppRouter["admin"]["roles"]["getMembers"]>[number];
-
-const columns: ColumnDef<RoleMember>[] = [
-  {
-    accessorKey: "name",
-    header: "User",
-    cell: ({ row }) => <div>{row.original.name}</div>,
-  },
-  {
-    accessorKey: "email",
-    header: "Email",
-  },
-  {
-    accessorKey: "created_at",
-    header: "Created",
-    cell: ({ row }) => {
-      return new Intl.DateTimeFormat("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      }).format(row.original.createdAt);
-    },
-  },
-];
-
 function UserSearch({ roleId }: { roleId: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
@@ -236,7 +211,7 @@ function UserSearch({ roleId }: { roleId: string }) {
 
   return (
     <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      <div className="relative h-9 overflow-visible rounded">
+      <div className="relative h-9 overflow-visible rounded mb-4">
         <div className="bg-background group absolute z-10 w-full">
           <Input
             ref={inputRef}
@@ -320,65 +295,5 @@ function UserSearch({ roleId }: { roleId: string }) {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  );
-}
-
-function RoleMembers({ roleId }: { roleId: string }) {
-  const members = useQuery(trpc.admin.roles.getMembers.queryOptions(roleId));
-
-  const table = useReactTable({
-    data: members.data ?? [],
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  });
-
-  if (members.isLoading) {
-    return <div>Loading members...</div>;
-  }
-
-  return (
-    <div>
-      <h1 className="text-2xl font-bold">Role Members ({members.data?.length ?? 0})</h1>
-      <div className="mt-4">
-        <div className="space-y-4">
-          {/* Add Member Section */}
-          <UserSearch roleId={roleId} />
-
-          {/* Members Table */}
-          <div className="overflow-hidden rounded-md border">
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id}>
-                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows.length > 0 ? (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id}>
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={columns.length} className="h-24 text-center">
-                      No members found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }

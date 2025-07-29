@@ -1,4 +1,4 @@
-import { and, count, eq, gt, ilike, inArray, or } from "drizzle-orm";
+import { and, count, eq, gt, ilike, inArray, or, SQL } from "drizzle-orm";
 import { createSelectSchema, createUpdateSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { db } from "./db";
@@ -107,6 +107,7 @@ export const adminRouter = router({
   },
 
   users: {
+    get: adminProcedure.input(z.string()).query(async (opts) => {}),
     search: adminProcedure.input(z.string()).query(async (opts) => {
       return db
         .select({ name: user.name, id: user.id, role: user.role, email: user.email })
@@ -121,17 +122,22 @@ export const adminRouter = router({
           limit: z.number().min(10).max(100),
           query: z.string(),
           cursor: z.string().nullish(),
+          roleId: z.string().optional(),
         }),
       )
       .query(async (opts) => {
+        let condition: SQL<unknown> | undefined = ilike(user.name, `%${opts.input.query}`);
+        if (opts.input.cursor) {
+          condition = and(gt(user.createdAt, new Date(opts.input.cursor)), condition);
+        }
+        if (opts.input.roleId) {
+          condition = and(eq(user.role, opts.input.roleId), condition);
+        }
+
         const items = await db
           .select({ name: user.name, id: user.id, role: roles.name, email: user.email, createdAt: user.createdAt })
           .from(user)
-          .where(
-            opts.input.cursor
-              ? and(ilike(user.name, `%${opts.input.query}%`), gt(user.createdAt, new Date(opts.input.cursor)))
-              : ilike(user.name, `%${opts.input.query}%`),
-          )
+          .where(condition)
           .orderBy(user.createdAt)
           .limit(opts.input.limit)
           .leftJoin(roles, eq(user.role, roles.id));
