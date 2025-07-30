@@ -1,20 +1,15 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import type { inferProcedureInput } from "@trpc/server";
-import { Check, Info, LogOut, Palette, RefreshCw, User, Wrench } from "lucide-react";
+import { Check, Info, Palette, RefreshCw, Wrench } from "lucide-react";
 import { PageBack } from "@/components/settings/BackButtons";
-import DeleteAccountButton from "@/components/settings/DeleteAccountButton";
 import { ThemeSelector } from "@/components/settings/ThemeSelector";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import UserDetailsCard from "@/components/settings/UserDetailsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { useORKey } from "@/hooks/use-or-key";
 import { useTheme } from "@/hooks/use-theme";
 import { authClient } from "@/lib/auth-client";
 import { __client, type AppRouter, queryClient, type RouterOutput, trpc } from "@/lib/trpc";
@@ -36,7 +31,7 @@ function RouteComponent() {
         {user_sess.data?.user ? user_sess.data?.user.name : "Guest User"}
       </h1>
 
-      <AccountCard />
+      <UserDetailsCard />
       <AppearanceCard />
       <SystemPromptCard />
       <AboutCard />
@@ -44,64 +39,7 @@ function RouteComponent() {
   );
 }
 
-function AccountCard() {
-  const user_sess = authClient.useSession();
-  const setKey = useORKey((state) => state.setKey);
-  const navigate = useNavigate();
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <User className="size-4" />
-          Account
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-3">
-          <Avatar className="size-12 flex">
-            {user_sess?.data?.user?.image && <AvatarImage src={user_sess.data.user.image} />}
-            <AvatarFallback className="text-lg">{user_sess.data?.user?.name?.[0]}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <div className="font-medium my-1">
-              <span>{user_sess.data?.user?.name}</span>
-              <Badge variant={"outline"} className="ml-2">
-                User
-              </Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">{user_sess.data?.user?.email}</p>
-          </div>
-        </div>
-
-        <Separator />
-
-        {user_sess.data ? (
-          <Button
-            variant="outline"
-            onClick={async () => {
-              await authClient.signOut({
-                fetchOptions: {
-                  onSuccess: () => {
-                    navigate({ to: "/login" });
-                  },
-                },
-              });
-              setKey(null);
-            }}
-            className="flex items-center gap-2"
-          >
-            <LogOut className="size-4" />
-            Sign Out
-          </Button>
-        ) : null}
-
-        <h2 className="font-bold mt-12">Danger Zone</h2>
-        {user_sess.data ? <DeleteAccountButton /> : null}
-      </CardContent>
-    </Card>
-  );
-}
 
 function AppearanceCard() {
   const theme = useTheme.getState();

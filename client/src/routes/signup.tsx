@@ -2,6 +2,7 @@ import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import Loader from "@/components/ui/loader";
 import { authClient } from "@/lib/auth-client";
 import { Label } from "@radix-ui/react-label";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -121,7 +122,7 @@ function RouteComponent() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
               <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-current" />
+                <Loader />
                 Loading...
               </>
             ) : (

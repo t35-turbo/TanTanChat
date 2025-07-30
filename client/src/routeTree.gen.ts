@@ -13,6 +13,7 @@
 import { Route as rootRoute } from './routes/__root'
 import { Route as SignupImport } from './routes/signup'
 import { Route as SettingsImport } from './routes/settings'
+import { Route as ResetPasswordImport } from './routes/reset-password'
 import { Route as OrauthImport } from './routes/or_auth'
 import { Route as LoginImport } from './routes/login'
 import { Route as ChatImport } from './routes/chat'
@@ -41,6 +42,12 @@ const SignupRoute = SignupImport.update({
 const SettingsRoute = SettingsImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ResetPasswordRoute = ResetPasswordImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -177,6 +184,13 @@ declare module '@tanstack/react-router' {
       path: '/or_auth'
       fullPath: '/or_auth'
       preLoaderRoute: typeof OrauthImport
+      parentRoute: typeof rootRoute
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordImport
       parentRoute: typeof rootRoute
     }
     '/settings': {
@@ -329,6 +343,7 @@ export interface FileRoutesByFullPath {
   '/chat': typeof ChatRouteWithChildren
   '/login': typeof LoginRoute
   '/or_auth': typeof OrauthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/admin/keys': typeof AdminKeysRoute
@@ -348,6 +363,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/or_auth': typeof OrauthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -369,6 +385,7 @@ export interface FileRoutesById {
   '/chat': typeof ChatRouteWithChildren
   '/login': typeof LoginRoute
   '/or_auth': typeof OrauthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
   '/admin/keys': typeof AdminKeysRoute
@@ -392,6 +409,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/login'
     | '/or_auth'
+    | '/reset-password'
     | '/settings'
     | '/signup'
     | '/admin/keys'
@@ -410,6 +428,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/or_auth'
+    | '/reset-password'
     | '/signup'
     | '/admin/keys'
     | '/admin/settings'
@@ -429,6 +448,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/login'
     | '/or_auth'
+    | '/reset-password'
     | '/settings'
     | '/signup'
     | '/admin/keys'
@@ -451,6 +471,7 @@ export interface RootRouteChildren {
   ChatRoute: typeof ChatRouteWithChildren
   LoginRoute: typeof LoginRoute
   OrauthRoute: typeof OrauthRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   SignupRoute: typeof SignupRoute
 }
@@ -461,6 +482,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRouteWithChildren,
   LoginRoute: LoginRoute,
   OrauthRoute: OrauthRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRouteWithChildren,
   SignupRoute: SignupRoute,
 }
@@ -480,6 +502,7 @@ export const routeTree = rootRoute
         "/chat",
         "/login",
         "/or_auth",
+        "/reset-password",
         "/settings",
         "/signup"
       ]
@@ -511,6 +534,9 @@ export const routeTree = rootRoute
     },
     "/or_auth": {
       "filePath": "or_auth.tsx"
+    },
+    "/reset-password": {
+      "filePath": "reset-password.tsx"
     },
     "/settings": {
       "filePath": "settings.tsx",

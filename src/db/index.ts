@@ -6,14 +6,14 @@ const db = drizzle(env.DATABASE_URL, { schema });
 
 // Seed default roles
 export async function seedDefaults() {
-  const defaultRoles = [
+  const defaultRoles: schema.RolesInsert[] = [
     {
       id: "user",
       name: "User",
       allow_local_keys: true,
       allow_byok: true,
       allow_custom_providers: false,
-      allow_new_signups: false,
+      is_admin: false,
     },
     {
       id: "admin",
@@ -21,7 +21,7 @@ export async function seedDefaults() {
       allow_local_keys: true,
       allow_byok: true,
       allow_custom_providers: true,
-      allow_new_signups: true,
+      is_admin: true,
     },
   ];
 

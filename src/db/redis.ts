@@ -1,7 +1,7 @@
 import * as redis from "redis";
 import env from "../lib/env";
 
-export const createClient = () =>
+export const createClient = (): redis.RedisClientType =>
   redis.createClient({
     url: env.REDIS_URL,
     password: env.REDIS_PASSWORD,

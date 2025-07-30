@@ -11,11 +11,12 @@ import { auth } from "./lib/auth";
 import { settingsRouter } from "./settings";
 import * as sync from "./sync";
 import { router } from "./trpc";
+import { usersRouter } from "./users";
 
 const PORT = 3001;
 
 // Initialize default roles
-await seedDefaults();
+seedDefaults();
 
 const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
 
@@ -24,6 +25,7 @@ const appRouter = router({
   files: filesRouter,
   settings: settingsRouter,
   admin: adminRouter,
+  users: usersRouter,
 });
 
 export type AppRouter = typeof appRouter;

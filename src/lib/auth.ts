@@ -1,21 +1,56 @@
-import { betterAuth } from "better-auth";
+import { betterAuth, User } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { files, system_settings, user_settings } from "../db/schema";
+import { customAdmin } from "./admin-plugin";
 import env from "./env";
+
+const adapter = drizzleAdapter(db, {
+  // provider: databaseUrl?.startsWith("postgresql") ? "pg" : "sqlite",
+  provider: "pg",
+});
+
+/**
+ * Initializes all created users to the "user" role.
+ */
+async function beforeCreateUserHook(user: User): Promise<{ data: User & { role: string } }> {
+  return { data: { ...user, role: "user" } };
+}
+
+/**
+ * Intializes a created user's settings.
+ */
+async function afterCreateUserHook(user: User) {
+  const defaultTheme = (
+    await db
+      .select({
+        theme: system_settings.theme,
+      })
+      .from(system_settings)
+  )[0].theme;
+
+  await db.insert(user_settings).values({
+    user_id: user.id,
+    theme: { ...defaultTheme, sync: true },
+  });
+}
 
 export const auth = betterAuth({
   trustedOrigins: ["http://localhost:3001", "http://localhost:3000"],
   emailAndPassword: {
     enabled: true,
-    // autoSignIn: true, // defaults to true, set to false if you want to explicitly sign in after signup
   },
 
-  plugins: [admin()],
+  plugins: [customAdmin()],
 
   user: {
+    additionalFields: {
+      role: {
+        type: "string",
+        input: false,
+      },
+    },
     deleteUser: {
       enabled: true,
       deleteTokenExpiresIn: 60,
@@ -44,6 +79,9 @@ export const auth = betterAuth({
         }
       },
     },
+    changeEmail: {
+      enabled: true,
+    },
   },
 
   session: {
@@ -63,29 +101,23 @@ export const auth = betterAuth({
   //       : undefined,
   // },
 
-  database: drizzleAdapter(db, {
-    // provider: databaseUrl?.startsWith("postgresql") ? "pg" : "sqlite",
-    provider: "pg",
-  }),
+  database: adapter,
 
   databaseHooks: {
     user: {
       create: {
-        after: async (user) => {
-          const defaultTheme = (
-            await db
-              .select({
-                theme: system_settings.theme,
-              })
-              .from(system_settings)
-          )[0].theme;
-
-          await db.insert(user_settings).values({
-            user_id: user.id,
-            theme: { ...defaultTheme, sync: true },
-          });
-        },
+        before: beforeCreateUserHook,
+        after: afterCreateUserHook,
       },
+    },
+  },
+
+  logger: {
+    disabled: false,
+    level: "debug",
+    log: (level, message, ...args) => {
+      // Custom logging implementation
+      console.log(`[${level}] ${message}`, ...args);
     },
   },
 });

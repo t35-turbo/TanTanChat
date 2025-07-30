@@ -17,14 +17,20 @@ const t = initTRPC.context<Context>().create({
 export const router = t.router;
 export const publicProcedure = t.procedure;
 
+export const unAuthError = new TRPCError({
+  code: "UNAUTHORIZED",
+  message: "You must be logged in to access this resource",
+});
+export const notAdminError = new TRPCError({
+  code: "UNAUTHORIZED",
+  message: "You must be an admin to access this resource",
+});
+
 export const authProcedure = publicProcedure.use(async (opts) => {
   const { ctx } = opts;
 
   if (!ctx.session || !ctx.user) {
-    throw new TRPCError({
-      code: "UNAUTHORIZED",
-      message: "You must be logged in to access this resource",
-    });
+    throw unAuthError;
   }
 
   return opts.next({
@@ -36,17 +42,20 @@ export const authProcedure = publicProcedure.use(async (opts) => {
   });
 });
 
-export const adminProcedure = authProcedure.use(async (opts) => {
-  const role = await db
-    .select()
-    .from(roles)
-    .where(and(eq(roles.id, opts.ctx.user?.role ?? ""), eq(roles.is_admin, true)));
+export async function isAdmin(role: string): Promise<boolean> {
+  return (
+    (
+      await db
+        .select()
+        .from(roles)
+        .where(and(eq(roles.id, role), eq(roles.is_admin, true)))
+    ).length > 0
+  );
+}
 
-  if (!role.length) {
-    throw new TRPCError({
-      code: "UNAUTHORIZED",
-      message: "You must be an admin to access this resource",
-    });
+export const adminProcedure = authProcedure.use(async (opts) => {
+  if (!(await isAdmin(opts.ctx.user.role))) {
+    throw notAdminError;
   }
 
   return opts.next();

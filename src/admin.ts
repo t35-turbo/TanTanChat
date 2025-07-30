@@ -1,15 +1,15 @@
 import { and, count, eq, gt, ilike, inArray, or, SQL } from "drizzle-orm";
-import { createSelectSchema, createUpdateSchema } from "drizzle-zod";
+import { createUpdateSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { db } from "./db";
 import { roles, system_settings, SystemSettingsSelect, SystemSettingsUpdate, user } from "./db/schema";
-import { adminProcedure, router } from "./trpc";
+import { auth } from "./lib/auth";
+import { adminProcedure, publicProcedure, router } from "./trpc";
 
 const systemSettingsKeys = z.enum(
   Object.keys(SystemSettingsSelect.shape) as [keyof SystemSettingsSelect, ...Array<keyof SystemSettingsSelect>],
 );
 
-const RoleSelect = createSelectSchema(roles);
 const RoleUpdate = createUpdateSchema(roles);
 
 type GetSettingsInput = z.infer<typeof systemSettingsKeys>[];
@@ -21,6 +21,14 @@ type GetSettingsReturn<T extends GetSettingsInput | undefined> = T extends undef
     : never;
 
 export const adminRouter = router({
+  checkRoleIsAdmin: publicProcedure.input(z.string()).query(async ({ input }) => {
+    const role = await db.query.roles.findFirst({
+      where: eq(roles.id, input),
+      columns: { is_admin: true },
+    });
+    return { isAdmin: role?.is_admin ?? false };
+  }),
+
   settings: {
     get: adminProcedure
       .input(z.optional(z.array(systemSettingsKeys)))
@@ -106,8 +114,33 @@ export const adminRouter = router({
     }),
   },
 
+  checkIsAdmin: adminProcedure.query(async () => {
+    // If this procedure runs successfully, the user is admin
+    // (adminProcedure already checks isAdmin via your existing logic)
+    return { isAdmin: true };
+  }),
+
   users: {
-    get: adminProcedure.input(z.string()).query(async (opts) => {}),
+    get: adminProcedure.input(z.string()).query(async (opts) => {
+      return {
+        user: (
+          await db
+            .select({
+              name: user.name,
+              email: user.email,
+              emailVerified: user.emailVerified,
+              image: user.image,
+              createdAt: user.createdAt,
+              updatedAt: user.updatedAt,
+              role: roles,
+            })
+            .from(user)
+            .where(eq(user.id, opts.input))
+            .leftJoin(roles, eq(roles.id, user.role))
+        )[0],
+      };
+    }),
+
     search: adminProcedure.input(z.string()).query(async (opts) => {
       return db
         .select({ name: user.name, id: user.id, role: user.role, email: user.email })
@@ -147,7 +180,6 @@ export const adminRouter = router({
           nextCursor: items.length === opts.input.limit ? items[items.length - 1]?.createdAt.toISOString() : null,
         };
       }),
-
     pagesCount: adminProcedure.input(z.object({ limit: z.number(), query: z.string() })).query(async (opts) => {
       return Math.ceil(
         (
@@ -158,5 +190,29 @@ export const adminRouter = router({
         )[0].count / opts.input.limit,
       );
     }),
+
+    resetPassword: adminProcedure
+      .input(z.object({ userId: z.string(), newPassword: z.string() }))
+      .mutation(async (opts) => {
+        try {
+          await auth.api.revokeAllSessions({
+            body: { userId: opts.input.userId },
+          });
+          return {
+            ...(await auth.api.setPassword({
+              body: { newPassword: opts.input.newPassword },
+            })),
+            error: undefined,
+          };
+        } catch (err: any) {
+          return {
+            error: {
+              message: err.message,
+              status: 500,
+              statusText: err.statusText,
+            },
+          };
+        }
+      }),
   },
 });

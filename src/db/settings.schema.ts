@@ -1,5 +1,5 @@
 import { boolean, json, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
-import { createSelectSchema, createUpdateSchema } from "drizzle-zod";
+import { createInsertSchema, createSelectSchema, createUpdateSchema } from "drizzle-zod";
 import type z from "zod/v4";
 import { user } from "./schema";
 
@@ -79,3 +79,6 @@ export const roles = pgTable("roles", {
     .$onUpdateFn(() => /* @__PURE__ */ new Date())
     .notNull(),
 });
+
+const RolesInsert = createInsertSchema(roles);
+export type RolesInsert = z.infer<typeof RolesInsert>;
