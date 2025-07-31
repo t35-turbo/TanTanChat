@@ -1,3 +1,4 @@
+import { AdminChatInfoBar } from "@/components/AdminChatInfoBar";
 import { EmptyLoadingScreen } from "@/components/LoadingScreen";
 import MessageInput from "@/components/MessageInput";
 import MessageRenderer from "@/components/MessageRenderer";
@@ -13,7 +14,7 @@ import { __client, queryClient, trpc } from "@/lib/trpc";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import React from "react";
+import React, { useMemo } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/chat/$chatId")({
@@ -42,6 +43,22 @@ export function ChatUI() {
     ...trpc.settings.get.queryOptions(),
     enabled: !user_sess.isPending && !user_sess.error,
   });
+
+  // Check if current user is admin
+  const isAdminQuery = useQuery({
+    queryKey: ["admin", "checkIsAdmin"],
+    queryFn: async () => {
+      const result = await authClient.admin.checkIsAdmin();
+      return result.data?.isAdmin;
+    },
+    enabled: !!user_sess.data?.user,
+  });
+
+  // Determine if we should show the admin info bar
+  const shouldShowAdminInfoBar = useMemo(() => {
+    // Only show if we have a chatId, user is logged in, and user is admin
+    return !!(chatId && user_sess.data?.user && isAdminQuery.data === true);
+  }, [chatId, user_sess.data?.user, isAdminQuery.data]);
 
   const sendMessageMut = useMutation({
     mutationKey: ["sendMessage", chatId],
@@ -127,6 +144,7 @@ export function ChatUI() {
   return (
     <>
       <div className={`relative flex h-screen w-full grow flex-col items-center justify-center p-2`}>
+        {shouldShowAdminInfoBar && <AdminChatInfoBar chatId={chatId ?? ""} />}
         <motion.div
           animate={{ height: chatId ? "100%" : "auto" }}
           transition={{ duration: 0.2 }}

@@ -252,6 +252,22 @@ export const customAdmin = () => {
           });
         },
       ),
+
+      checkIsAdmin: createAuthEndpoint(
+        "/admin/check-is-admin",
+        {
+          method: "GET",
+          use: [sessionMiddleware],
+        },
+        async (ctx) => {
+          const userIsAdmin = await isAdmin(ctx.context.session.user.role);
+
+          return ctx.json({
+            success: true,
+            isAdmin: userIsAdmin,
+          });
+        },
+      ),
     },
   } satisfies BetterAuthPlugin;
 };

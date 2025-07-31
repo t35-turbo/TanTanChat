@@ -1,8 +1,16 @@
-import { and, count, eq, gt, ilike, inArray, or, SQL } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, gt, ilike, inArray, lt, or, SQL } from "drizzle-orm";
 import { createUpdateSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { db } from "./db";
-import { roles, system_settings, SystemSettingsSelect, SystemSettingsUpdate, user } from "./db/schema";
+import {
+  chat_messages,
+  chats,
+  roles,
+  system_settings,
+  SystemSettingsSelect,
+  SystemSettingsUpdate,
+  user,
+} from "./db/schema";
 import { auth } from "./lib/auth";
 import { adminProcedure, publicProcedure, router } from "./trpc";
 
@@ -214,5 +222,73 @@ export const adminRouter = router({
           };
         }
       }),
+
+    getChats: adminProcedure
+      .input(
+        z.object({
+          userId: z.string(),
+          limit: z.number().min(1).max(50).default(20),
+          cursor: z.string().nullish(),
+        }),
+      )
+      .query(async (opts) => {
+        const { userId, limit, cursor } = opts.input;
+
+        // Build where conditions
+        let whereConditions: SQL<unknown> | undefined = eq(chats.userId, userId);
+        if (cursor) {
+          whereConditions = and(whereConditions, lt(chats.updated_at, new Date(cursor)));
+        }
+
+        // Fetch one extra item to determine if there's a next page
+        const userChats = await db
+          .select({
+            id: chats.id,
+            title: chats.title,
+            updated_at: chats.updated_at,
+            messageCount: count(chat_messages.id),
+          })
+          .from(chats)
+          .leftJoin(chat_messages, and(eq(chats.id, chat_messages.chatId), eq(chat_messages.senderId, userId)))
+          .where(whereConditions)
+          .groupBy(chats.id, chats.title, chats.updated_at)
+          .orderBy(desc(chats.updated_at))
+          .limit(limit + 1);
+
+        // Check if there's a next page
+        const hasNextPage = userChats.length > limit;
+        const items = hasNextPage ? userChats.slice(0, limit) : userChats;
+        const nextCursor = hasNextPage ? items[items.length - 1]?.updated_at.toISOString() : null;
+
+        return {
+          items,
+          nextCursor,
+        };
+      }),
+
+    getChatStats: adminProcedure.input(z.string()).query(async (opts) => {
+      const stats = await db
+        .select({
+          totalChats: countDistinct(chats.id),
+          totalMessages: count(chat_messages.id),
+        })
+        .from(chats)
+        .leftJoin(chat_messages, and(eq(chats.id, chat_messages.chatId), eq(chat_messages.senderId, opts.input)))
+        .where(eq(chats.userId, opts.input));
+
+      const recentActivity = await db
+        .select({
+          date: chats.updated_at,
+        })
+        .from(chats)
+        .where(eq(chats.userId, opts.input))
+        .orderBy(desc(chats.updated_at))
+        .limit(1);
+
+      return {
+        ...stats[0],
+        lastActivity: recentActivity[0]?.date || null,
+      };
+    }),
   },
 });

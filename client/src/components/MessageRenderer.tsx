@@ -5,13 +5,15 @@ import { useORKey } from "@/hooks/use-or-key";
 import { useTheme } from "@/hooks/use-theme";
 import { authClient } from "@/lib/auth-client";
 import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
-import { __client, type Message, queryClient, trpc } from "@/lib/trpc";
+import { __client, type Message, queryClient, type RouterOutput, trpc } from "@/lib/trpc";
 import { useMutation, useMutationState, useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { Check, ChevronDown, ChevronRight, Copy, Paperclip, RefreshCw, SquarePen, X } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { PrismAsyncLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { toast } from "sonner";
 import { z } from "zod/v4-mini";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
@@ -25,6 +27,7 @@ interface MessageRendererProps {
 export function MessageRenderer({ chatId }: MessageRendererProps) {
   const { chunks: activeMessage, setChunks: setActiveMessage } = useActiveMessage();
   const activeId = useActiveId();
+  const navigate = useNavigate();
 
   // Use useMutationState to access the sendMessage mutation state
   const sendMessageVariables = useMutationState<string | null>({
@@ -36,7 +39,16 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
     ...trpc.chats.threadHistory.queryOptions({ chatId: chatId ?? "" }),
     enabled: !!chatId,
     queryFn: async () => {
-      const data = await __client.chats.threadHistory.query({ chatId: chatId ?? "" });
+      let data: RouterOutput["chats"]["threadHistory"];
+      try {
+        data = await __client.chats.threadHistory.query({ chatId: chatId ?? "" });
+      } catch (err) {
+        console.log(err);
+        toast.error("Chat not found");
+        navigate({ to: "/chat" });
+        throw err;
+      }
+
       if (!activeId && activeMessage.length > 0 && setActiveMessage) {
         setActiveMessage([]);
       }

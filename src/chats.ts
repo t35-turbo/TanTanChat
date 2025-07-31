@@ -1,12 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { and, asc, eq, inArray } from "drizzle-orm";
-import * as crypto from "node:crypto";
 import { z } from "zod/v4";
 import { db } from "./db";
-import { chat_messages, chats } from "./db/schema";
+import { chat_messages, chats, user } from "./db/schema";
 import { getFile } from "./files";
 import * as sync from "./sync";
-import { authProcedure, router } from "./trpc";
+import { authProcedure, isAdmin, router } from "./trpc";
 import { generateId } from "./utils/id";
 
 type Message = {
@@ -19,8 +18,15 @@ type Message = {
   createdAt: Date;
 };
 
+/**
+ * This procedure ensures the chat exists and the user is authorized to access the chat.
+ * Users that may access the chat include the creator and admins. Other permissions have not been implemented yet.
+ */
 const chatProcedure = authProcedure.input(z.object({ chatId: z.string() })).use(async (opts) => {
-  if (await checkChatExists(opts.input.chatId, opts.ctx.user.id)) {
+  if (
+    (await checkChatExists(opts.input.chatId, opts.ctx.user.id)) ||
+    ((await isAdmin(opts.ctx.user.role)) && (await checkChatExists(opts.input.chatId, opts.ctx.user.id, true)))
+  ) {
     return opts.next();
   } else {
     throw new TRPCError({
@@ -207,6 +213,30 @@ export const chatRouter = router({
 
       return await sync.newMessage(chatId, messages, opts.input.opts);
     }),
+  getChatMetadata: chatProcedure.query(async (opts) => {
+    const chatWithOwner = await db
+      .select({
+        id: chats.id,
+        title: chats.title,
+        created_at: chats.created_at,
+        updated_at: chats.updated_at,
+        userId: chats.userId,
+        ownerName: user.name,
+      })
+      .from(chats)
+      .leftJoin(user, eq(chats.userId, user.id))
+      .where(eq(chats.id, opts.input.chatId))
+      .limit(1);
+
+    if (!chatWithOwner[0]) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Chat not found",
+      });
+    }
+
+    return chatWithOwner[0];
+  }),
 });
 
 async function getChatMessages(chatId: string): Promise<sync.Messages> {
@@ -231,11 +261,15 @@ async function getChatMessages(chatId: string): Promise<sync.Messages> {
   return completions;
 }
 
-async function checkChatExists(chatId: string, userId: string): Promise<boolean> {
-  return !!(
-    await db
-      .select()
-      .from(chats)
-      .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
-  )?.[0];
+async function checkChatExists(chatId: string, userId: string, ignoreUser: boolean = false): Promise<boolean> {
+  if (ignoreUser) {
+    return !!(await db.select().from(chats).where(eq(chats.id, chatId)))?.[0];
+  } else {
+    return !!(
+      await db
+        .select()
+        .from(chats)
+        .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
+    )?.[0];
+  }
 }
