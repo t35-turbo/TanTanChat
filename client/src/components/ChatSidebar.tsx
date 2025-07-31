@@ -45,17 +45,28 @@ function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
                 ref={inputRef}
               />
             ) : (
-              <Link to="/chat/$chatId" params={{ chatId: item.id }}>
+              <Link
+                to="/chat/$chatId"
+                params={{ chatId: item.id }}
+                activeOptions={{ exact: true }}
+                activeProps={{
+                  className: "bg-muted/50 font-medium",
+                }}
+                inactiveProps={{
+                  className: "group-hover/chat:bg-muted/50 text-foreground/90",
+                }}
+              >
                 <span className="truncate" title={item.title}>
                   {item.title}
                 </span>
-                <div className={`right-0 ml-auto hidden group-hover/chat:block`}>
+                <div className={`-mr-2 ml-auto hidden group-hover/chat:block`}>
                   <Button
                     variant="ghost"
                     onClick={(e) => {
                       deleteChat.mutate({ chatId: item.id });
                       e.preventDefault();
                     }}
+                    className="hover:bg-foreground/25"
                   >
                     <XIcon />
                   </Button>
@@ -71,7 +82,7 @@ function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
               setRenaming(true);
             }}
           >
-            <TextCursor />
+            <TextCursor className="text-primary" />
             Rename
           </ContextMenuItem>
           <ContextMenuItem
@@ -79,7 +90,7 @@ function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
               deleteChat.mutate({ chatId: item.id });
             }}
           >
-            <Eraser />
+            <Eraser className="text-primary" />
             Delete
           </ContextMenuItem>
         </ContextMenuContent>

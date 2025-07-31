@@ -131,7 +131,7 @@ function UserChats({ userId }: { userId: string }) {
               </div>
             </div>
             <Button variant="ghost" size="sm" className="ml-2 h-8 w-8 p-0" asChild>
-              <Link to="/chat/$chatId" params={{ chatId: chat.id }}>
+              <Link to="/chat/$chatId" params={{ chatId: chat.id }} target="_blank">
                 <ExternalLink className="size-3" />
                 <span className="sr-only">View chat</span>
               </Link>

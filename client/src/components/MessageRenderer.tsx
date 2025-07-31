@@ -405,8 +405,6 @@ function MarkdownRenderer({ children }: { children: string | null | undefined })
     return typeof children === "string" ? preprocessMathBlocks(children) : (children ?? "");
   }, [children, preprocessMathBlocks]);
 
-  console.log(rehypePlugins, remarkPlugins);
-
   return (
     <ReactMarkdown
       components={{
