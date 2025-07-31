@@ -58,7 +58,7 @@
     "tailwind-merge": "^3.0.2",
     "tailwindcss": "^4.0.6",
     "tailwindcss-animate": "^1.0.7",
-    "zod": "^3.25.57",
+    "zod": "^4.0.14",
     "zustand": "^5.0.5"
   },
   "devDependencies": {

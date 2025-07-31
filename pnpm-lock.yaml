@@ -25,10 +25,10 @@ importers:
         version: 0.44.2(@types/pg@8.15.4)(bun-types@1.2.15)(kysely@0.28.2)(pg@8.16.0)
       drizzle-zod:
         specifier: ^0.8.2
-        version: 0.8.2(drizzle-orm@0.44.2(@types/pg@8.15.4)(bun-types@1.2.15)(kysely@0.28.2)(pg@8.16.0))(zod@3.25.58)
+        version: 0.8.2(drizzle-orm@0.44.2(@types/pg@8.15.4)(bun-types@1.2.15)(kysely@0.28.2)(pg@8.16.0))(zod@4.0.14)
       exa-js:
         specifier: ^1.8.12
-        version: 1.8.12(zod@3.25.58)
+        version: 1.8.12(zod@4.0.14)
       hono:
         specifier: ^4.7.11
         version: 4.7.11
@@ -40,7 +40,7 @@ importers:
         version: 4.0.7
       openai:
         specifier: ^5.3.0
-        version: 5.3.0(zod@3.25.58)
+        version: 5.3.0(zod@4.0.14)
       pg:
         specifier: ^8.16.0
         version: 8.16.0
@@ -54,8 +54,8 @@ importers:
         specifier: ^11.1.0
         version: 11.1.0
       zod:
-        specifier: ^3.25.58
-        version: 3.25.58
+        specifier: ^4.0.14
+        version: 4.0.14
     devDependencies:
       '@catppuccin/tailwindcss':
         specifier: ^0.1.6
@@ -910,9 +910,6 @@ packages:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
     engines: {node: '>=0.4'}
 
-  zod@3.25.58:
-    resolution: {integrity: sha512-DVLmMQzSZwNYzQoMaM3MQWnxr2eq+AtM9Hx3w1/Yl0pH8sLTSjN4jGP7w6f7uand6Hw44tsnSu1hz1AOA6qI2Q==}
-
   zod@4.0.14:
     resolution: {integrity: sha512-nGFJTnJN6cM2v9kXL+SOBq3AtjQby3Mv5ySGFof5UGRHrRioSJ5iG680cYNjE/yWk671nROcpPj4hAS8nyLhSw==}
 
@@ -1250,10 +1247,10 @@ snapshots:
       kysely: 0.28.2
       pg: 8.16.0
 
-  drizzle-zod@0.8.2(drizzle-orm@0.44.2(@types/pg@8.15.4)(bun-types@1.2.15)(kysely@0.28.2)(pg@8.16.0))(zod@3.25.58):
+  drizzle-zod@0.8.2(drizzle-orm@0.44.2(@types/pg@8.15.4)(bun-types@1.2.15)(kysely@0.28.2)(pg@8.16.0))(zod@4.0.14):
     dependencies:
       drizzle-orm: 0.44.2(@types/pg@8.15.4)(bun-types@1.2.15)(kysely@0.28.2)(pg@8.16.0)
-      zod: 3.25.58
+      zod: 4.0.14
 
   esbuild-register@3.6.0(esbuild@0.25.5):
     dependencies:
@@ -1315,11 +1312,11 @@ snapshots:
       '@esbuild/win32-ia32': 0.25.5
       '@esbuild/win32-x64': 0.25.5
 
-  exa-js@1.8.12(zod@3.25.58):
+  exa-js@1.8.12(zod@4.0.14):
     dependencies:
       cross-fetch: 4.1.0
       dotenv: 16.4.7
-      openai: 5.3.0(zod@3.25.58)
+      openai: 5.3.0(zod@4.0.14)
     transitivePeerDependencies:
       - encoding
       - ws
@@ -1352,9 +1349,9 @@ snapshots:
     dependencies:
       whatwg-url: 5.0.0
 
-  openai@5.3.0(zod@3.25.58):
+  openai@5.3.0(zod@4.0.14):
     optionalDependencies:
-      zod: 3.25.58
+      zod: 4.0.14
 
   pg-cloudflare@1.2.5:
     optional: true
@@ -1476,7 +1473,5 @@ snapshots:
       webidl-conversions: 3.0.1
 
   xtend@4.0.2: {}
-
-  zod@3.25.58: {}
 
   zod@4.0.14: {}

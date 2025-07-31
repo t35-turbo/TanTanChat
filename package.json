@@ -19,7 +19,7 @@
     "redis": "^5.5.6",
     "superjson": "^2.2.2",
     "uuid": "^11.1.0",
-    "zod": "^3.25.58"
+    "zod": "^4.0.14"
   },
   "devDependencies": {
     "@catppuccin/tailwindcss": "^0.1.6",

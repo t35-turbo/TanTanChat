@@ -5,6 +5,7 @@ import { db } from "../db";
 import { files, system_settings, user_settings } from "../db/schema";
 import { customAdmin } from "./admin-plugin";
 import env from "./env";
+import { sendMessage } from "./messenger";
 
 const adapter = drizzleAdapter(db, {
   // provider: databaseUrl?.startsWith("postgresql") ? "pg" : "sqlite",
@@ -39,7 +40,7 @@ async function afterCreateUserHook(user: User): Promise<void> {
 /**
  * Cleans up user files when a user is deleted.
  */
-async function afterDeleteUserHook(user: User, ctx: any): Promise<void> {
+async function afterDeleteUserHook(user: User): Promise<void> {
   try {
     const userFiles = await db.select().from(files).where(eq(files.ownedBy, user.id));
 
@@ -68,9 +69,14 @@ export const auth = betterAuth({
   trustedOrigins: ["http://localhost:3001", "http://localhost:3000"],
   emailAndPassword: {
     enabled: true,
-    sendResetPassword: async({ user, url, token }, request) => {
-
-    }
+    sendResetPassword: async ({ user, url, token }, request) => {
+      sendMessage({
+        type: "email",
+        to: user.email,
+        subject: `Password reset for user ${user.name}`,
+        message: `Use this link to reset your password: ${url}`,
+      });
+    },
   },
 
   plugins: [customAdmin()],
