@@ -15,7 +15,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { authClient, authedRoute } from "@/lib/auth-client";
-import { createFileRoute, Outlet, Link as RouterLink, useLocation, type LinkProps } from "@tanstack/react-router";
+import { createFileRoute, Outlet, Link as RouterLink, type LinkProps } from "@tanstack/react-router";
 import { ChevronRight, Key, LayoutDashboard, ShieldUser, SlidersHorizontal, Users } from "lucide-react";
 import React from "react";
 
@@ -141,12 +141,15 @@ function NavLink({
   children: React.ReactNode;
   className?: string;
 }) {
-  const location = useLocation();
-  const isActive = location.pathname === to;
-  const activeClass = isActive ? "bg-sidebar-accent/75" : "";
-
   return (
-    <RouterLink to={to} className={`${activeClass} ${className}`}>
+    <RouterLink 
+      to={to} 
+      className={className}
+      activeOptions={{ exact: true }}
+      activeProps={{
+        className: "bg-sidebar-accent/75"
+      }}
+    >
       {children}
     </RouterLink>
   );
