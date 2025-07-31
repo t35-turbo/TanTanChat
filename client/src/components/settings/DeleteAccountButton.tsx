@@ -45,11 +45,10 @@ export default function DeleteAccountButton({ userId }: { userId?: string }) {
       }
     },
     onSuccess: () => {
-      toast.success(userId ? "User account deleted successfully" : "Account deleted successfully");
+      toast.success("Account deleted Successfully");
       if (userId) {
         navigate({ to: "/admin/users" });
       } else {
-        // User deleted their own account - redirect to home
         navigate({ to: "/" });
       }
     },

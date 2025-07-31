@@ -21,7 +21,7 @@ async function beforeCreateUserHook(user: User): Promise<{ data: User & { role: 
 /**
  * Intializes a created user's settings.
  */
-async function afterCreateUserHook(user: User) {
+async function afterCreateUserHook(user: User): Promise<void> {
   const defaultTheme = (
     await db
       .select({
@@ -36,10 +36,41 @@ async function afterCreateUserHook(user: User) {
   });
 }
 
+/**
+ * Cleans up user files when a user is deleted.
+ */
+async function afterDeleteUserHook(user: User, ctx: any): Promise<void> {
+  try {
+    const userFiles = await db.select().from(files).where(eq(files.ownedBy, user.id));
+
+    for (const file of userFiles) {
+      try {
+        if (env.USE_S3) {
+          console.warn(`S3 file deletion not yet implemented for file: ${file.id}`);
+        } else {
+          await Bun.file(file.filePath).delete();
+          console.log(`Deleted file: ${file.filePath}`);
+        }
+      } catch (fileError) {
+        console.error(`Failed to delete file ${file.id} at ${file.filePath}:`, fileError);
+      }
+    }
+
+    await db.delete(files).where(eq(files.ownedBy, user.id));
+
+    console.log(`Cleaned up ${userFiles.length} files for deleted user: ${user.id}`);
+  } catch (error) {
+    console.error(`Error during file cleanup for user ${user.id}:`, error);
+  }
+}
+
 export const auth = betterAuth({
   trustedOrigins: ["http://localhost:3001", "http://localhost:3000"],
   emailAndPassword: {
     enabled: true,
+    sendResetPassword: async({ user, url, token }, request) => {
+
+    }
   },
 
   plugins: [customAdmin()],
@@ -54,30 +85,7 @@ export const auth = betterAuth({
     deleteUser: {
       enabled: true,
       deleteTokenExpiresIn: 60,
-      afterDelete: async (user) => {
-        try {
-          const userFiles = await db.select().from(files).where(eq(files.ownedBy, user.id));
-
-          for (const file of userFiles) {
-            try {
-              if (env.USE_S3) {
-                console.warn(`S3 file deletion not yet implemented for file: ${file.id}`);
-              } else {
-                await Bun.file(file.filePath).delete();
-                console.log(`Deleted file: ${file.filePath}`);
-              }
-            } catch (fileError) {
-              console.error(`Failed to delete file ${file.id} at ${file.filePath}:`, fileError);
-            }
-          }
-
-          await db.delete(files).where(eq(files.ownedBy, user.id));
-
-          console.log(`Cleaned up ${userFiles.length} files for deleted user: ${user.id}`);
-        } catch (error) {
-          console.error(`Error during file cleanup for user ${user.id}:`, error);
-        }
-      },
+      afterDelete: afterDeleteUserHook,
     },
     changeEmail: {
       enabled: true,

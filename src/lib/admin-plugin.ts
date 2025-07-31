@@ -1,4 +1,4 @@
-import type { BetterAuthPlugin } from "better-auth";
+import { generateId, type BetterAuthPlugin } from "better-auth";
 import { APIError, createAuthEndpoint, sessionMiddleware } from "better-auth/api";
 import { z } from "zod/v4";
 import { isAdmin } from "../trpc";
@@ -20,53 +20,23 @@ export const customAdmin = () => {
         {
           method: "POST",
           body: z.object({
-            userId: z.string().optional(),
+            userId: z.string(),
           }),
           use: [sessionMiddleware],
         },
         async (ctx) => {
           await throwIfAdmin(ctx.context.session.user.role);
 
-          try {
-            let revokedCount: number;
-            let message: string;
+          ctx.context.logger.info(
+            `Admin ${ctx.context.session.user.name} (${ctx.context.session.user.id}) revoking all sessions for ${ctx.body.userId}`,
+          );
+          const sessions = await ctx.context.internalAdapter.listSessions(ctx.body.userId);
+          await ctx.context.internalAdapter.deleteSessions(ctx.body.userId);
+          ctx.context.logger.info(`Revoked ${sessions.length} sessions for user ${ctx.body.userId}`);
 
-            if (ctx.body.userId) {
-              // Revoke sessions for specific user using Better-Auth internal adapter
-              const sessions = await ctx.context.internalAdapter.listSessions(ctx.body.userId);
-              await ctx.context.internalAdapter.deleteSessions(ctx.body.userId);
-              revokedCount = sessions.length;
-              message = `Revoked ${revokedCount} sessions for user ${ctx.body.userId}`;
-            } else {
-              // Nuclear option: revoke ALL sessions in the system
-              // Note: Better-Auth doesn't have a direct "delete all sessions" method,
-              // so we'll need to get all users and delete their sessions
-              const users = await ctx.context.internalAdapter.listUsers();
-              let totalRevoked = 0;
-
-              for (const user of users) {
-                const sessions = await ctx.context.internalAdapter.listSessions(user.id);
-                if (sessions.length > 0) {
-                  await ctx.context.internalAdapter.deleteSessions(user.id);
-                  totalRevoked += sessions.length;
-                }
-              }
-
-              revokedCount = totalRevoked;
-              message = `Revoked all ${revokedCount} sessions in the system`;
-            }
-
-            return ctx.json({
-              success: true,
-              message,
-              revokedCount,
-            });
-          } catch (error) {
-            console.error("Error revoking sessions:", error);
-            throw new APIError("INTERNAL_SERVER_ERROR", {
-              message: "Failed to revoke sessions",
-            });
-          }
+          return ctx.json({
+            success: true,
+          });
         },
       ),
 
@@ -89,24 +59,17 @@ export const customAdmin = () => {
             });
           }
 
-          try {
-            const updatedUser = await ctx.context.internalAdapter.updateUser(
-              ctx.body.userId,
-              { name: ctx.body.name.trim() },
-              ctx,
-            );
+          const updatedUser = await ctx.context.internalAdapter.updateUser(
+            ctx.body.userId,
+            { name: ctx.body.name.trim() },
+            ctx,
+          );
 
-            return ctx.json({
-              success: true,
-              message: "User name updated successfully",
-              user: updatedUser,
-            });
-          } catch (error) {
-            console.error("Error updating user name:", error);
-            throw new APIError("INTERNAL_SERVER_ERROR", {
-              message: "Failed to update user name",
-            });
-          }
+          return ctx.json({
+            success: true,
+            message: "User name updated successfully",
+            user: updatedUser,
+          });
         },
       ),
 
@@ -248,51 +211,45 @@ export const customAdmin = () => {
           method: "POST",
           body: z.object({
             userId: z.string(),
-            sendEmail: z.boolean().optional().default(false),
+            sendEmail: z.boolean().optional().default(true),
           }),
           use: [sessionMiddleware],
         },
         async (ctx) => {
           await throwIfAdmin(ctx.context.session.user.role);
 
-          try {
-            // Get user by ID to get their email
-            const user = await ctx.context.internalAdapter.findUserById(ctx.body.userId);
-            if (!user) {
-              throw new APIError("NOT_FOUND", {
-                message: "User not found",
-              });
-            }
-
-            // Use Better-Auth's built-in password reset functionality
-            // We'll create a verification token for password reset
-            const token = crypto.randomUUID();
-            const expiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
-
-            // Store the verification token
-            await ctx.context.internalAdapter.createVerificationValue({
-              identifier: user.email,
-              value: token,
-              expiresAt,
-            });
-
-            // Construct reset link path (client will add hostname)
-            const resetLink = `/reset-password?token=${token}`;
-
-            return ctx.json({
-              success: true,
-              resetLink,
-              message: ctx.body.sendEmail ? "Reset link generated and email sent" : "Reset link generated successfully",
-            });
-          } catch (error) {
-            console.error("Error generating password reset link:", error);
-            if (error instanceof APIError) {
-              throw error;
-            }
-            throw new APIError("INTERNAL_SERVER_ERROR", {
-              message: "Failed to generate password reset link",
+          // Get user by ID to get their email
+          const user = await ctx.context.internalAdapter.findUserById(ctx.body.userId);
+          if (!user) {
+            throw new APIError("NOT_FOUND", {
+              message: "User not found",
             });
           }
+
+          // Use Better-Auth's built-in password reset functionality
+          // We'll create a verification token for password reset
+          const defaultExpiresTime = 60 * 60; // 1 hour
+          const expiresAt = new Date(
+            Date.now() +
+              1000 * (ctx.context.options.emailAndPassword?.resetPasswordTokenExpiresIn ?? defaultExpiresTime),
+          );
+          const verificationToken = generateId(24);
+
+          // Store the verification token
+          await ctx.context.internalAdapter.createVerificationValue({
+            value: user.id,
+            identifier: `reset-password:${verificationToken}`,
+            expiresAt,
+          });
+
+          // Construct reset link path (client will add hostname)
+          const resetLink = `/reset-password?token=${verificationToken}`;
+
+          return ctx.json({
+            success: true,
+            resetLink,
+            message: "Reset link generated and email sent",
+          });
         },
       ),
     },

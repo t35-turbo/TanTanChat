@@ -191,7 +191,7 @@ export const adminRouter = router({
       );
     }),
 
-    resetPassword: adminProcedure
+    setPassword: adminProcedure
       .input(z.object({ userId: z.string(), newPassword: z.string() }))
       .mutation(async (opts) => {
         try {

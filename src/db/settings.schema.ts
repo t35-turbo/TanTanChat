@@ -46,12 +46,14 @@ export const user_settings = pgTable("user_settings", {
 export const UserSettingsUpdate = createUpdateSchema(user_settings);
 export type UserSettingsUpdate = z.infer<typeof UserSettingsUpdate>;
 
+export const email_provider_enum = pgEnum("email_provider", ["none"]);
 export const settings_enum = pgEnum("system_setting", ["setting"]);
 export const system_settings = pgTable("system_settings", {
   key: settings_enum().primaryKey().unique().notNull().default("setting"),
 
   theme: json().$type<Theme>().default({ base: "mocha", color: "sapphire" }).notNull(),
   allow_new_signups: boolean().default(false).notNull(),
+  email_provider: email_provider_enum().default("none").notNull()
 });
 
 export const SystemSettingsSelect = createSelectSchema(system_settings);
