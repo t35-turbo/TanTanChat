@@ -12,6 +12,9 @@ export const Route = createFileRoute("/admin")({
       });
     }
   },
+  head: () => ({
+    meta: [{ title: "Admin Panel | TanTan" }],
+  }),
   component: AdminRouteComponent,
 });
 

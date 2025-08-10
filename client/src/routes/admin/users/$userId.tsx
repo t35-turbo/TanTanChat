@@ -11,6 +11,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { BarChart3, Calendar, Clock, ExternalLink, MessageSquare } from "lucide-react";
 
 export const Route = createFileRoute("/admin/users/$userId")({
+  head: () => ({
+    meta: [{ title: "Edit User | TanTan" }],
+  }),
   component: RouteComponent,
 });
 

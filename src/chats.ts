@@ -213,6 +213,7 @@ export const chatRouter = router({
 
       return await sync.newMessage(chatId, messages, opts.input.opts);
     }),
+
   getChatMetadata: chatProcedure.query(async (opts) => {
     const chatWithOwner = await db
       .select({
@@ -236,6 +237,13 @@ export const chatRouter = router({
     }
 
     return chatWithOwner[0];
+  }),
+  getChatTitle: chatProcedure.query(async (opts) => {
+    return (await db
+      .select({ title: chats.title })
+      .from(chats)
+      .where(eq(chats.id, opts.input.chatId))
+      .limit(1))[0].title;
   }),
 });
 

@@ -16,7 +16,7 @@ import {
 import { Pencil, ShieldUser, User, Users } from "lucide-react";
 
 export const Route = createFileRoute("/admin/roles/")({
-  head: () => ({ meta: [{ title: `Roles | TanTan` }] }),
+  head: () => ({ meta: [{ title: `Admin - Roles | TanTan` }] }),
   component: RouteComponent,
 });
 

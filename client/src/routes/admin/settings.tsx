@@ -7,6 +7,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { inferProcedureOutput } from "@trpc/server";
 
 export const Route = createFileRoute("/admin/settings")({
+  head: () => ({
+    meta: [{ title: "Admin - Settings | TanTan" }],
+  }),
   component: RouteComponent,
 });
 

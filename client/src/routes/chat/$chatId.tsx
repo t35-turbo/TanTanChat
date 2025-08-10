@@ -18,6 +18,13 @@ import React, { useMemo } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/chat/$chatId")({
+  loader: ({ params: { chatId } }) => 
+    chatId ? queryClient.ensureQueryData(trpc.chats.getChatTitle.queryOptions({ chatId })) : null,
+  head: ({ loaderData }) => ({
+    meta: [{ 
+      title: loaderData ? `${loaderData} | TanTan` : 'New Chat | TanTan' 
+    }],
+  }),
   component: ChatUI,
 });
 
