@@ -202,7 +202,7 @@ export default function UsersTable({ roleId }: { roleId?: string }) {
           </div>
         </div>
 
-        <div className="rounded border">
+        <div className="rounded-md border">
           <Table>
             <TableHeader className="h-10 text-lg">
               {table.getHeaderGroups().map((headerGroup) => (
