@@ -42,8 +42,7 @@ export default function RoleSearch({
           if (e.key === "Escape") {
             inputRef.current?.blur();
           } else if (e.key === "Enter" && query.data && query.data.length > 0) {
-            setSearch(query.data[0].name);
-            inputRef.current?.blur();
+            selectRole(query.data[0]);
           }
         }}
       />
