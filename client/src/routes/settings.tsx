@@ -36,7 +36,6 @@ function SettingsRouteComponent() {
 export function SidebarComponent() {
   const session = authClient.useSession();
 
-  console.log(session);
 
   return (
     <Sidebar>
