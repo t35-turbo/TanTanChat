@@ -19,11 +19,7 @@ export const testConnection = async (): Promise<{ success: boolean; error?: stri
     client.destroy();
     return { success: true };
   } catch (error) {
-    try {
-      client.destroy();
-    } catch (_disconnectError) {
-      // Ignore disconnect errors if connection failed
-    }
+    client.destroy();
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown Redis connection error",
