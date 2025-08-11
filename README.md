@@ -40,6 +40,7 @@ docker compose up --build -d
 
 We use Kubernetes for our production website.
 Clone this repository for CICD (GitHub Actions container builds) and check out the public GitOps repository for the Kubernetes manifests [here](https://github.com/t35-turbo/TanTanChat-GitOps-Public).
+(Edit: needs updating)
 
 ## Nix
 
@@ -80,4 +81,4 @@ We will add server-stored Keys with the introduction of an admin panel.
 No
 </details>
 
-\*: _Backend may contain trace quantities of interns_
+###### **Backend may contain trace quantities of interns*

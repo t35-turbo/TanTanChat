@@ -8,8 +8,15 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm
 
-# Copy package files
+# Copy package files for both client and server
 COPY client/package.json client/pnpm-lock.yaml* ./
+COPY package.json pnpm-lock.yaml* ../
+
+# Install client dependencies
+RUN pnpm install --no-frozen-lockfile
+
+# Install server dependencies (needed for type imports)
+WORKDIR /
 RUN pnpm install --no-frozen-lockfile
 
 # Rebuild the source code only when needed
@@ -19,12 +26,18 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm
 
+# Copy server dependencies and source code first
+COPY --from=deps /node_modules ../node_modules
+COPY package.json ../package.json
+COPY src/ ../src/
+
+# Copy client files and dependencies
 COPY client/package.json client/pnpm-lock.yaml* ./
 COPY --from=deps /app/node_modules ./node_modules
 COPY client/ .
 
 # Install deps (backup)
-RUN pnpm install && pnpm add better-auth
+RUN pnpm install
 
 # Build the application
 RUN pnpm run build
