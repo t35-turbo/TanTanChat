@@ -70,7 +70,7 @@ const columns: ColumnDef<User>[] = [
     header: "Role",
   },
   {
-    accessorKey: "created_at",
+    accessorKey: "createdAt",
     header: "Created",
     cell: ({ row }) => {
       return new Intl.DateTimeFormat("en-US", {
