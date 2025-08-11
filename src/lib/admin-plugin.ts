@@ -173,34 +173,67 @@ export const customAdmin = () => {
         {
           method: "POST",
           body: z.object({
-            userId: z.string(),
+            userId: z.union([z.string(), z.string().array()]),
           }),
           use: [sessionMiddleware],
         },
         async (ctx) => {
           await throwIfAdmin(ctx.context.session.user.role);
 
+          const userIds = Array.isArray(ctx.body.userId) ? ctx.body.userId : [ctx.body.userId];
+          const currentUserId = ctx.context.session.user.id;
+
           // Prevent admin from deleting themselves
-          if (ctx.body.userId === ctx.context.session.user.id) {
+          if (userIds.includes(currentUserId)) {
             throw new APIError("BAD_REQUEST", {
               message: "You cannot delete your own account",
             });
           }
 
-          // Check if user exists
-          const user = await ctx.context.internalAdapter.findUserById(ctx.body.userId);
-          if (!user) {
-            throw new APIError("NOT_FOUND", {
-              message: "User not found",
-            });
+          // Check if all users exist and collect results
+          let deletedCount = 0;
+          let notFoundCount = 0;
+
+          for (const userId of userIds) {
+            try {
+              const user = await ctx.context.internalAdapter.findUserById(userId);
+              if (!user) {
+                notFoundCount++;
+                continue;
+              }
+
+              // Delete the user using Better-Auth's internal adapter
+              await ctx.context.internalAdapter.deleteUser(userId);
+              deletedCount++;
+            } catch (error) {
+              // Log error but continue with other users
+              console.error(`Failed to delete user ${userId}:`, error);
+            }
           }
 
-          // Delete the user using Better-Auth's internal adapter
-          await ctx.context.internalAdapter.deleteUser(ctx.body.userId);
+          const totalRequested = userIds.length;
+          let message = "";
+
+          if (deletedCount === totalRequested) {
+            message = `Successfully deleted ${deletedCount} user${deletedCount === 1 ? "" : "s"}`;
+          } else if (deletedCount > 0) {
+            message = `Deleted ${deletedCount} of ${totalRequested} users`;
+            if (notFoundCount > 0) {
+              message += ` (${notFoundCount} not found)`;
+            }
+          } else {
+            message = "No users were deleted";
+            if (notFoundCount > 0) {
+              message += ` (${notFoundCount} not found)`;
+            }
+          }
 
           return ctx.json({
-            success: true,
-            message: "User deleted successfully",
+            success: deletedCount > 0,
+            message,
+            deletedCount,
+            totalRequested,
+            notFoundCount,
           });
         },
       ),
