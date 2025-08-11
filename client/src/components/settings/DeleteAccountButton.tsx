@@ -110,7 +110,7 @@ export default function DeleteAccountButton({ userId }: { userId?: string }) {
           <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
           <AlertDialogAction
             className="bg-destructive hover:bg-destructive/70"
-            onClick={() => deleteAccountMut.mutate(userId ? undefined : password)}
+            onClick={handleSubmit}
             disabled={deleteAccountMut.isPending || (!userId && !password.trim())}
           >
             {deleteAccountMut.isPending ? "Deleting..." : userId ? "Delete User Account" : "Delete my Account"}
