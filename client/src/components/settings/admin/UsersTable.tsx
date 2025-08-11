@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useSettings } from "@/hooks/use-admin-users";
+import { authClient } from "@/lib/auth-client";
 import { queryClient, type RouterOutput, trpc } from "@/lib/trpc";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -275,6 +276,28 @@ export function UserActionBar({
     }),
   );
 
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  const deleteUsers = useMutation({
+    mutationFn: async (userIds: string[]) => {
+      const result = await authClient.admin.removeUser({ userId: userIds });
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+      return result;
+    },
+    onSuccess: (result) => {
+      toast.success(result.message || `Successfully deleted ${selectedCount} user${selectedCount === 1 ? "" : "s"}`);
+      queryClient.invalidateQueries({ queryKey: trpc.admin.users.paginatedSearchList.infiniteQueryKey() });
+      queryClient.invalidateQueries({ queryKey: trpc.admin.users.pagesCount.queryKey() });
+      table.toggleAllRowsSelected(false);
+      setDeleteDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete users");
+    },
+  });
+
   return (
     <div
       className={`absolute bottom-10 flex w-full transform justify-center transition-all duration-300 ease-in-out ${
@@ -326,7 +349,7 @@ export function UserActionBar({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <AlertDialog>
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogTrigger asChild>
             <Button variant="destructive" className="ml-2">
               <Trash2 />
@@ -334,13 +357,26 @@ export function UserActionBar({
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
-            <AlertDialogHeader className="text-xl font-bold">
-              Are you sure you want to delete {selectedCount} users?
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-xl font-bold">
+                Are you sure you want to delete {selectedCount} users?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the selected user accounts and all associated data.
+              </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction asChild>
-                <Button variant="destructive">Yes, I want to delete {selectedCount} users.</Button>
+              <AlertDialogCancel disabled={deleteUsers.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  const selectedUserIds = table.getSelectedRowModel().rows.map((row) => row.original.id);
+                  deleteUsers.mutate(selectedUserIds);
+                }}
+                disabled={deleteUsers.isPending}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {deleteUsers.isPending ? "Deleting..." : `Yes, delete ${selectedCount} user${selectedCount === 1 ? "" : "s"}`}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

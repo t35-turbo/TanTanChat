@@ -5,13 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Loader from "@/components/ui/loader";
 import { authClient } from "@/lib/auth-client";
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 
 export const Route = createFileRoute("/login")({
-  beforeLoad: async () => {
+  beforeLoad: async ({ search }) => {
     if ((await authClient.getSession()).data) {
-      throw redirect({ to: "/chat" });
+      throw redirect({ to: search.redirect ?? "/chat" });
     }
   },
   component: RouteComponent,
@@ -23,6 +23,7 @@ function RouteComponent() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const search = useSearch({ from: "/login" });
 
   async function login() {
     setError("");
@@ -35,7 +36,7 @@ function RouteComponent() {
       });
 
       if (data) {
-        navigate({ to: "/chat" });
+        navigate({ to: search.redirect ?? "/chat" });
       } else if (error) {
         setError(error.message ?? error.statusText);
       }

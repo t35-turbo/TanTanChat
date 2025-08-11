@@ -17,7 +17,7 @@ export default function SidebarAvatar() {
     </Button>
   ) : (
     <Button variant={"ghost"} className="text-md grow items-center justify-start p-4 text-left" asChild>
-      <Link to="/login" params={{ redirect: "/chat" }}>
+      <Link to="/login" search={{ redirect: "/chat" }}>
         <LogIn />
         <div>Log In</div>
       </Link>

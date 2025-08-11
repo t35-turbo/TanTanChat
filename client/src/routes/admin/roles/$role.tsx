@@ -17,10 +17,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { type AppRouter, queryClient, type RouterOutput, trpc } from "@/lib/trpc";
+import { queryClient, type RouterOutput, trpc } from "@/lib/trpc";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import type { inferProcedureOutput } from "@trpc/server";
 import { ChevronLeft } from "lucide-react";
 import { useRef, useState } from "react";
 
@@ -211,7 +210,7 @@ function UserSearch({ roleId }: { roleId: string }) {
 
   return (
     <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      <div className="relative h-9 overflow-visible rounded mb-4">
+      <div className="relative mb-4 h-9 overflow-visible rounded">
         <div className="bg-background group absolute z-10 w-full">
           <Input
             ref={inputRef}
@@ -236,10 +235,7 @@ function UserSearch({ roleId }: { roleId: string }) {
                       setDialogOpen(true);
                     }}
                   >
-                    <div
-                      className="hover:bg-accent flex cursor-pointer items-center space-x-2 rounded px-1"
-                      onMouseDown={() => console.log("test")}
-                    >
+                    <div className="hover:bg-accent flex cursor-pointer items-center space-x-2 rounded px-1">
                       <div className="text-lg">{user.name}</div>
                       <div className="text-muted-foreground text-sm">{user.email}</div>
                       <div className="ml-auto">{user.role}</div>
