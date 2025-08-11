@@ -3,6 +3,55 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useState } from "react";
 
+const baseThemes = [
+  {
+    value: "white" as const,
+    label: "White",
+    color: "bg-white hover:border-4 hover:bg-white dark:bg-white",
+  },
+  {
+    value: "latte" as const,
+    label: "Latte",
+    color: "dark:bg[#eff1f5] bg-[#eff1f5] hover:border-4",
+  },
+  {
+    value: "frappe" as const,
+    label: "Frappe",
+    color: "bg-[#303446] hover:border-4 dark:bg-[#303446]",
+  },
+  {
+    value: "macchiato" as const,
+    label: "Macchiato",
+    color: "bg-[#24273a] hover:border-4 dark:bg-[#24273a]",
+  },
+  {
+    value: "mocha" as const,
+    label: "Mocha",
+    color: "bg-[#1e1e2e] hover:border-4 dark:bg-[#1e1e2e]",
+  },
+  {
+    value: "dark" as const,
+    label: "Dark",
+    color: "bg-black hover:bg-black",
+  },
+];
+
+const accentColors = [
+  { value: "rosewater" as const, className: "accent-rosewater" },
+  { value: "flamingo" as const, className: "accent-flamingo" },
+  { value: "pink" as const, className: "accent-pink" },
+  { value: "mauve" as const, className: "accent-mauve" },
+  { value: "red" as const, className: "accent-red" },
+  { value: "maroon" as const, className: "accent-maroon" },
+  { value: "yellow" as const, className: "accent-yellow" },
+  { value: "green" as const, className: "accent-green" },
+  { value: "teal" as const, className: "accent-teal" },
+  { value: "sky" as const, className: "accent-sky" },
+  { value: "sapphire" as const, className: "accent-sapphire" },
+  { value: "blue" as const, className: "accent-blue" },
+  { value: "lavender" as const, className: "accent-lavender" },
+];
+
 export function ThemeSelector({
   base,
   color,
@@ -33,239 +82,39 @@ export function ThemeSelector({
       <div className="space-y-2">
         <p>Base Theme</p>
         <div className="flex flex-wrap gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                className={`h-12 w-12 rounded-full bg-white hover:border-4 hover:bg-white dark:bg-white ${realBase === "white" ? "border-accent border-4" : ""}`}
-                variant="outline"
-                onClick={() => setBase("white")}
-              ></Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>White</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                className={`dark:bg[#eff1f5] h-12 w-12 rounded-full bg-[#eff1f5] hover:border-4 ${realBase === "latte" ? "border-accent border-4" : ""}`}
-                variant="outline"
-                onClick={() => setBase("latte")}
-              ></Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Latte</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                className={`h-12 w-12 rounded-full bg-[#303446] hover:border-4 dark:bg-[#303446] ${realBase === "frappe" ? "border-accent border-4" : ""}`}
-                variant="outline"
-                onClick={() => setBase("frappe")}
-              ></Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Frappe</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                className={`h-12 w-12 rounded-full bg-[#24273a] hover:border-4 dark:bg-[#24273a] ${realBase === "macchiato" ? "border-accent border-4" : ""}`}
-                variant="outline"
-                onClick={() => setBase("macchiato")}
-              ></Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Macchiato</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                className={`h-12 w-12 rounded-full bg-[#1e1e2e] hover:border-4 dark:bg-[#1e1e2e] ${realBase === "mocha" ? "border-accent border-4" : ""}`}
-                variant="outline"
-                onClick={() => setBase("mocha")}
-              ></Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Mocha</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                className={`h-12 w-12 rounded-full bg-black hover:bg-black ${realBase === "dark" ? "border-accent border-4" : ""}`}
-                variant="outline"
-                onClick={() => setBase("dark")}
-              ></Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Dark</p>
-            </TooltipContent>
-          </Tooltip>
+          {baseThemes.map((theme) => (
+            <Tooltip key={theme.value}>
+              <TooltipTrigger asChild>
+                <Button
+                  className={`h-12 w-12 rounded-full ${theme.color} ${realBase === theme.value ? "border-accent border-4" : ""}`}
+                  variant="outline"
+                  onClick={() => setBase(theme.value)}
+                ></Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{theme.label}</p>
+              </TooltipContent>
+            </Tooltip>
+          ))}
         </div>
         {realBase !== "white" && realBase !== "dark" && (
           <>
             <p>Accent Color</p>
             <div className="flex flex-wrap gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className={`accent-rosewater h-12 w-12 rounded-full bg-[rgba(var(--ctp-accent))] hover:border-4 hover:bg-[rgba(var(--ctp-accent))] ${realColor === "rosewater" ? "border-accent border-4" : ""}`}
-                    variant="outline"
-                    onClick={() => setColor("rosewater")}
-                  ></Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Rosewater</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className={`accent-flamingo h-12 w-12 rounded-full bg-[rgba(var(--ctp-accent))] hover:border-4 hover:bg-[rgba(var(--ctp-accent))] ${realColor === "flamingo" ? "border-accent border-4" : ""}`}
-                    variant="outline"
-                    onClick={() => setColor("flamingo")}
-                  ></Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Flamingo</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className={`accent-pink h-12 w-12 rounded-full bg-[rgba(var(--ctp-accent))] hover:border-4 hover:bg-[rgba(var(--ctp-accent))] ${realColor === "pink" ? "border-accent border-4" : ""}`}
-                    variant="outline"
-                    onClick={() => setColor("pink")}
-                  ></Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Pink</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className={`accent-mauve h-12 w-12 rounded-full bg-[rgba(var(--ctp-accent))] hover:border-4 hover:bg-[rgba(var(--ctp-accent))] ${realColor === "mauve" ? "border-accent border-4" : ""}`}
-                    variant="outline"
-                    onClick={() => setColor("mauve")}
-                  ></Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Mauve</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className={`accent-red h-12 w-12 rounded-full bg-[rgba(var(--ctp-accent))] hover:border-4 hover:bg-[rgba(var(--ctp-accent))] ${realColor === "red" ? "border-accent border-4" : ""}`}
-                    variant="outline"
-                    onClick={() => setColor("red")}
-                  ></Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Red</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className={`accent-maroon h-12 w-12 rounded-full bg-[rgba(var(--ctp-accent))] hover:border-4 hover:bg-[rgba(var(--ctp-accent))] ${realColor === "maroon" ? "border-accent border-4" : ""}`}
-                    variant="outline"
-                    onClick={() => setColor("maroon")}
-                  ></Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Maroon</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className={`accent-yellow h-12 w-12 rounded-full bg-[rgba(var(--ctp-accent))] hover:border-4 hover:bg-[rgba(var(--ctp-accent))] ${realColor === "yellow" ? "border-accent border-4" : ""}`}
-                    variant="outline"
-                    onClick={() => setColor("yellow")}
-                  ></Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Yellow</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className={`accent-green h-12 w-12 rounded-full bg-[rgba(var(--ctp-accent))] hover:border-4 hover:bg-[rgba(var(--ctp-accent))] ${realColor === "green" ? "border-accent border-4" : ""}`}
-                    variant="outline"
-                    onClick={() => setColor("green")}
-                  ></Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Green</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className={`accent-teal h-12 w-12 rounded-full bg-[rgba(var(--ctp-accent))] hover:border-4 hover:bg-[rgba(var(--ctp-accent))] ${realColor === "teal" ? "border-accent border-4" : ""}`}
-                    variant="outline"
-                    onClick={() => setColor("teal")}
-                  ></Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Teal</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className={`accent-sky h-12 w-12 rounded-full bg-[rgba(var(--ctp-accent))] hover:border-4 hover:bg-[rgba(var(--ctp-accent))] ${realColor === "sky" ? "border-accent border-4" : ""}`}
-                    variant="outline"
-                    onClick={() => setColor("sky")}
-                  ></Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Sky</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className={`accent-sapphire h-12 w-12 rounded-full bg-[rgba(var(--ctp-accent))] hover:border-4 hover:bg-[rgba(var(--ctp-accent))] ${realColor === "sapphire" ? "border-accent border-4" : ""}`}
-                    variant="outline"
-                    onClick={() => setColor("sapphire")}
-                  ></Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Sapphire</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className={`accent-blue h-12 w-12 rounded-full bg-[rgba(var(--ctp-accent))] hover:border-4 hover:bg-[rgba(var(--ctp-accent))] ${realColor === "blue" ? "border-accent border-4" : ""}`}
-                    variant="outline"
-                    onClick={() => setColor("blue")}
-                  ></Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Blue</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    className={`accent-lavender h-12 w-12 rounded-full bg-[rgba(var(--ctp-accent))] hover:border-4 hover:bg-[rgba(var(--ctp-accent))] ${realColor === "lavender" ? "border-accent border-4" : ""}`}
-                    variant="outline"
-                    onClick={() => setColor("lavender")}
-                  ></Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Lavender</p>
-                </TooltipContent>
-              </Tooltip>
+              {accentColors.map((accent) => (
+                <Tooltip key={accent.value}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      className={`${accent.className} h-12 w-12 rounded-full bg-[rgba(var(--ctp-accent))] hover:border-4 hover:bg-[rgba(var(--ctp-accent))] ${realColor === accent.value ? "border-accent border-4" : ""}`}
+                      variant="outline"
+                      onClick={() => setColor(accent.value)}
+                    ></Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{accent.value.charAt(0).toUpperCase() + accent.value.slice(1)}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
             </div>
           </>
         )}
