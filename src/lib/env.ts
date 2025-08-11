@@ -28,7 +28,7 @@ export const EnvZod = z.object({
   // File Storage Configuration
   USE_S3: z.coerce.boolean().default(false),
   LOCAL_FILE_STORE_PATH: z.string().default("./file_store"),
-})
+});
 export type Env = z.infer<typeof EnvZod>;
 
 const parsed = EnvZod.parse(process.env);

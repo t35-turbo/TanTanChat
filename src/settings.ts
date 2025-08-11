@@ -1,51 +1,31 @@
-import { z } from "zod";
-import { authProcedure, router } from "./trpc";
-import { userSettings } from "./db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "./db";
+import { UserSettingsUpdate, user_settings } from "./db/schema";
+import { authProcedure, router } from "./trpc";
 
 export const settingsRouter = router({
   get: authProcedure.query(async (opts) => {
-    const result = await db
-      .select()
-      .from(userSettings)
-      .where(eq(userSettings.userId, opts.ctx.user.id));
-
-    return result[0] || {
-      userId: opts.ctx.user.id,
-      name: null,
-      selfAttr: null,
-      traits: null,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
+    return (await db.select().from(user_settings).where(eq(user_settings.user_id, opts.ctx.user.id)).limit(1))[0];
   }),
 
-  update: authProcedure
-    .input(z.object({
-      name: z.string().nullable().optional(),
-      selfAttr: z.string().nullable().optional(),
-      traits: z.string().nullable().optional(),
-    }))
-    .mutation(async (opts) => {
-      const updateData = {
-        ...opts.input,
-        updatedAt: new Date(),
-      };
-
-      await db
-        .insert(userSettings)
-        .values({
-          userId: opts.ctx.user.id,
-          ...updateData,
-        })
-        .onConflictDoUpdate({
-          target: userSettings.userId,
-          set: {
-            ...Object.fromEntries(
-              Object.entries(updateData).filter(([_, value]) => value !== undefined)
-            ),
-          },
-        });
-    }),
+  set: authProcedure.input(UserSettingsUpdate.omit({ api_keys: true })).mutation(async (opts) => {
+    await db
+      .insert(user_settings)
+      .values({
+        user_id: opts.ctx.user.id,
+        ...{
+          ...opts.input,
+        },
+      })
+      .onConflictDoUpdate({
+        target: user_settings.user_id,
+        set: {
+          ...Object.fromEntries(
+            Object.entries({
+              ...opts.input,
+            }).filter(([_, value]) => value !== undefined),
+          ),
+        },
+      });
+  }),
 });

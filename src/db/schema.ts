@@ -1,5 +1,7 @@
-import { pgTable, text, timestamp, boolean, index, pgEnum, integer, jsonb } from "drizzle-orm/pg-core";
 import { desc } from "drizzle-orm";
+import { boolean, index, integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { generateId } from "../utils/id";
+import { roles } from "./settings.schema";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -14,6 +16,11 @@ export const user = pgTable("user", {
     .notNull(),
   updatedAt: timestamp("updated_at")
     .$defaultFn(() => /* @__PURE__ */ new Date())
+    .$onUpdateFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+  role: text("role")
+    .references(() => roles.id)
+    .default("user")
     .notNull(),
 });
 
@@ -54,7 +61,9 @@ export const verification = pgTable("verification", {
   value: text("value").notNull(),
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").$defaultFn(() => /* @__PURE__ */ new Date()),
-  updatedAt: timestamp("updated_at").$defaultFn(() => /* @__PURE__ */ new Date()),
+  updatedAt: timestamp("updated_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .$onUpdateFn(() => /* @__PURE__ */ new Date()),
 });
 
 export const chats = pgTable("chats", {
@@ -63,19 +72,23 @@ export const chats = pgTable("chats", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
-  lastUpdated: timestamp("last_updated")
+  created_at: timestamp("created_at")
     .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+  updated_at: timestamp("updated_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .$onUpdateFn(() => /* @__PURE__ */ new Date())
     .notNull(),
 });
 
-export const roleEnum = pgEnum("role", ["system", "assistant", "user"]);
-export const chatMessages = pgTable(
+export const role_enum = pgEnum("role", ["system", "assistant", "user", "tool"]);
+export const chat_messages = pgTable(
   "chat_messages",
   {
     id: text("id")
       .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    role: roleEnum().notNull(),
+      .$defaultFn(() => generateId()),
+    role: role_enum().notNull(),
     chatId: text("chat_id")
       .notNull()
       .references(() => chats.id, { onDelete: "cascade" }),
@@ -88,56 +101,20 @@ export const chatMessages = pgTable(
       .$defaultFn(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => ({
-    chatIdCreatedAtIndex: index("idx_messages_chat_id_created_at").on(table.chatId, desc(table.createdAt)),
-  }),
-);
-
-export const userSettings = pgTable("user_settings", {
-  userId: text("user_id")
-    .primaryKey()
-    .references(() => user.id, { onDelete: "cascade" }),
-  name: text("name"),
-  selfAttr: text("self_attr"),
-  traits: text("traits"),
-  api_keys: text("api_keys").array(),
-  createdAt: timestamp("created_at")
-    .$defaultFn(() => /* @__PURE__ */ new Date())
-    .notNull(),
-  updatedAt: timestamp("updated_at")
-    .$defaultFn(() => /* @__PURE__ */ new Date())
-    .notNull(),
-});
-
-export const systemSettings = pgTable(
-  "system_settings",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    key: text("key").notNull(),
-    value: text("value").notNull(),
-    createdAt: timestamp("created_at")
-      .$defaultFn(() => /* @__PURE__ */ new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at")
-      .$defaultFn(() => /* @__PURE__ */ new Date())
-      .notNull(),
-  },
-  (table) => [index("idx_system_settings_key").on(table.key)],
+  (table) => [index("idx_messages_chat_id_created_at").on(table.chatId, desc(table.createdAt))],
 );
 
 export const files = pgTable("files", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
+    .$defaultFn(() => generateId()),
   filename: text("filename").notNull(),
   size: integer("size").notNull(),
   hash: text("hash").notNull(),
   mime: text("mime").notNull(),
   ownedBy: text("owned_by")
     .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
+    .references(() => user.id),
   onS3: boolean("on_s3")
     .$defaultFn(() => false)
     .notNull(),
@@ -150,8 +127,11 @@ export const files = pgTable("files", {
 export const api_keys = pgTable("api_keys", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
+    .$defaultFn(() => generateId()),
   provider: text("provider").notNull(),
   key: text("key").notNull(),
-  custom_url: text("custom_url")
+  custom_url: text("custom_url"),
 });
+
+// Re-export settings schemas
+export * from "./settings.schema";

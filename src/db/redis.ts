@@ -1,7 +1,7 @@
 import * as redis from "redis";
 import env from "../lib/env";
 
-export const createClient = () =>
+export const createClient = (): redis.RedisClientType =>
   redis.createClient({
     url: env.REDIS_URL,
     password: env.REDIS_PASSWORD,
@@ -12,21 +12,21 @@ export const createClient = () =>
  */
 export const testConnection = async (): Promise<{ success: boolean; error?: string }> => {
   const client = createClient();
-  
+
   try {
     await client.connect();
     await client.ping();
-    await client.disconnect();
+    client.destroy();
     return { success: true };
   } catch (error) {
     try {
-      await client.disconnect();
-    } catch (disconnectError) {
+      client.destroy();
+    } catch (_disconnectError) {
       // Ignore disconnect errors if connection failed
     }
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Unknown Redis connection error" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown Redis connection error",
     };
   }
 };

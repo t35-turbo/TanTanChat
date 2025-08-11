@@ -1,17 +1,15 @@
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Eraser, LogIn, PanelLeftIcon, SearchIcon, Settings, TextCursor, XIcon } from "lucide-react";
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, useSidebar } from "@/components/ui/sidebar";
+import { type Chat, queryClient, trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import React, { useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { type UseMutationResult, useMutation, useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import fuzzysort from "fuzzysort";
-import { Input } from "./ui/input";
-import { authClient } from "@/lib/auth-client";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { useMutation, useQuery, type UseMutationResult } from "@tanstack/react-query";
-import ky from "ky";
-import { queryClient, trpc, type Chat } from "@/lib/trpc";
+import { Eraser, PanelLeftIcon, SearchIcon, Settings, TextCursor, XIcon } from "lucide-react";
+import React, { useRef, useState } from "react";
+import SidebarAvatar from "./SidebarAvatar";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "./ui/context-menu";
+import { Input } from "./ui/input";
 import Logo from "./ui/Logo";
 
 interface ChatItemProps {
@@ -35,10 +33,10 @@ function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
   }
 
   return (
-    <ContextMenu key={item.id + item.lastUpdated.getTime()}>
+    <ContextMenu key={item.id + item.updated_at.getTime()}>
       <div className={`group/chat`}>
         <ContextMenuTrigger>
-          <Button asChild variant={"ghost"} className="w-full max-w-full relative justify-start px-2">
+          <Button asChild variant={"ghost"} className="relative w-full max-w-full justify-start px-2">
             {renaming ? (
               <Input
                 value={renameInput}
@@ -47,17 +45,28 @@ function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
                 ref={inputRef}
               />
             ) : (
-              <Link to="/chat/$chatId" params={{ chatId: item.id }}>
+              <Link
+                to="/chat/$chatId"
+                params={{ chatId: item.id }}
+                activeOptions={{ exact: true }}
+                activeProps={{
+                  className: "bg-muted/50 font-medium",
+                }}
+                inactiveProps={{
+                  className: "group-hover/chat:bg-muted/50 text-foreground/90",
+                }}
+              >
                 <span className="truncate" title={item.title}>
                   {item.title}
                 </span>
-                <div className={`hidden group-hover/chat:block ml-auto right-0`}>
+                <div className={`-mr-2 ml-auto hidden group-hover/chat:block`}>
                   <Button
                     variant="ghost"
                     onClick={(e) => {
                       deleteChat.mutate({ chatId: item.id });
                       e.preventDefault();
                     }}
+                    className="hover:bg-foreground/25"
                   >
                     <XIcon />
                   </Button>
@@ -73,7 +82,7 @@ function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
               setRenaming(true);
             }}
           >
-            <TextCursor />
+            <TextCursor className="text-primary" />
             Rename
           </ContextMenuItem>
           <ContextMenuItem
@@ -81,7 +90,7 @@ function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
               deleteChat.mutate({ chatId: item.id });
             }}
           >
-            <Eraser />
+            <Eraser className="text-primary" />
             Delete
           </ContextMenuItem>
         </ContextMenuContent>
@@ -92,13 +101,6 @@ function ChatItem({ item, deleteChat, renameChat }: ChatItemProps) {
 
 export default function ChatSidebar() {
   const [searchQuery, setSearchQuery] = React.useState("");
-  const user_sess = authClient.useSession();
-
-  const { chatId } = useParams({
-    from: "/chat/$chatId",
-    shouldThrow: false,
-  }) ?? { chatId: undefined };
-  const navigate = useNavigate();
 
   // CHROME PLEASE FINISH TEMPORAL ALREADY
   const chats = useQuery(trpc.chats.listThreads.queryOptions());
@@ -119,24 +121,24 @@ export default function ChatSidebar() {
     .map((item) => item.obj)
     .filter((item) => item.id !== deleteChat.variables?.chatId)
     .map((item) => (item.id === renameChat.variables?.chatId ? { ...item, title: renameChat.variables?.name } : item))
-    .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
+    .sort((a, b) => b.updated_at.getTime() - a.updated_at.getTime());
   const renderOutput = renderChatOutput(filtered, deleteChat, renameChat);
 
   return (
     <>
       <Sidebar className="select-none">
-        <SidebarHeader className="flex items-center content-center mt-2">
+        <SidebarHeader className="mt-2 flex content-center items-center">
           <Logo />
 
           <Button variant={"default"} className="w-full cursor-pointer" asChild>
             <Link to="/chat">New Chat</Link>
           </Button>
 
-          <div className="flex items-center border-b border-primary/65 mx-2">
+          <div className="border-primary/65 mx-2 flex items-center border-b">
             <SearchIcon size={16} />
             <Input
               type="text"
-              className="border-0 outline-0 p-2 focus-visible:border-0 focus-visible:ring-0"
+              className="border-0 p-2 outline-0 focus-visible:border-0 focus-visible:ring-0"
               placeholder="Search Chats..."
               value={searchQuery}
               onChange={(evt) => setSearchQuery(evt.target.value)}
@@ -148,24 +150,9 @@ export default function ChatSidebar() {
           {chats.isError ? "Error Loading Chats" : null}
           {chats.isPending ? "Loading Chats..." : null}
         </SidebarContent>
-        <SidebarFooter className="flex flex-row items-center mb-4 w-full">
-          {user_sess.data ? (
-            <Button variant="ghost" className="text-left justify-start items-center p-4 text-md flex-1 min-w-0">
-              <Avatar className="flex-shrink-0">
-                {user_sess.data.user.image ? <AvatarImage src={user_sess.data.user.image} /> : null}
-                <AvatarFallback>{user_sess.data.user.name[0]}</AvatarFallback>
-              </Avatar>
-              <div className="truncate ml-2">{user_sess.data.user.name}</div>
-            </Button>
-          ) : (
-            <Button variant={"ghost"} className="grow text-left justify-start items-center p-4 text-md" asChild>
-              <Link to="/login" params={{ redirect: "/chat" }}>
-                <LogIn />
-                <div>Log In</div>
-              </Link>
-            </Button>
-          )}
-          <Link to="/settings">
+        <SidebarFooter className="mb-4 flex w-full flex-row items-center">
+          <SidebarAvatar />
+          <Link to="/settings" replace={false}>
             <Settings className="size-5" />
           </Link>
         </SidebarFooter>
@@ -186,11 +173,11 @@ function BetterTrigger() {
       data-slot="sidebar-trigger"
       variant="ghost"
       size="icon"
-      className={cn("size-12 fixed top-2 left-2 bg-background border z-10 group")}
+      className={cn("bg-background group fixed left-2 top-2 z-10 size-12 border")}
       onClick={toggleSidebar}
     >
       <PanelLeftIcon className="transition-opacity duration-200 group-hover:opacity-0" />
-      <span className="absolute font-mono transform translate-x-8 opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100">
+      <span className="absolute translate-x-8 transform font-mono opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100">
         {/Mac/i.test(navigator.userAgent) ? "⌘+B" : <span className="text-xs">CTRL+B</span>}
       </span>
       <span className="sr-only">CTRL-B</span>
@@ -199,7 +186,7 @@ function BetterTrigger() {
 }
 
 function timeDelta(date: Date) {
-  let days = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+  const days = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
 
   if (days === 0) {
     return "Today";
@@ -219,14 +206,14 @@ function renderChatOutput(
   deleteChat: UseMutationResult<boolean, any, { chatId: string }, undefined>,
   renameChat: UseMutationResult<void, any, { chatId: string; name: string }, unknown>,
 ) {
-  let renderOutput: {
+  const renderOutput: {
     component: React.ReactElement;
-    item: { title: string; id: string; lastUpdated: Date } | null;
+    item: { title: string; id: string; updated_at: Date } | null;
   }[] = chats.map((item) => {
     return {
       component: (
         <ChatItem
-          key={item.id + item.lastUpdated.getTime()}
+          key={item.id + item.updated_at.getTime()}
           item={item}
           deleteChat={deleteChat}
           renameChat={renameChat}
@@ -237,12 +224,12 @@ function renderChatOutput(
   });
   let lastUpdateValue = "";
   let pos = 0;
-  for (let component of renderOutput) {
-    if (component.item && timeDelta(component.item.lastUpdated) != lastUpdateValue) {
-      let tDelta = timeDelta(component.item.lastUpdated);
+  for (const component of renderOutput) {
+    if (component.item && timeDelta(component.item.updated_at) !== lastUpdateValue) {
+      const tDelta = timeDelta(component.item.updated_at);
       renderOutput.splice(pos, 0, {
         component: (
-          <div className="text-accent-foreground font-bold border-b border-primary/25" key={tDelta}>
+          <div className="text-accent-foreground border-primary/25 border-b font-bold" key={tDelta}>
             {tDelta}
           </div>
         ),

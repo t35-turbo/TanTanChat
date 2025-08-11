@@ -1,65 +1,52 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState, useEffect } from "react";
+import Loader from "@/components/ui/loader";
 import { authClient } from "@/lib/auth-client";
-import { Alert, AlertTitle } from "@/components/ui/alert";
-import { LoginLoadingScreen } from "@/components/LoadingScreen";
-
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 
 export const Route = createFileRoute("/login")({
+  beforeLoad: async () => {
+    if ((await authClient.getSession()).data) {
+      throw redirect({ to: "/chat" });
+    }
+  },
   component: RouteComponent,
 });
-
-const signIn = async () => {
-  await authClient.signIn.social({
-    provider: "discord"
-  })
-}
 
 function RouteComponent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const userSession = authClient.useSession();
-
-  useEffect(() => {
-    if (!userSession.isPending && userSession.data) {
-      navigate({ to: "/chat" });
-    }
-  }, [userSession.isPending, userSession.data, navigate]);
 
   async function login() {
     setError("");
-    const { data, error } = await authClient.signIn.email({
-      email,
-      password,
-    });
+    setIsLoading(true);
 
-    if (data) {
-      navigate({ to: "/chat" });
-    } else if (error) {
-      setError(error.message ?? error.statusText);
+    try {
+      const { data, error } = await authClient.signIn.email({
+        email,
+        password,
+      });
+
+      if (data) {
+        navigate({ to: "/chat" });
+      } else if (error) {
+        setError(error.message ?? error.statusText);
+      }
+    } finally {
+      setIsLoading(false);
     }
-  }
-
-  if (userSession.isPending) {
-    return <LoginLoadingScreen />;
   }
 
   return (
     <form
-      className={`flex justify-center items-center w-full h-full`}
+      className={`flex h-full w-full items-center justify-center`}
       onSubmit={(e) => {
         login();
         e.preventDefault();
@@ -103,8 +90,15 @@ function RouteComponent() {
           </div>
         </CardContent>
         <CardFooter className="flex-col gap-2">
-          <Button type="submit" className="w-full">
-            Login
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader />
+                Loading...
+              </>
+            ) : (
+              "Login"
+            )}
           </Button>
 
           {/* TODO: ADD THIS BACK WITH A PROPER SETTINGS API <div className="text-center text-sm text-muted-foreground">
@@ -115,7 +109,7 @@ function RouteComponent() {
             Login with Discord
           </Button> */}
 
-          <CardAction className="text-center w-full">
+          <CardAction className="w-full text-center">
             <span className="text-sm">Not Registered? </span>
             <Button variant="link" className="px-0" asChild>
               <Link to={"/signup"}>Sign Up</Link>
@@ -126,4 +120,3 @@ function RouteComponent() {
     </form>
   );
 }
-

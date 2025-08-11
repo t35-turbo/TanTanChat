@@ -13,12 +13,23 @@
 import { Route as rootRoute } from './routes/__root'
 import { Route as SignupImport } from './routes/signup'
 import { Route as SettingsImport } from './routes/settings'
+import { Route as ResetPasswordImport } from './routes/reset-password'
 import { Route as OrauthImport } from './routes/or_auth'
 import { Route as LoginImport } from './routes/login'
 import { Route as ChatImport } from './routes/chat'
+import { Route as AdminImport } from './routes/admin'
 import { Route as IndexImport } from './routes/index'
+import { Route as SettingsIndexImport } from './routes/settings/index'
 import { Route as ChatIndexImport } from './routes/chat/index'
+import { Route as AdminIndexImport } from './routes/admin/index'
+import { Route as SettingsKeysImport } from './routes/settings/keys'
 import { Route as ChatChatIdImport } from './routes/chat/$chatId'
+import { Route as AdminSettingsImport } from './routes/admin/settings'
+import { Route as AdminKeysImport } from './routes/admin/keys'
+import { Route as AdminUsersIndexImport } from './routes/admin/users/index'
+import { Route as AdminRolesIndexImport } from './routes/admin/roles/index'
+import { Route as AdminUsersUserIdImport } from './routes/admin/users/$userId'
+import { Route as AdminRolesRoleImport } from './routes/admin/roles/$role'
 
 // Create/Update Routes
 
@@ -31,6 +42,12 @@ const SignupRoute = SignupImport.update({
 const SettingsRoute = SettingsImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ResetPasswordRoute = ResetPasswordImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -52,10 +69,22 @@ const ChatRoute = ChatImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const AdminRoute = AdminImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
+} as any)
+
+const SettingsIndexRoute = SettingsIndexImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsRoute,
 } as any)
 
 const ChatIndexRoute = ChatIndexImport.update({
@@ -64,10 +93,58 @@ const ChatIndexRoute = ChatIndexImport.update({
   getParentRoute: () => ChatRoute,
 } as any)
 
+const AdminIndexRoute = AdminIndexImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+
+const SettingsKeysRoute = SettingsKeysImport.update({
+  id: '/keys',
+  path: '/keys',
+  getParentRoute: () => SettingsRoute,
+} as any)
+
 const ChatChatIdRoute = ChatChatIdImport.update({
   id: '/$chatId',
   path: '/$chatId',
   getParentRoute: () => ChatRoute,
+} as any)
+
+const AdminSettingsRoute = AdminSettingsImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+
+const AdminKeysRoute = AdminKeysImport.update({
+  id: '/keys',
+  path: '/keys',
+  getParentRoute: () => AdminRoute,
+} as any)
+
+const AdminUsersIndexRoute = AdminUsersIndexImport.update({
+  id: '/users/',
+  path: '/users/',
+  getParentRoute: () => AdminRoute,
+} as any)
+
+const AdminRolesIndexRoute = AdminRolesIndexImport.update({
+  id: '/roles/',
+  path: '/roles/',
+  getParentRoute: () => AdminRoute,
+} as any)
+
+const AdminUsersUserIdRoute = AdminUsersUserIdImport.update({
+  id: '/users/$userId',
+  path: '/users/$userId',
+  getParentRoute: () => AdminRoute,
+} as any)
+
+const AdminRolesRoleRoute = AdminRolesRoleImport.update({
+  id: '/roles/$role',
+  path: '/roles/$role',
+  getParentRoute: () => AdminRoute,
 } as any)
 
 // Populate the FileRoutesByPath interface
@@ -79,6 +156,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexImport
+      parentRoute: typeof rootRoute
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminImport
       parentRoute: typeof rootRoute
     }
     '/chat': {
@@ -102,6 +186,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrauthImport
       parentRoute: typeof rootRoute
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordImport
+      parentRoute: typeof rootRoute
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -116,12 +207,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupImport
       parentRoute: typeof rootRoute
     }
+    '/admin/keys': {
+      id: '/admin/keys'
+      path: '/keys'
+      fullPath: '/admin/keys'
+      preLoaderRoute: typeof AdminKeysImport
+      parentRoute: typeof AdminImport
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsImport
+      parentRoute: typeof AdminImport
+    }
     '/chat/$chatId': {
       id: '/chat/$chatId'
       path: '/$chatId'
       fullPath: '/chat/$chatId'
       preLoaderRoute: typeof ChatChatIdImport
       parentRoute: typeof ChatImport
+    }
+    '/settings/keys': {
+      id: '/settings/keys'
+      path: '/keys'
+      fullPath: '/settings/keys'
+      preLoaderRoute: typeof SettingsKeysImport
+      parentRoute: typeof SettingsImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexImport
+      parentRoute: typeof AdminImport
     }
     '/chat/': {
       id: '/chat/'
@@ -130,10 +249,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatIndexImport
       parentRoute: typeof ChatImport
     }
+    '/settings/': {
+      id: '/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexImport
+      parentRoute: typeof SettingsImport
+    }
+    '/admin/roles/$role': {
+      id: '/admin/roles/$role'
+      path: '/roles/$role'
+      fullPath: '/admin/roles/$role'
+      preLoaderRoute: typeof AdminRolesRoleImport
+      parentRoute: typeof AdminImport
+    }
+    '/admin/users/$userId': {
+      id: '/admin/users/$userId'
+      path: '/users/$userId'
+      fullPath: '/admin/users/$userId'
+      preLoaderRoute: typeof AdminUsersUserIdImport
+      parentRoute: typeof AdminImport
+    }
+    '/admin/roles/': {
+      id: '/admin/roles/'
+      path: '/roles'
+      fullPath: '/admin/roles'
+      preLoaderRoute: typeof AdminRolesIndexImport
+      parentRoute: typeof AdminImport
+    }
+    '/admin/users/': {
+      id: '/admin/users/'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersIndexImport
+      parentRoute: typeof AdminImport
+    }
   }
 }
 
 // Create and export the route tree
+
+interface AdminRouteChildren {
+  AdminKeysRoute: typeof AdminKeysRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+  AdminRolesRoleRoute: typeof AdminRolesRoleRoute
+  AdminUsersUserIdRoute: typeof AdminUsersUserIdRoute
+  AdminRolesIndexRoute: typeof AdminRolesIndexRoute
+  AdminUsersIndexRoute: typeof AdminUsersIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminKeysRoute: AdminKeysRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminIndexRoute: AdminIndexRoute,
+  AdminRolesRoleRoute: AdminRolesRoleRoute,
+  AdminUsersUserIdRoute: AdminUsersUserIdRoute,
+  AdminRolesIndexRoute: AdminRolesIndexRoute,
+  AdminUsersIndexRoute: AdminUsersIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface ChatRouteChildren {
   ChatChatIdRoute: typeof ChatChatIdRoute
@@ -147,87 +323,167 @@ const ChatRouteChildren: ChatRouteChildren = {
 
 const ChatRouteWithChildren = ChatRoute._addFileChildren(ChatRouteChildren)
 
+interface SettingsRouteChildren {
+  SettingsKeysRoute: typeof SettingsKeysRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
+}
+
+const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsKeysRoute: SettingsKeysRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
+}
+
+const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
+  SettingsRouteChildren,
+)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/chat': typeof ChatRouteWithChildren
   '/login': typeof LoginRoute
   '/or_auth': typeof OrauthRoute
-  '/settings': typeof SettingsRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
+  '/admin/keys': typeof AdminKeysRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/chat/$chatId': typeof ChatChatIdRoute
+  '/settings/keys': typeof SettingsKeysRoute
+  '/admin/': typeof AdminIndexRoute
   '/chat/': typeof ChatIndexRoute
+  '/settings/': typeof SettingsIndexRoute
+  '/admin/roles/$role': typeof AdminRolesRoleRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
+  '/admin/roles': typeof AdminRolesIndexRoute
+  '/admin/users': typeof AdminUsersIndexRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/or_auth': typeof OrauthRoute
-  '/settings': typeof SettingsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/admin/keys': typeof AdminKeysRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/chat/$chatId': typeof ChatChatIdRoute
+  '/settings/keys': typeof SettingsKeysRoute
+  '/admin': typeof AdminIndexRoute
   '/chat': typeof ChatIndexRoute
+  '/settings': typeof SettingsIndexRoute
+  '/admin/roles/$role': typeof AdminRolesRoleRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
+  '/admin/roles': typeof AdminRolesIndexRoute
+  '/admin/users': typeof AdminUsersIndexRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/chat': typeof ChatRouteWithChildren
   '/login': typeof LoginRoute
   '/or_auth': typeof OrauthRoute
-  '/settings': typeof SettingsRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/signup': typeof SignupRoute
+  '/admin/keys': typeof AdminKeysRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/chat/$chatId': typeof ChatChatIdRoute
+  '/settings/keys': typeof SettingsKeysRoute
+  '/admin/': typeof AdminIndexRoute
   '/chat/': typeof ChatIndexRoute
+  '/settings/': typeof SettingsIndexRoute
+  '/admin/roles/$role': typeof AdminRolesRoleRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
+  '/admin/roles/': typeof AdminRolesIndexRoute
+  '/admin/users/': typeof AdminUsersIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/chat'
     | '/login'
     | '/or_auth'
+    | '/reset-password'
     | '/settings'
     | '/signup'
+    | '/admin/keys'
+    | '/admin/settings'
     | '/chat/$chatId'
+    | '/settings/keys'
+    | '/admin/'
     | '/chat/'
+    | '/settings/'
+    | '/admin/roles/$role'
+    | '/admin/users/$userId'
+    | '/admin/roles'
+    | '/admin/users'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/or_auth'
-    | '/settings'
+    | '/reset-password'
     | '/signup'
+    | '/admin/keys'
+    | '/admin/settings'
     | '/chat/$chatId'
+    | '/settings/keys'
+    | '/admin'
     | '/chat'
+    | '/settings'
+    | '/admin/roles/$role'
+    | '/admin/users/$userId'
+    | '/admin/roles'
+    | '/admin/users'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/chat'
     | '/login'
     | '/or_auth'
+    | '/reset-password'
     | '/settings'
     | '/signup'
+    | '/admin/keys'
+    | '/admin/settings'
     | '/chat/$chatId'
+    | '/settings/keys'
+    | '/admin/'
     | '/chat/'
+    | '/settings/'
+    | '/admin/roles/$role'
+    | '/admin/users/$userId'
+    | '/admin/roles/'
+    | '/admin/users/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   ChatRoute: typeof ChatRouteWithChildren
   LoginRoute: typeof LoginRoute
   OrauthRoute: typeof OrauthRoute
-  SettingsRoute: typeof SettingsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  SettingsRoute: typeof SettingsRouteWithChildren
   SignupRoute: typeof SignupRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   ChatRoute: ChatRouteWithChildren,
   LoginRoute: LoginRoute,
   OrauthRoute: OrauthRoute,
-  SettingsRoute: SettingsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  SettingsRoute: SettingsRouteWithChildren,
   SignupRoute: SignupRoute,
 }
 
@@ -242,15 +498,29 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
+        "/admin",
         "/chat",
         "/login",
         "/or_auth",
+        "/reset-password",
         "/settings",
         "/signup"
       ]
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/admin": {
+      "filePath": "admin.tsx",
+      "children": [
+        "/admin/keys",
+        "/admin/settings",
+        "/admin/",
+        "/admin/roles/$role",
+        "/admin/users/$userId",
+        "/admin/roles/",
+        "/admin/users/"
+      ]
     },
     "/chat": {
       "filePath": "chat.tsx",
@@ -265,19 +535,62 @@ export const routeTree = rootRoute
     "/or_auth": {
       "filePath": "or_auth.tsx"
     },
+    "/reset-password": {
+      "filePath": "reset-password.tsx"
+    },
     "/settings": {
-      "filePath": "settings.tsx"
+      "filePath": "settings.tsx",
+      "children": [
+        "/settings/keys",
+        "/settings/"
+      ]
     },
     "/signup": {
       "filePath": "signup.tsx"
+    },
+    "/admin/keys": {
+      "filePath": "admin/keys.tsx",
+      "parent": "/admin"
+    },
+    "/admin/settings": {
+      "filePath": "admin/settings.tsx",
+      "parent": "/admin"
     },
     "/chat/$chatId": {
       "filePath": "chat/$chatId.tsx",
       "parent": "/chat"
     },
+    "/settings/keys": {
+      "filePath": "settings/keys.tsx",
+      "parent": "/settings"
+    },
+    "/admin/": {
+      "filePath": "admin/index.tsx",
+      "parent": "/admin"
+    },
     "/chat/": {
       "filePath": "chat/index.tsx",
       "parent": "/chat"
+    },
+    "/settings/": {
+      "filePath": "settings/index.tsx",
+      "parent": "/settings"
+    },
+    "/admin/roles/$role": {
+      "filePath": "admin/roles/$role.tsx",
+      "parent": "/admin"
+    },
+    "/admin/users/$userId": {
+      "filePath": "admin/users/$userId.tsx",
+      "parent": "/admin"
+    },
+    "/admin/roles/": {
+      "filePath": "admin/roles/index.tsx",
+      "parent": "/admin"
+    },
+    "/admin/users/": {
+      "filePath": "admin/users/index.tsx",
+      "parent": "/admin"
     }
   }
 }

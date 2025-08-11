@@ -6,37 +6,19 @@ interface LoadingScreenProps {
   className?: string;
 }
 
-export function LoadingScreen({ 
-  text = "Loading...", 
-  variant = "pulse",
-  className 
-}: LoadingScreenProps) {
+export function LoadingScreen({ text = "Loading...", variant = "pulse", className }: LoadingScreenProps) {
   return (
-    <div className={cn(
-      "flex flex-col grow items-center w-full h-screen justify-center p-2",
-      className
-    )}>
+    <div className={cn("flex h-screen w-full grow flex-col items-center justify-center p-2", className)}>
       {variant === "pulse" ? (
-        <div className="bg-border rounded-full size-10 motion-safe:animate-pulse" />
+        <div className="bg-border size-10 rounded-full motion-safe:animate-pulse" />
       ) : (
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4" />
+        <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900" />
       )}
-      {text && (
-        <p className="text-center mt-4 text-muted-foreground">{text}</p>
-      )}
+      {text && <p className="text-muted-foreground mt-4 text-center">{text}</p>}
     </div>
   );
 }
 
-// Specific loading screen variants for common use cases
-export function LoginLoadingScreen() {
-  return <LoadingScreen variant="pulse" text="" />;
-}
-
 export function EmptyLoadingScreen() {
   return <LoadingScreen variant="pulse" text="" />;
-}
-
-export function SessionLoadingScreen() {
-  return <LoadingScreen variant="spinner" text="Loading..." />;
 }

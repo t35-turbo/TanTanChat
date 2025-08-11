@@ -1,14 +1,12 @@
-import { Hono } from "hono";
-import { auth } from "./lib/auth";
-import { db } from "./db";
-import { chats, chatMessages } from "./db/schema";
-import { eq, desc, and, asc, gte, inArray } from "drizzle-orm";
-import * as sync from "./sync";
-import { z } from "zod";
-import * as crypto from "crypto";
-import { getFile } from "./files";
-import { authProcedure, publicProcedure, router } from "./trpc";
 import { TRPCError } from "@trpc/server";
+import { and, asc, eq, inArray } from "drizzle-orm";
+import { z } from "zod/v4";
+import { db } from "./db";
+import { chat_messages, chats, user } from "./db/schema";
+import { getFile } from "./files";
+import * as sync from "./sync";
+import { authProcedure, isAdmin, router } from "./trpc";
+import { generateId } from "./utils/id";
 
 type Message = {
   id: string;
@@ -20,8 +18,15 @@ type Message = {
   createdAt: Date;
 };
 
+/**
+ * This procedure ensures the chat exists and the user is authorized to access the chat.
+ * Users that may access the chat include the creator and admins. Other permissions have not been implemented yet.
+ */
 const chatProcedure = authProcedure.input(z.object({ chatId: z.string() })).use(async (opts) => {
-  if (await checkChatExists(opts.input.chatId, opts.ctx.user.id)) {
+  if (
+    (await checkChatExists(opts.input.chatId, opts.ctx.user.id)) ||
+    ((await isAdmin(opts.ctx.user.role)) && (await checkChatExists(opts.input.chatId, opts.ctx.user.id, true)))
+  ) {
     return opts.next();
   } else {
     throw new TRPCError({
@@ -44,10 +49,9 @@ export const chatRouter = router({
     )
     .mutation(async (opts) => {
       const newChat = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         userId: opts.ctx.user.id,
         title: "New Chat",
-        lastUpdated: new Date(),
       };
 
       sync.titleGenerator(newChat.id, opts.input.message, [opts.ctx.user.id], opts.input.opts);
@@ -71,43 +75,45 @@ export const chatRouter = router({
       .set({ title: opts.input.name })
       .where(and(eq(chats.id, opts.input.chatId), eq(chats.userId, opts.ctx.user.id)));
   }),
-  removeFile: chatProcedure
-    .input(z.object({ msgId: z.string(), fileId: z.string() }))
-    .mutation(async (opts) => {
-      // Get the message to check if it exists and belongs to this chat
-      const message = await db
-        .select()
-        .from(chatMessages)
-        .where(and(eq(chatMessages.id, opts.input.msgId), eq(chatMessages.chatId, opts.input.chatId)))
-        .limit(1);
+  removeFile: chatProcedure.input(z.object({ msgId: z.string(), fileId: z.string() })).mutation(async (opts) => {
+    // Get the message to check if it exists and belongs to this chat
+    const message = await db
+      .select()
+      .from(chat_messages)
+      .where(and(eq(chat_messages.id, opts.input.msgId), eq(chat_messages.chatId, opts.input.chatId)))
+      .limit(1);
 
-      if (!message[0]) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Message not found",
-        });
-      }
+    if (!message[0]) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Message not found",
+      });
+    }
 
-      // Remove the file from the files array
-      const currentFiles = message[0].files || [];
-      const updatedFiles = currentFiles.filter((file) => file !== opts.input.fileId);
+    // Remove the file from the files array
+    const currentFiles = message[0].files || [];
+    const updatedFiles = currentFiles.filter((file) => file !== opts.input.fileId);
 
-      // Update the message with the new files array
-      await db.update(chatMessages).set({ files: updatedFiles }).where(eq(chatMessages.id, opts.input.msgId));
+    // Update the message with the new files array
+    await db.update(chat_messages).set({ files: updatedFiles }).where(eq(chat_messages.id, opts.input.msgId));
 
-      return { message: "File removed successfully" };
-    }),
+    return { message: "File removed successfully" };
+  }),
   retryMessage: chatProcedure
-    .input(z.object({
-      msgId: z.string(),
-      message: z.string().optional(),
-      opts: z.object({
-        apiKey: z.string(),
-        model: z.string(),
-        reasoning_effort: z.enum(["low", "medium", "high"]).optional(),
-        system_prompt: z.string(),
-      })
-    }))
+    .input(
+      z.object({
+        msgId: z.string(),
+        message: z.string().optional(),
+        opts: z.object({
+          apiKey: z.string(),
+          model: z.string(),
+          api_format: z.literal("openai"),
+          baseUrl: z.literal("https://openrouter.ai/api/v1"),
+          reasoning_effort: z.enum(["low", "medium", "high"]).optional(),
+          system_prompt: z.string(),
+        }),
+      }),
+    )
     .mutation(async (opts) => {
       // search for the message in the messages
       const allMessages = await getChatMessages(opts.input.chatId);
@@ -150,11 +156,13 @@ export const chatRouter = router({
       const operations = [];
 
       if (newMsgs.delArr.length > 0) {
-        operations.push(db.delete(chatMessages).where(inArray(chatMessages.id, newMsgs.delArr)));
+        operations.push(db.delete(chat_messages).where(inArray(chat_messages.id, newMsgs.delArr)));
       }
 
       if (opts.input.message) {
-        operations.push(db.update(chatMessages).set({ message: opts.input.message }).where(eq(chatMessages.id, opts.input.msgId)));
+        operations.push(
+          db.update(chat_messages).set({ message: opts.input.message }).where(eq(chat_messages.id, opts.input.msgId)),
+        );
       }
 
       await Promise.all(operations);
@@ -167,9 +175,9 @@ export const chatRouter = router({
   threadHistory: chatProcedure.query(async (opts) => {
     return await db
       .select()
-      .from(chatMessages)
-      .where(eq(chatMessages.chatId, opts.input.chatId))
-      .orderBy(asc(chatMessages.createdAt));
+      .from(chat_messages)
+      .where(eq(chat_messages.chatId, opts.input.chatId))
+      .orderBy(asc(chat_messages.createdAt));
   }),
   newMessage: chatProcedure
     .input(
@@ -177,6 +185,8 @@ export const chatRouter = router({
         message: z.string(),
         opts: z.object({
           apiKey: z.string(),
+          baseUrl: z.literal("https://openrouter.ai/api/v1"),
+          api_format: z.literal("openai"),
           model: z.string(),
           system_prompt: z.string(),
           tools: z.null(),
@@ -188,7 +198,7 @@ export const chatRouter = router({
       const chatId = opts.input.chatId;
 
       const newMessage: Message = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         chatId,
         senderId: opts.ctx.user.id,
         role: "user",
@@ -197,24 +207,56 @@ export const chatRouter = router({
         createdAt: new Date(),
       };
 
-      await db.insert(chatMessages).values(newMessage);
-      let messages: sync.Messages = await getChatMessages(chatId);
+      await db.insert(chat_messages).values(newMessage);
+      const messages: sync.Messages = await getChatMessages(chatId);
       sync.broadcastNewMessage(chatId);
 
       return await sync.newMessage(chatId, messages, opts.input.opts);
     }),
+
+  getChatMetadata: chatProcedure.query(async (opts) => {
+    const chatWithOwner = await db
+      .select({
+        id: chats.id,
+        title: chats.title,
+        created_at: chats.created_at,
+        updated_at: chats.updated_at,
+        userId: chats.userId,
+        ownerName: user.name,
+      })
+      .from(chats)
+      .leftJoin(user, eq(chats.userId, user.id))
+      .where(eq(chats.id, opts.input.chatId))
+      .limit(1);
+
+    if (!chatWithOwner[0]) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Chat not found",
+      });
+    }
+
+    return chatWithOwner[0];
+  }),
+  getChatTitle: chatProcedure.query(async (opts) => {
+    return (await db
+      .select({ title: chats.title })
+      .from(chats)
+      .where(eq(chats.id, opts.input.chatId))
+      .limit(1))[0].title;
+  }),
 });
 
 async function getChatMessages(chatId: string): Promise<sync.Messages> {
-  let msgs = await db
+  const msgs = await db
     .select()
-    .from(chatMessages)
-    .where(eq(chatMessages.chatId, chatId))
-    .orderBy(asc(chatMessages.createdAt));
-  let completions: sync.Messages = [];
+    .from(chat_messages)
+    .where(eq(chat_messages.chatId, chatId))
+    .orderBy(asc(chat_messages.createdAt));
+  const completions: sync.Messages = [];
   for (const msg of msgs) {
     if (msg.files && msg.files.length > 0) {
-      let files = await Promise.all(msg.files.map((file) => getFile(file)));
+      const files = await Promise.all(msg.files.map((file) => getFile(file)));
       completions.push({
         ...msg,
         files: files.filter((file) => !!file),
@@ -227,11 +269,15 @@ async function getChatMessages(chatId: string): Promise<sync.Messages> {
   return completions;
 }
 
-async function checkChatExists(chatId: string, userId: string): Promise<boolean> {
-  return !!(
-    await db
-      .select()
-      .from(chats)
-      .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
-  )?.[0];
+async function checkChatExists(chatId: string, userId: string, ignoreUser: boolean = false): Promise<boolean> {
+  if (ignoreUser) {
+    return !!(await db.select().from(chats).where(eq(chats.id, chatId)))?.[0];
+  } else {
+    return !!(
+      await db
+        .select()
+        .from(chats)
+        .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
+    )?.[0];
+  }
 }

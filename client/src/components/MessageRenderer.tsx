@@ -1,25 +1,23 @@
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useModel } from "@/hooks/use-model";
+import { useORKey } from "@/hooks/use-or-key";
+import { useTheme } from "@/hooks/use-theme";
+import { authClient } from "@/lib/auth-client";
+import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
+import { __client, type Message, queryClient, type RouterOutput, trpc } from "@/lib/trpc";
+import { useMutation, useMutationState, useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { Check, ChevronDown, ChevronRight, Copy, Paperclip, RefreshCw, SquarePen, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { PrismAsyncLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Check, ChevronDown, ChevronRight, Copy, Paperclip, RefreshCw, SquarePen, Trash2, X } from "lucide-react";
-import { Alert, AlertTitle } from "@/components/ui/alert";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useTheme } from "@/hooks/use-theme";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import "katex/dist/katex.min.css";
-import React, { useEffect, useState } from "react";
-import { Button } from "./ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import { useMutation, useQuery, useInfiniteQuery, useMutationState } from "@tanstack/react-query";
-import { trpc, queryClient, type Message, __client } from "@/lib/trpc";
-import { useORKey } from "@/hooks/use-or-key";
-import { useModel } from "@/hooks/use-model";
-import { generateSystemPrompt } from "@/lib/sys_prompt_gen";
-import { authClient } from "@/lib/auth-client";
-import { Textarea } from "./ui/textarea";
+import { toast } from "sonner";
 import { z } from "zod/v4-mini";
-import { useNavigate } from "@tanstack/react-router";
+import { Button } from "./ui/button";
+import { Textarea } from "./ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { useActiveId, useActiveMessage } from "./WSManager";
 
 interface MessageRendererProps {
@@ -27,11 +25,9 @@ interface MessageRendererProps {
 }
 
 export function MessageRenderer({ chatId }: MessageRendererProps) {
-  const navigate = useNavigate();
-  const user_sess = authClient.useSession();
-
   const { chunks: activeMessage, setChunks: setActiveMessage } = useActiveMessage();
   const activeId = useActiveId();
+  const navigate = useNavigate();
 
   // Use useMutationState to access the sendMessage mutation state
   const sendMessageVariables = useMutationState<string | null>({
@@ -43,7 +39,16 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
     ...trpc.chats.threadHistory.queryOptions({ chatId: chatId ?? "" }),
     enabled: !!chatId,
     queryFn: async () => {
-      const data = await __client.chats.threadHistory.query({ chatId: chatId ?? "" });
+      let data: RouterOutput["chats"]["threadHistory"];
+      try {
+        data = await __client.chats.threadHistory.query({ chatId: chatId ?? "" });
+      } catch (err) {
+        console.log(err);
+        toast.error("Chat not found");
+        navigate({ to: "/chat" });
+        throw err;
+      }
+
       if (!activeId && activeMessage.length > 0 && setActiveMessage) {
         setActiveMessage([]);
       }
@@ -52,7 +57,7 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
     },
   });
 
-  let messages = [...(messagePages.data ?? [])];
+  const messages = [...(messagePages.data ?? [])];
 
   if (sendMessageVariables) {
     messages.push({
@@ -85,7 +90,7 @@ export function MessageRenderer({ chatId }: MessageRendererProps) {
   if (messagePages.isPending && chatId) {
     return (
       <div className="flex space-x-2 p-10">
-        <div className="bg-border rounded-full h-8 w-8 motion-safe:animate-pulse"></div>
+        <div className="bg-border h-8 w-8 rounded-full motion-safe:animate-pulse"></div>
       </div>
     );
   }
@@ -177,12 +182,14 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
             opts: {
               apiKey: or_key ?? "",
               model: model.id,
+              baseUrl: "https://openrouter.ai/api/v1",
+              api_format: "openai",
               reasoning_effort: model.thinkingEffort,
-                          system_prompt: generateSystemPrompt({
-                            name: settingsQuery.data?.name ?? "",
-                            selfAttr: settingsQuery.data?.selfAttr ?? "",
-                            traits: settingsQuery.data?.traits ?? "",
-                          }),
+              system_prompt: generateSystemPrompt({
+                name: settingsQuery.data?.name ?? "",
+                self_attr: settingsQuery.data?.self_attr ?? "",
+                traits: settingsQuery.data?.traits ?? "",
+              }),
             },
           });
           evt.preventDefault();
@@ -192,19 +199,19 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
 
   return (
     <div
-      className={`w-full flex flex-col gap-1 ${last ? "min-h-[calc(100vh-20rem)]" : ""} ${message.role === "user" ? "items-end" : "items-start"}`}
+      className={`flex w-full flex-col gap-1 ${last ? "min-h-[calc(100vh-20rem)]" : ""} ${message.role === "user" ? "items-end" : "items-start"}`}
       key={message.id}
     >
       {files.data && files.data.length > 0
         ? files.data.map((file) => (
             <div
               key={file.fileId}
-              className="text-sm border rounded-lg italic p-1 flex items-center group cursor-default relative"
+              className="group relative flex cursor-default items-center rounded-lg border p-1 text-sm italic"
             >
               <Paperclip className="size-3" />
               {file.fileName}
               <button
-                className="absolute -bottom-1 -left-1 hidden group-hover:block text-destructive-foreground rounded-full p-0.5 hover:bg-destructive/80"
+                className="text-destructive-foreground hover:bg-destructive/80 absolute -bottom-1 -left-1 hidden rounded-full p-0.5 group-hover:block"
                 onClick={() => deleteFile.mutate({ chatId: message.chatId, msgId: message.id, fileId: file.fileId })}
               >
                 <X className="size-3" />
@@ -226,12 +233,12 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
           </div>
         ) : (
           <div
-            className={`${message.role === "user" ? "border p-2 rounded-lg ml-auto" : "px-2 py-1"} bg-background mb-1 prose`}
+            className={`${message.role === "user" ? "ml-auto rounded-lg border p-2" : "px-2 py-1"} bg-background prose mb-1`}
           >
             {message.reasoning ? (
               <Collapsible>
                 <CollapsibleTrigger
-                  className="flex items-center gap-1 transition-all text-foreground/50 hover:text-foreground"
+                  className="text-foreground/50 hover:text-foreground flex items-center gap-1 transition-all"
                   onClick={() => setShowThink(!showThink)}
                 >
                   {showThink ? <ChevronDown /> : <ChevronRight />} {showThink ? "Hide Thinking" : "Show Thinking"}
@@ -252,7 +259,7 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
           </div>
         )}
         <div
-          className={`flex items-center opacity-0 transition-opacity absolute ${message.role === "user" ? "right-0" : "left-0"} group-hover:opacity-100 group-focus:opacity-100 group-focus-within:opacity-100 text-foreground/80`}
+          className={`absolute flex items-center opacity-0 transition-opacity ${message.role === "user" ? "right-0" : "left-0"} text-foreground/80 group-focus-within:opacity-100 group-hover:opacity-100 group-focus:opacity-100`}
         >
           {editingMessage ? (
             <>
@@ -284,10 +291,12 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
                         opts: {
                           apiKey: or_key ?? "",
                           model: model.id,
+                          baseUrl: "https://openrouter.ai/api/v1",
+                          api_format: "openai",
                           reasoning_effort: model.thinkingEffort,
                           system_prompt: generateSystemPrompt({
                             name: settingsQuery.data?.name ?? "",
-                            selfAttr: settingsQuery.data?.selfAttr ?? "",
+                            self_attr: settingsQuery.data?.self_attr ?? "",
                             traits: settingsQuery.data?.traits ?? "",
                           }),
                         },
@@ -324,11 +333,13 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
                         msgId: message.id,
                         opts: {
                           apiKey: or_key ?? "",
+                          api_format: "openai",
                           model: model.id,
+                          baseUrl: "https://openrouter.ai/api/v1",
                           reasoning_effort: model.thinkingEffort,
                           system_prompt: generateSystemPrompt({
                             name: settingsQuery.data?.name ?? "",
-                            selfAttr: settingsQuery.data?.selfAttr ?? "",
+                            self_attr: settingsQuery.data?.self_attr ?? "",
                             traits: settingsQuery.data?.traits ?? "",
                           }),
                         },
@@ -371,6 +382,19 @@ function RenderedMsg({ message, last }: { message: Message; last: boolean }) {
 function MarkdownRenderer({ children }: { children: string | null | undefined }) {
   const base = useTheme((state) => state.base);
 
+  const [rehypePlugins, setRehypePlugins] = useState<any[]>([]);
+  const [remarkPlugins, setRemarkPlugins] = useState<any[]>([]);
+  // Dynamically load KaTeX CSS only when this component is mounted
+  useEffect(() => {
+    (async () => {
+      import("katex/dist/katex.min.css");
+      const rehypePlugins = [(await import("rehype-katex")).default];
+      const remarkPlugins = [(await import("remark-math")).default];
+      setRehypePlugins(rehypePlugins);
+      setRemarkPlugins(remarkPlugins);
+    })();
+  }, []);
+
   const preprocessMathBlocks = React.useCallback((text: string): string => {
     // Convert display math wrapped in \[ ... \] to $$ blocks so that remark-math can parse them
     // Supports multiline content inside the delimiters.
@@ -385,25 +409,23 @@ function MarkdownRenderer({ children }: { children: string | null | undefined })
     <ReactMarkdown
       components={{
         code(props) {
-          const { children, className, node, ...rest } = props;
+          const { children, className, ...rest } = props;
           const match = /language-(\w+)/.exec(className || "");
           return match ? (
-            <>
-              <SyntaxHighlighter
-                PreTag="div"
-                children={String(children).replace(/\n$/, "")}
-                language={match[1]}
-                style={{
-                  ...(base === "white" || base === "latte" ? oneLight : oneDark),
-                  'pre[class*="language-"]': {
-                    background: "transparent",
-                  },
-                  'code[class*="language-"]': {
-                    background: "transparent",
-                  },
-                }}
-              />
-            </>
+            <SyntaxHighlighter
+              PreTag="div"
+              children={String(children).replace(/\n$/, "")}
+              language={match[1]}
+              style={{
+                ...(base === "white" || base === "latte" ? oneLight : oneDark),
+                'pre[class*="language-"]': {
+                  background: "transparent",
+                },
+                'code[class*="language-"]': {
+                  background: "transparent",
+                },
+              }}
+            />
           ) : (
             <code {...rest} className={className}>
               {children}
@@ -411,8 +433,8 @@ function MarkdownRenderer({ children }: { children: string | null | undefined })
           );
         },
       }}
-      remarkPlugins={[remarkMath]}
-      rehypePlugins={[rehypeKatex]}
+      remarkPlugins={remarkPlugins}
+      rehypePlugins={rehypePlugins}
     >
       {processedChildren}
     </ReactMarkdown>

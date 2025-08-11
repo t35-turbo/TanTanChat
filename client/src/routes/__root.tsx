@@ -1,19 +1,31 @@
-import KeyInputModal from "@/components/KeyInputModal";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { queryClient } from "@/lib/trpc";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Outlet, createRootRoute } from "@tanstack/react-router";
-
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { createRootRoute, HeadContent, Outlet } from "@tanstack/react-router";
 
 export const Route = createRootRoute({
+  head: () => ({
+    meta: [
+      {
+        name: "description",
+        content: "TanTanChat is a fast and free web chat app.",
+      },
+      {
+        title: "TanTan",
+      },
+    ],
+    links: [{ rel: "icon", href: "/favicon.ico" }],
+  }),
   component: () => (
-    <ThemeProvider >
-      <QueryClientProvider client={queryClient}>
-        <KeyInputModal />
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <HeadContent />
         <Toaster position="top-center" />
         <Outlet />
-      </QueryClientProvider>
-    </ThemeProvider>
+        <ReactQueryDevtools client={queryClient} />
+      </ThemeProvider>
+    </QueryClientProvider>
   ),
 });

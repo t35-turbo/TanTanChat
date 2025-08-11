@@ -1,13 +1,12 @@
-import { useState } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { Button } from "./ui/button";
-import { ChevronDownIcon, Paperclip } from "lucide-react";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
-import { useORKey } from "@/hooks/use-or-key";
-import { toast } from "sonner";
+import { useFiles } from "@/hooks/use-files";
 import { type Models, useModel } from "@/hooks/use-model";
-import { toastEnterAPIKey } from "@/lib/utils";
-import { useKeyInput } from "@/hooks/use-key-input";
+import { useORKey } from "@/hooks/use-or-key";
+import { ChevronDownIcon, Paperclip } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Button } from "./ui/button";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,9 +14,8 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Toggle } from "./ui/toggle";
 import { Label } from "./ui/label";
-import { useFiles } from "@/hooks/use-files";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 // import { Toggle } from "./ui/toggle";
 // import { useTools } from "@/hooks/use-tools";
 
@@ -164,7 +162,6 @@ export default function ModelSelector() {
   const [open, setOpen] = useState(false);
   const model = useModel((state) => state.model);
   const setModel = useModel((state) => state.setModel);
-  const openModal = useKeyInput(state => state.open);
 
   // const webSearch = useTools(state => state.web_search);
   // const setWebSearch = useTools(state => state.setWebSearch);
@@ -203,9 +200,7 @@ export default function ModelSelector() {
         open={open}
         onOpenChange={(open) => {
           if (!or_key) {
-            toastEnterAPIKey('missing', openModal);
-          } else if (!or_key.startsWith("sk-or")) {
-            toastEnterAPIKey("invalid", openModal);
+            toast.error("Please set your OpenRouter Key first.");
           } else {
             setOpen(open);
           }

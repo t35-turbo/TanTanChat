@@ -1,23 +1,31 @@
-import { Hono } from "hono";
-import { auth } from "./lib/auth";
-import * as sync from "./sync";
-import { z } from "zod";
-import { createBunWebSocket, serveStatic } from "hono/bun";
-import type { ServerWebSocket } from "bun";
-import { filesRouter } from "./files";
-import { chatRouter } from "./chats";
-import { router } from "./trpc";
 import { trpcServer } from "@hono/trpc-server";
+import type { ServerWebSocket } from "bun";
+import { Hono } from "hono";
+import { createBunWebSocket, serveStatic } from "hono/bun";
+import { z } from "zod/v4";
+import { adminRouter } from "./admin";
+import { chatRouter } from "./chats";
+import { seedDefaults } from "./db";
+import { filesRouter } from "./files";
+import { auth } from "./lib/auth";
 import { settingsRouter } from "./settings";
+import * as sync from "./sync";
+import { router } from "./trpc";
+import { usersRouter } from "./users";
 
 const PORT = 3001;
+
+// Initialize default roles
+seedDefaults();
 
 const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
 
 const appRouter = router({
   chats: chatRouter,
   files: filesRouter,
-  settings: settingsRouter
+  settings: settingsRouter,
+  admin: adminRouter,
+  users: usersRouter,
 });
 
 export type AppRouter = typeof appRouter;
@@ -47,7 +55,7 @@ app.use(
   "/trpc/*",
   trpcServer({
     router: appRouter,
-    createContext: (opts, c) => {
+    createContext: (_opts, c) => {
       return {
         user: c.get("user"),
         session: c.get("session"),

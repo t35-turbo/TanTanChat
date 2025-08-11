@@ -1,9 +1,8 @@
-import { useKeyInput } from "@/hooks/use-key-input";
+import { useORKey } from "@/hooks/use-or-key";
 import { createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
+import ky from "ky";
 import React from "react";
 import { toast } from "sonner";
-import ky from "ky";
-import { useORKey } from "@/hooks/use-or-key";
 
 export const Route = createFileRoute("/or_auth")({
   component: RouteComponent,
@@ -12,7 +11,6 @@ export const Route = createFileRoute("/or_auth")({
 function RouteComponent() {
   const location = useLocation();
   const navigate = useNavigate();
-  const open = useKeyInput((state) => state.open);
   const setKey = useORKey((state) => state.setKey);
   const hasExchanged = React.useRef(false); // jank
 
@@ -61,6 +59,6 @@ function RouteComponent() {
     }
 
     pkce_exchange();
-  }, []);
+  }, [navigate, setKey, location.search]);
   return <div>Getting API Key...</div>;
 }

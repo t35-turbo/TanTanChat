@@ -1,10 +1,11 @@
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardAction } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import Loader from "@/components/ui/loader";
 import { authClient } from "@/lib/auth-client";
 import { Label } from "@radix-ui/react-label";
-import { createFileRoute, Link, retainSearchParams, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 export const Route = createFileRoute("/signup")({
@@ -17,6 +18,7 @@ function RouteComponent() {
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -28,22 +30,28 @@ function RouteComponent() {
       return;
     }
 
-    const { data, error } = await authClient.signUp.email({
-      email,
-      password,
-      name: username,
-    });
+    setIsLoading(true);
 
-    if (data) {
-      navigate({ to: "/chat", search: { onboarding: true } });
-    } else if (error) {
-      setError(error.message ?? error.statusText);
+    try {
+      const { data, error } = await authClient.signUp.email({
+        email,
+        password,
+        name: username,
+      });
+
+      if (data) {
+        navigate({ to: "/chat", search: { onboarding: true } });
+      } else if (error) {
+        setError(error.message ?? error.statusText);
+      }
+    } finally {
+      setIsLoading(false);
     }
   }
 
   return (
     <form
-      className={`flex justify-center items-center w-full h-full`}
+      className={`flex h-full w-full items-center justify-center`}
       onSubmit={(e) => {
         login();
         e.preventDefault();
@@ -111,14 +119,21 @@ function RouteComponent() {
           </div>
         </CardContent>
         <CardFooter className="flex-col gap-2">
-          <Button type="submit" className="w-full">
-            Sign Up
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader />
+                Loading...
+              </>
+            ) : (
+              "Sign Up"
+            )}
           </Button>
           {/* <Button variant="outline" className="w-full">
             Login with Discord
           </Button> */}
 
-          <CardAction className="text-center w-full">
+          <CardAction className="w-full text-center">
             <span className="text-sm">Already Registered? </span>
             <Button variant="link" className="px-0" asChild>
               <Link to={"/login"}>Log In</Link>

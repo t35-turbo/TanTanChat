@@ -1,16 +1,17 @@
+import type { BunFile, ServerWebSocket } from "bun";
+import { eq } from "drizzle-orm";
+import type { WSContext } from "hono/ws";
 import { OpenAI } from "openai";
 import { z } from "zod/v4";
 import { db } from "./db";
-import { chatMessages, chats } from "./db/schema";
-import { eq } from "drizzle-orm";
 import * as vk from "./db/redis";
-import { WSContext } from "hono/ws";
-import { type BunFile, type ServerWebSocket } from "bun";
+import { chat_messages, chats } from "./db/schema";
 import { default_prompt } from "./lib/sys_prompts";
+import { generateId } from "./utils/id";
 
 export type Messages = {
   id: string;
-  role: "user" | "system" | "assistant";
+  role: "user" | "system" | "assistant" | "tool";
   chatId: string;
   senderId: string;
   message: string;
@@ -31,12 +32,16 @@ export type Messages = {
   }[];
 }[];
 
-export type Options = {
-  apiKey: string;
-  model: string;
-  reasoning_effort?: "low" | "medium" | "high";
-  system_prompt: string;
-};
+export const Options = z.object({
+  api_format: z.enum(["openai"]),
+  apiKey: z.string(),
+  baseUrl: z.string(),
+  model: z.string(),
+  reasoning_effort: z.enum(["low", "medium", "high"]).optional(),
+  system_prompt: z.string(),
+});
+
+export type Options = z.infer<typeof Options>;
 
 const RedisMessageResponse = z.object({
   name: z.string(),
@@ -57,7 +62,7 @@ const RedisMessageResponse = z.object({
 const vk_client = vk.createClient();
 
 export async function newMessage(chatId: string, messages: Messages, opts: Options) {
-  let uuid = crypto.randomUUID();
+  const uuid = generateId();
 
   newCompletion(uuid, chatId, messages, opts);
   pgSubscriber(uuid, chatId, opts.model);
@@ -68,8 +73,6 @@ export async function newMessage(chatId: string, messages: Messages, opts: Optio
 async function newCompletion(id: string, chatId: string, messages: Messages, opts: Options) {
   if (!vk_client.isOpen) await vk_client.connect();
 
-  let accumulatedContent = "";
-
   await vk_client.set(`chat:${chatId}:activeMessage`, id);
   await vk_client.publish(`chat:${chatId}:events`, `activeMessage ${id}`);
 
@@ -77,6 +80,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
     baseURL: "https://openrouter.ai/api/v1",
     apiKey: opts.apiKey,
     defaultHeaders: {
+      "HTTP-Referer": "https://tantan.konkon.pablonara.com/",
       "X-Title": "TanTan Chat",
     },
   });
@@ -136,7 +140,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
     const msgs = [
       {
         role: "system" as const,
-        content: default_prompt(opts.model.split("/")[0], opts.model.split("/")[0]) + "\n" + opts.system_prompt,
+        content: `${default_prompt(opts.model.split("/")[0], opts.model.split("/")[0])}\n${opts.system_prompt}`,
       },
       ...(await Promise.all(
         messages.map(async (m) => {
@@ -144,8 +148,8 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
             const fileContents =
               m.files && m.files.length > 0
                 ? (await Promise.all(m.files.map(fileMsgGenerator))).filter(
-                  (item): item is NonNullable<typeof item> => item !== undefined,
-                )
+                    (item): item is NonNullable<typeof item> => item !== undefined,
+                  )
                 : [];
 
             return {
@@ -186,8 +190,6 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
       }
 
       const contentChunk = choice.delta?.content || "";
-
-      accumulatedContent += contentChunk;
 
       await vk_client.xAdd(`msg:${id}`, "*", {
         finish_reason: choice.finish_reason || "",
@@ -232,7 +234,7 @@ export async function titleGenerator(
     },
   });
 
-  let completion = await oai_client.chat.completions.create({
+  const completion = await oai_client.chat.completions.create({
     model: opts.model,
     messages: [
       {
@@ -261,7 +263,7 @@ export async function* msgSubscribe(msgId: string) {
   let curKey = "0-0";
 
   while (true) {
-    let results = await sub_client.xRead({ key: `msg:${msgId}`, id: curKey }, { BLOCK: 0 });
+    const results = await sub_client.xRead({ key: `msg:${msgId}`, id: curKey }, { BLOCK: 0 });
     if (results && Array.isArray(results) && results[0]) {
       const result = RedisMessageResponse.parse(results[0]).messages;
       curKey = result[result.length - 1].id;
@@ -291,7 +293,7 @@ async function pgSubscriber(id: string, chatId: string, model: string) {
       finish_reason = chunk.finish_reason;
     }
 
-    await db.insert(chatMessages).values({
+    await db.insert(chat_messages).values({
       id,
       chatId,
       senderId: model, // Ensure senderId is passed correctly
@@ -314,7 +316,7 @@ export async function chatEventWsHandler(chatId: string, ws: WSContext<ServerWeb
   if (!vk_client.isOpen) await vk_client.connect();
 
   if ((await vk_client.exists(`chat:${chatId}:activeMessage`)) === 1) {
-    if (ws.readyState == 1) {
+    if (ws.readyState === 1) {
       ws.send(
         JSON.stringify({
           jsonrpc: "2.0",

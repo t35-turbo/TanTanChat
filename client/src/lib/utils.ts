@@ -1,27 +1,29 @@
-import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
-import { toast } from 'sonner'
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
-export function toastEnterAPIKey(reason: 'missing' | 'invalid' = 'missing', openModal?: () => void) {
-  if (reason === 'invalid') {
-    toast.error("Invalid OpenRouter Key.", {
-      action: openModal ? {
-        label: "Re-Enter Key",
-        onClick: openModal,
-      } : undefined,
-    });
-  } else if (reason === 'missing') {
-    toast.error("Please set your OpenRouter Key first.", {
-      action: openModal ? {
-        label: "Enter Key",
-        onClick: openModal,
-      } : undefined,
-    });
-  } else {
-    throw new Error(`Invalid reason: ${reason}`);
-  }
+export function formatDate(date: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+export function formatRelativeTime(date: Date) {
+  const now = new Date();
+  const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+
+  if (diffInHours < 1) return "Less than an hour ago";
+  if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? "s" : ""} ago`;
+
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return `${diffInDays} day${diffInDays > 1 ? "s" : ""} ago`;
+
+  return formatDate(date);
 }
