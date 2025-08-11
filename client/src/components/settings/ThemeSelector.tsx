@@ -12,7 +12,7 @@ const baseThemes = [
   {
     value: "latte" as const,
     label: "Latte",
-    color: "dark:bg[#eff1f5] bg-[#eff1f5] hover:border-4",
+    color: "dark:bg-[#eff1f5] bg-[#eff1f5] hover:border-4",
   },
   {
     value: "frappe" as const,
