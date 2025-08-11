@@ -1,4 +1,4 @@
-import { betterAuth, User } from "better-auth";
+import { betterAuth, type User } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
