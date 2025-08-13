@@ -2,12 +2,13 @@
   "compilerOptions": {
     "target": "es2022",
     "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
     "strict": true,
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx",
     "skipDefaultLibCheck": true,
     "skipLibCheck": true,
-    "composite": true
+    "composite": true,
+    "noEmit": true
   },
   "include": ["src/**/*"]
 }
