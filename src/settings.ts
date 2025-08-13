@@ -9,23 +9,6 @@ export const settingsRouter = router({
   }),
 
   set: authProcedure.input(UserSettingsUpdate.omit({ api_keys: true })).mutation(async (opts) => {
-    await db
-      .insert(user_settings)
-      .values({
-        user_id: opts.ctx.user.id,
-        ...{
-          ...opts.input,
-        },
-      })
-      .onConflictDoUpdate({
-        target: user_settings.user_id,
-        set: {
-          ...Object.fromEntries(
-            Object.entries({
-              ...opts.input,
-            }).filter(([_, value]) => value !== undefined),
-          ),
-        },
-      });
+    await db.update(user_settings).set(opts.input).where(eq(user_settings.user_id, opts.ctx.user.id));
   }),
 });

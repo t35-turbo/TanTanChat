@@ -287,7 +287,7 @@ export function UserActionBar({
       return result;
     },
     onSuccess: (result) => {
-      toast.success(result.message || `Successfully deleted ${selectedCount} user${selectedCount === 1 ? "" : "s"}`);
+      toast.success(result.data.message || `Successfully deleted ${selectedCount} user${selectedCount === 1 ? "" : "s"}`);
       queryClient.invalidateQueries({ queryKey: trpc.admin.users.paginatedSearchList.infiniteQueryKey() });
       queryClient.invalidateQueries({ queryKey: trpc.admin.users.pagesCount.queryKey() });
       table.toggleAllRowsSelected(false);

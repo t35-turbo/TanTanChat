@@ -55,9 +55,9 @@ export function SidebarComponent() {
                 </NavLink>
               </SettingsMenuButton>
               <SettingsMenuButton>
-                <NavLink to="/settings/keys">
+                <NavLink to="/settings/providers">
                   <Key />
-                  Key Management
+                  AI Providers
                 </NavLink>
               </SettingsMenuButton>
             </SidebarMenu>
@@ -141,8 +141,8 @@ function NavLink({
   className?: string;
 }) {
   return (
-    <RouterLink 
-      to={to} 
+    <RouterLink
+      to={to}
       className={className}
       activeOptions={{ exact: true }}
       activeProps={{

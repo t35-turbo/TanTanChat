@@ -148,8 +148,8 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
             const fileContents =
               m.files && m.files.length > 0
                 ? (await Promise.all(m.files.map(fileMsgGenerator))).filter(
-                    (item): item is NonNullable<typeof item> => item !== undefined,
-                  )
+                  (item): item is NonNullable<typeof item> => item !== undefined,
+                )
                 : [];
 
             return {
@@ -220,6 +220,7 @@ export async function getActiveMessage(chatId: string) {
   return await vk_client.get(`chat:${chatId}:activeMessage`);
 }
 
+// TODO: make titleGenerator customizable
 export async function titleGenerator(
   chatId: string,
   message: string,
