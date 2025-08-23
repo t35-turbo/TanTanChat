@@ -7,6 +7,7 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createGroq } from "@ai-sdk/groq";
 import { createMistral } from "@ai-sdk/mistral";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 
 // Unsupported providers (commented out)
 // import { createAmazonBedrock } from "@ai-sdk/amazon-bedrock";
@@ -132,9 +133,7 @@ export function build_provider(opts: ProviderOptions) {
       });
 
     case "openrouter":
-      return createOpenAI({
-        name: "openrouter",
-        baseURL: "https://openrouter.ai/api/v1",
+      return createOpenRouter({
         ...opts,
         headers: commonHeaders,
       });

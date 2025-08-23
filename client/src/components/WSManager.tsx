@@ -1,4 +1,4 @@
-import { queryClient, trpc } from "@/lib/trpc";
+import { __client, queryClient, trpc } from "@/lib/trpc";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { z } from "zod/v4-mini";
 
@@ -20,7 +20,7 @@ const RpcActiveMessage = z.object({
 const RpcInvalidate = z.object({
   jsonrpc: z.literal("2.0"),
   method: z.literal("invalidate"),
-  params: z.string(),
+  params: z.array(z.string()),
   id: z.optional(z.undefined()),
 });
 const RpcChunk = z.object({
@@ -94,10 +94,9 @@ class WSClient extends EventTarget {
           });
           break;
         case "invalidate":
-          event = new CustomEvent("invalidate", {
-            detail: { cacheKey: msg.params },
-          });
-          break;
+          console.log("invalidating", msg.params);
+          queryClient.invalidateQueries({ queryKey: [msg.params] });
+          return;
         case "chunk":
           event = new CustomEvent("chunk", {
             detail: { chunk: msg.params, id: String(msg.id) },
@@ -161,20 +160,6 @@ export function WSProvider({ children, chatId }: { children: React.ReactNode; ch
   useEffect(() => {
     clientRef.current.reconnectTo(chatId);
   }, [chatId]);
-
-  useEffect(() => {
-    const invalidator = (evt: Event) => {
-      const customEvt = evt as CustomEvent<{ cacheKey: string }>;
-      queryClient.invalidateQueries({ queryKey: [customEvt.detail.cacheKey] });
-    };
-
-    clientRef.current.addEventListener("invalidate", invalidator);
-
-    return () => {
-      clientRef.current?.removeEventListener("invalidate", invalidator);
-      clientRef.current?.close();
-    };
-  }, []);
 
   return <WSEventProvider.Provider value={clientRef.current}>{children}</WSEventProvider.Provider>;
 }

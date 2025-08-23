@@ -1,3 +1,4 @@
+import { generateText } from "ai";
 import type { BunFile, ServerWebSocket } from "bun";
 import { eq } from "drizzle-orm";
 import type { WSContext } from "hono/ws";
@@ -6,9 +7,9 @@ import { z } from "zod/v4";
 import { db } from "./db/index.ts";
 import * as vk from "./db/redis.ts";
 import { chat_messages, chats } from "./db/schema.ts";
+import { build_provider as buildProvider } from "./lib/ai.ts";
 import { default_prompt } from "./lib/sys_prompts.ts";
 import { generateId } from "./utils/id.ts";
-import { build_provider as buildProvider } from "./lib/ai.ts";
 
 export type Messages = {
   id: string;
@@ -149,8 +150,8 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
             const fileContents =
               m.files && m.files.length > 0
                 ? (await Promise.all(m.files.map(fileMsgGenerator))).filter(
-                  (item): item is NonNullable<typeof item> => item !== undefined,
-                )
+                    (item): item is NonNullable<typeof item> => item !== undefined,
+                  )
                 : [];
 
             return {
@@ -213,7 +214,7 @@ async function newCompletion(id: string, chatId: string, messages: Messages, opt
 
 export async function broadcastNewMessage(chatId: string) {
   if (!vk_client.isOpen) await vk_client.connect();
-  return await vk_client.publish(`chat:${chatId}:events`, "invalidate messages");
+  return await vk_client.publish(`chat:${chatId}:events`, `invalidate ["chats", "threadHistory"]`);
 }
 
 export async function getActiveMessage(chatId: string) {
@@ -228,38 +229,24 @@ export async function titleGenerator(
   userId: string[],
   opts: { apiKey: string; model: string },
 ) {
+  console.log("Generating Title");
   const client = buildProvider({
     provider: "openrouter",
-    apiKey: opts.apiKey
-  })
-
-  const oai_client = new OpenAI({
-    baseURL: "https://openrouter.ai/api/v1",
     apiKey: opts.apiKey,
-    defaultHeaders: {
-      "X-Title": "TanTan Chat",
-    },
   });
 
-  const completion = await oai_client.chat.completions.create({
-    model: opts.model,
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a title generator. The next message will be a user's query. You will generate a short title based on the query. Use only plain text without any markdown formatting.",
-      },
-      {
-        role: "user",
-        content: message,
-      },
-    ],
+  const response = await generateText({
+    model: client(opts.model),
+    system:
+      "You are a title generator. The next message will be a user's query. You will generate a short title based on the query. Use only plain text without any markdown formatting.",
+    prompt: message,
   });
 
-  if (completion.choices[0].message.content) {
-    await db.update(chats).set({ title: completion.choices[0].message.content }).where(eq(chats.id, chatId));
+  console.log(response.text);
+  if (response.text) {
+    await db.update(chats).set({ title: response.text }).where(eq(chats.id, chatId));
     if (!vk_client.isOpen) await vk_client.connect();
-    userId.forEach((user) => vk_client.publish(`user:${user}:events`, `invalidate chats`));
+    userId.forEach((user) => vk_client.publish(`user:${user}:events`, `invalidate ["chats", "listThreads"]`));
   }
 }
 
@@ -396,5 +383,5 @@ export async function wsMessageSubscriber(msgId: string, ws: WSContext<ServerWeb
 }
 
 export async function invalidateCache(userId: string, key: string) {
-  vk_client.publish(`user:${userId}:events`, `invalidate ${key}`);
+  vk_client.publish(`user:${userId}:events`, `invalidate ["${key}"]`);
 }

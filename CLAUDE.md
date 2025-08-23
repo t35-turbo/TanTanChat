@@ -105,7 +105,7 @@ Key relationships:
 context7_resolve-library-id({ libraryName: "react-query" })
 
 // 2. Then get the documentation
-context7_get-library-docs({ 
+context7_get-library-docs({
   context7CompatibleLibraryID: "/tanstack/query",
   topic: "mutations" // Optional: focus on specific topics
 })
@@ -260,9 +260,9 @@ const setUserPassword = async (userId: string, newPassword: string) => {
 // Generate password reset link for user
 const generatePasswordResetLink = async (userId: string) => {
   try {
-    const result = await authClient.admin.generatePasswordResetLink({ 
-      userId, 
-      sendEmail: false 
+    const result = await authClient.admin.generatePasswordResetLink({
+      userId,
+      sendEmail: false
     });
     console.log("Reset link:", result.resetLink);
     // Copy to clipboard or share with user
@@ -320,21 +320,21 @@ export function AdminUserManager({ userId }: { userId: string }) {
 
   return (
     <div>
-      <button 
+      <button
         onClick={() => updateNameMut.mutate("New Name")}
         disabled={updateNameMut.isPending}
       >
         {updateNameMut.isPending ? "Updating..." : "Update Name"}
       </button>
-      
-      <button 
+
+      <button
         onClick={() => deleteUserMut.mutate()}
         disabled={deleteUserMut.isPending}
         className="bg-red-500 text-white"
       >
         {deleteUserMut.isPending ? "Deleting..." : "Delete User"}
       </button>
-      
+
       {updateNameMut.error && (
         <p className="text-red-600">{updateNameMut.error.message}</p>
       )}
