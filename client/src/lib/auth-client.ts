@@ -1,7 +1,7 @@
 import { redirect } from "@tanstack/react-router";
 import { inferAdditionalFields } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
-import type { auth } from "../../../src/lib/auth";
+import type { auth } from "../../../server/src/lib/auth";
 import { customAdminClient } from "./admin-client-plugin";
 import { __client } from "./trpc";
 

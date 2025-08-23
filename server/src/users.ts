@@ -1,10 +1,10 @@
 import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import z from "zod";
-import { db } from "./db";
-import { user } from "./db/schema";
-import { roles } from "./db/settings.schema";
-import { authProcedure, isAdmin, notAdminError, router } from "./trpc";
+import { db } from "./db/index.ts";
+import { user } from "./db/schema.ts";
+import { roles } from "./db/schema.ts";
+import { authProcedure, isAdmin, notAdminError, router } from "./trpc.ts";
 
 export const usersRouter = router({
   /**

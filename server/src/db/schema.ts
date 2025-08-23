@@ -1,7 +1,7 @@
 import { desc } from "drizzle-orm";
 import { boolean, index, integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
-import { generateId } from "../utils/id";
-import { roles } from "./settings.schema";
+import { generateId } from "../utils/id.ts";
+import { roles } from "./settings.schema.ts";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -134,4 +134,4 @@ export const api_keys = pgTable("api_keys", {
 });
 
 // Re-export settings schemas
-export * from "./settings.schema";
+export * from "./settings.schema.ts";

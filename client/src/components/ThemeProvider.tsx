@@ -1,4 +1,4 @@
-import type { Theme } from "@/../../src/db/settings.schema";
+import type { Theme } from "@/../../server/src/db/settings.schema";
 import { useTheme } from "@/hooks/use-theme";
 import { __client, trpc } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
@@ -74,3 +74,5 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   return <>{children}</>;
 }
+
+export type { Theme } from "@/../../server/src/db/settings.schema";

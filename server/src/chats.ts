@@ -1,12 +1,12 @@
 import { TRPCError } from "@trpc/server";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod/v4";
-import { db } from "./db";
-import { chat_messages, chats, user } from "./db/schema";
-import { getFile } from "./files";
-import * as sync from "./sync";
-import { authProcedure, isAdmin, router } from "./trpc";
-import { generateId } from "./utils/id";
+import { db } from "./db/index.ts";
+import { chat_messages, chats, user } from "./db/schema.ts";
+import { getFile } from "./files.ts";
+import * as sync from "./sync.ts";
+import { authProcedure, isAdmin, router } from "./trpc.ts";
+import { generateId } from "./utils/id.ts";
 
 type Message = {
   id: string;

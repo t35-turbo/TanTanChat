@@ -3,11 +3,12 @@ import { eq } from "drizzle-orm";
 import type { WSContext } from "hono/ws";
 import { OpenAI } from "openai";
 import { z } from "zod/v4";
-import { db } from "./db";
-import * as vk from "./db/redis";
-import { chat_messages, chats } from "./db/schema";
-import { default_prompt } from "./lib/sys_prompts";
-import { generateId } from "./utils/id";
+import { db } from "./db/index.ts";
+import * as vk from "./db/redis.ts";
+import { chat_messages, chats } from "./db/schema.ts";
+import { default_prompt } from "./lib/sys_prompts.ts";
+import { generateId } from "./utils/id.ts";
+import { build_provider as buildProvider } from "./lib/ai.ts";
 
 export type Messages = {
   id: string;
@@ -227,6 +228,11 @@ export async function titleGenerator(
   userId: string[],
   opts: { apiKey: string; model: string },
 ) {
+  const client = buildProvider({
+    provider: "openrouter",
+    apiKey: opts.apiKey
+  })
+
   const oai_client = new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
     apiKey: opts.apiKey,

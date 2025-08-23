@@ -1,11 +1,11 @@
 import { betterAuth, type User } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { eq } from "drizzle-orm";
-import { db } from "../db";
-import { files, system_settings, user_settings } from "../db/schema";
-import { customAdmin } from "./admin-plugin";
-import env from "./env";
-import { sendMessage } from "./messenger";
+import { db } from "../db/index.ts";
+import { files, system_settings, user_settings } from "../db/schema.ts";
+import { customAdmin } from "./admin-plugin.ts";
+import env from "./env.ts";
+import { sendMessage } from "./messenger.ts";
 
 const adapter = drizzleAdapter(db, {
   // provider: databaseUrl?.startsWith("postgresql") ? "pg" : "sqlite",

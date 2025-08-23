@@ -1,24 +1,21 @@
 import { trpcServer } from "@hono/trpc-server";
-import type { ServerWebSocket } from "bun";
 import { Hono } from "hono";
-import { createBunWebSocket, serveStatic } from "hono/bun";
+import { serveStatic, upgradeWebSocket, websocket } from "hono/bun";
 import { z } from "zod/v4";
-import { adminRouter } from "./admin";
-import { chatRouter } from "./chats";
-import { seedDefaults } from "./db";
-import { filesRouter } from "./files";
-import { auth } from "./lib/auth";
-import { settingsRouter } from "./settings";
-import * as sync from "./sync";
-import { router } from "./trpc";
-import { usersRouter } from "./users";
+import { adminRouter } from "./admin.ts";
+import { chatRouter } from "./chats.ts";
+import { seedDefaults } from "./db/index.ts";
+import { filesRouter } from "./files.ts";
+import { auth } from "./lib/auth.ts";
+import { settingsRouter } from "./settings.ts";
+import * as sync from "./sync.ts";
+import { router } from "./trpc.ts";
+import { usersRouter } from "./users.ts";
 
 const PORT = 3001;
 
 // Initialize default roles
-seedDefaults();
-
-const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
+await seedDefaults();
 
 const appRouter = router({
   chats: chatRouter,
@@ -68,7 +65,9 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 app.get("/api/heartbeat", (c) => c.text("OK"));
 
-app.use("/*", serveStatic({ root: "./client/dist" }));
+if (await Bun.file("./client/dist").exists()) {
+  app.use("/*", serveStatic({ root: "./client/dist" }));
+}
 
 // SPA fallback - serve index.html for non-API 404s
 app.notFound(async (c) => {

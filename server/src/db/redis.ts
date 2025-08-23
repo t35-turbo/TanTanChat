@@ -1,5 +1,5 @@
 import * as redis from "redis";
-import env from "../lib/env";
+import env from "../lib/env.ts";
 
 export const createClient = (): redis.RedisClientType =>
   redis.createClient({

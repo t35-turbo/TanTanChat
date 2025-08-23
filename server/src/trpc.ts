@@ -1,9 +1,9 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import superjson from "superjson";
-import { db } from "./db";
-import { roles } from "./db/settings.schema";
-import type { auth } from "./lib/auth";
+import { db } from "./db/index.ts";
+import { roles } from "./db/schema.ts";
+import type { auth } from "./lib/auth.ts";
 
 type Context = {
   user: typeof auth.$Infer.Session.user | null;

@@ -9,9 +9,9 @@ import { createFileRoute, Link, redirect, useNavigate, useSearch } from "@tansta
 import { useState } from "react";
 
 export const Route = createFileRoute("/login")({
-  beforeLoad: async ({ search }) => {
+  beforeLoad: async () => {
     if ((await authClient.getSession()).data) {
-      throw redirect({ to: search.redirect ?? "/chat" });
+      throw redirect({ to: "/chat" });
     }
   },
   component: RouteComponent,
@@ -36,7 +36,7 @@ function RouteComponent() {
       });
 
       if (data) {
-        navigate({ to: search.redirect ?? "/chat" });
+        navigate({ to: "/chat" });
       } else if (error) {
         setError(error.message ?? error.statusText);
       }

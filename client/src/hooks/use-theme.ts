@@ -1,4 +1,4 @@
-import type { Theme } from "@/../../src/db/settings.schema";
+import type { Theme } from "@/components/ThemeProvider";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 

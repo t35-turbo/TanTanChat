@@ -1,7 +1,7 @@
 import { generateId, type BetterAuthPlugin } from "better-auth";
 import { APIError, createAuthEndpoint, sessionMiddleware } from "better-auth/api";
 import { z } from "zod/v4";
-import { isAdmin } from "../trpc";
+import { isAdmin } from "../trpc.ts";
 
 async function throwIfAdmin(role: string) {
   if (!(await isAdmin(role))) {

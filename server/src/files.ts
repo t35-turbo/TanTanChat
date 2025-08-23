@@ -6,11 +6,11 @@ import mime from "mime";
 import * as crypto from "node:crypto";
 import { mkdirSync, readdirSync } from "node:fs";
 import { z } from "zod/v4";
-import { db } from "./db";
-import { files } from "./db/schema";
-import { generateId } from "./utils/id";
-import env from "./lib/env";
-import { authProcedure, router } from "./trpc";
+import { db } from "./db/index.ts";
+import { files } from "./db/schema.ts";
+import env from "./lib/env.ts";
+import { authProcedure, router } from "./trpc.ts";
+import { generateId } from "./utils/id.ts";
 
 if (env.USE_S3 === false) {
   try {

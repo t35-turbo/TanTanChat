@@ -1,7 +1,7 @@
 import { and, count, countDistinct, desc, eq, gt, ilike, inArray, lt, or, SQL } from "drizzle-orm";
 import { createUpdateSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { db } from "./db";
+import { db } from "./db/index.ts";
 import {
   chat_messages,
   chats,
@@ -10,9 +10,9 @@ import {
   SystemSettingsSelect,
   SystemSettingsUpdate,
   user,
-} from "./db/schema";
-import { auth } from "./lib/auth";
-import { adminProcedure, publicProcedure, router } from "./trpc";
+} from "./db/schema.ts";
+import { auth } from "./lib/auth.ts";
+import { adminProcedure, publicProcedure, router } from "./trpc.ts";
 
 const systemSettingsKeys = z.enum(
   Object.keys(SystemSettingsSelect.shape) as [keyof SystemSettingsSelect, ...Array<keyof SystemSettingsSelect>],

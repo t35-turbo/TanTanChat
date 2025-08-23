@@ -1,4 +1,4 @@
-import type { Theme } from "@/../../src/db/settings.schema";
+import type { Theme } from "../ThemeProvider";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useState } from "react";

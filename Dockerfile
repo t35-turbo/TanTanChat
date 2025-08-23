@@ -33,11 +33,11 @@ RUN addgroup --system --gid 1001 bunjs
 RUN adduser --system --uid 1001 bunjs
 
 # Copy backend files
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/src/ ./src/
-COPY --from=builder /app/drizzle.config.ts ./
-COPY --from=builder /app/drizzle/ ./drizzle/
+COPY --from=builder /app/node_modules ./server/node_modules
+COPY --from=builder /app/package.json ./server/
+COPY --from=builder /app/src/ ./server/src/
+COPY --from=builder /app/drizzle.config.ts ./server/
+COPY --from=builder /app/drizzle/ ./server/drizzle/
 
 # Copy environment file if it exists
 COPY --from=builder /app/.env* ./
