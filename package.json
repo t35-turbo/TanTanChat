@@ -1,6 +1,8 @@
 {
   "scripts": {
     "dev": "dotenv -- concurrently -n 'client,server' -c 'blue,magenta' 'pnpm -C client dev' 'pnpm -C server dev'",
+    "db:push": "dotenv -- pnpm -C server db:push",
+    "db:studio": "dotenv -- pnpm -C server db:studio",
     "typecheck": "pnpm -C client typecheck && pnpm -C server typecheck"
   },
   "devDependencies": {

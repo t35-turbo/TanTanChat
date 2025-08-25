@@ -8,6 +8,8 @@ import { createGroq } from "@ai-sdk/groq";
 import { createMistral } from "@ai-sdk/mistral";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { FilePart, ImagePart, UserContent } from "ai";
+import { BunFile } from "bun";
 
 // Unsupported providers (commented out)
 // import { createAmazonBedrock } from "@ai-sdk/amazon-bedrock";
@@ -288,5 +290,48 @@ export function build_provider(opts: ProviderOptions) {
       throw new Error(
         `Unsupported provider: ${opts.provider}. Only google, anthropic, openai, openrouter, mistral, deepseek, and groq are currently supported.`,
       );
+  }
+}
+
+const FileMetadata = z.object({
+  id: z.string(),
+  filename: z.string(),
+  size: z.number(),
+  hash: z.string(),
+  mime: z.string(),
+  ownedBy: z.string(),
+  onS3: z.boolean(),
+  fileKey: z.string(),
+  createdAt: z.date(),
+});
+type FileMetadata = z.infer<typeof FileMetadata>;
+
+async function buildFileContent(file: BunFile, metadata: FileMetadata): Promise<UserContent[number]> {
+  const buffer = await file.arrayBuffer();
+
+  if (metadata.mime === "application/pdf") {
+    return {
+      type: "file",
+      mediaType: metadata.mime,
+      filename: metadata.filename,
+      data: buffer,
+    };
+  } else if (metadata.mime.startsWith("image")) {
+    return {
+      type: "image",
+      mediaType: metadata.mime,
+      image: buffer,
+    };
+  } else if (metadata.mime.startsWith("text")) {
+    return {
+      type: "text",
+      text: `The user uploaded a text file.
+<file>
+  <filename>${metadata.filename}</filename>
+  <file_contents type="${metadata.mime}">
+  ${await file.text()}
+  </file_contents>
+</file>`,
+    };
   }
 }
