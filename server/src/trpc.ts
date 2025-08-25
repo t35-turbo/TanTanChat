@@ -42,6 +42,11 @@ export const authProcedure = publicProcedure.use(async (opts) => {
   });
 });
 
+/**
+ * Checks if a given role has admin privileges. Resolves to `true` if the user is admin.
+ *
+ * @param role - The role ID to check for admin status
+ */
 export async function isAdmin(role: string): Promise<boolean> {
   return (
     (

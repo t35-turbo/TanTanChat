@@ -6,16 +6,23 @@ type Provider = {
   name: string;
   id: string;
   type: string;
-  base_url: string;
-  models_count: number;
+  baseUrl: string;
+  modelsCount: number;
 };
+
+export type ProviderAction = (opts: {
+  provider_id: string;
+  action: "delete" | "edit"
+}) => void
 
 export default function ProvidersTable({
   providers,
-  show_type = false,
+  showType = false,
+  action
 }: {
   providers: Provider[];
-  show_type?: boolean;
+  showType?: boolean;
+  action?: ProviderAction
 }) {
   const columns: ColumnDef<Provider>[] = useMemo(
     (): ColumnDef<Provider>[] => [
@@ -35,20 +42,20 @@ export default function ProvidersTable({
       {
         accessorKey: "models_count",
         header: "Models",
-        cell: ({ row }) => row.original.models_count + " Models",
+        cell: ({ row }) => row.original.modelsCount + " Models",
       },
       {
         id: "actions",
       },
     ],
-    [show_type],
+    [showType],
   );
 
   const table = useReactTable({
     data: providers,
     state: {
       columnVisibility: {
-        type: show_type,
+        type: showType,
       },
     },
     columns,

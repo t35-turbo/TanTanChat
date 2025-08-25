@@ -49,7 +49,7 @@ export type UserSettingsUpdate = z.infer<typeof UserSettingsUpdate>;
 export const email_provider_enum = pgEnum("email_provider", ["none"]);
 export const settings_enum = pgEnum("system_setting", ["setting"]);
 export const system_settings = pgTable("system_settings", {
-  key: settings_enum().primaryKey().unique().notNull().default("setting"),
+  key: settings_enum().primaryKey().notNull().default("setting"),
 
   theme: json().$type<Theme>().default({ base: "mocha", color: "sapphire" }).notNull(),
   allow_new_signups: boolean().default(false).notNull(),
@@ -63,7 +63,7 @@ export const SystemSettingsUpdate = createUpdateSchema(system_settings);
 export type SystemSettingsUpdate = z.infer<typeof SystemSettingsUpdate>;
 
 export const roles = pgTable("roles", {
-  id: text("id").primaryKey().unique().notNull(),
+  id: text("id").primaryKey().notNull(),
   name: text("name").notNull(),
 
   color: text("color"),
@@ -91,40 +91,43 @@ export type RolesInsert = z.infer<typeof RolesInsert>;
  * - role: The key has access to resources for a specific role.
  * - user: The key has access to resources for a specific user.
  */
-export const api_key_scope_enum = pgEnum("api_key_scope", ["global", "role", "user"]);
-export const api_keys = pgTable("api_keys", {
-  /**
-   * Unique identifier for the API key
-   */
+export const provider_scope_enum = pgEnum("provider_scope", ["global", "role", "user"]);
+export const provider_type_enum = pgEnum("provider_type", [
+  "openai",
+  "google",
+  "anthropic",
+  "mistral",
+  "deepseek",
+  "grok",
+]);
+export const providers = pgTable("providers", {
+  // Unique identifier for the API key
   id: text("id")
     .primaryKey()
     .$defaultFn(() => generateId()),
-  /**
-   * Whether the API key is currently enabled
-   */
+  // Name of the provider
+  name: text("name"),
+  // Whether the API key is currently enabled
   enabled: boolean("enabled").notNull().default(true),
-  /**
-   * Scope of the API key (global, role, or user)
-   */
-  scope: api_key_scope_enum().notNull(),
-  /**
-   * ID of the user who created this API key
-   */
-  created_by: text("created_by").notNull(),
-  /**
-   * ID of the entity this key has access to (user ID, role ID, etc.)
-   */
-  access_id: text("access_id").notNull(),
-  /**
-   * AI provider this key is for (e.g., "openai", "anthropic")
-   */
-  provider: text("provider").notNull(),
-  /**
-   * The actual API key value
-   */
-  key: text("key").notNull(),
-  /**
-   * Custom base URL for the provider, if applicable
-   */
-  custom_url: text("custom_url"),
+  // Scope of the API key (global, role, or user)
+  scope: provider_scope_enum().notNull(),
+  // ID of the user who created this API key
+  createdBy: text("created_by").notNull(),
+  // ID of the entity this key has access to (user ID, role ID, etc.)
+  accessId: text("access_id").notNull(),
+  // AI provider this key is for (e.g., "openai", "anthropic")
+  type: provider_type_enum().notNull(),
+  // The actual API key value
+  apiKey: text("key").notNull(),
+  // Custom base URL for the provider, if applicable
+  baseUrl: text("base_url"),
 });
+
+export const ProvidersInsert = createInsertSchema(providers);
+export type ProvidersInsert = z.infer<typeof ProvidersInsert>;
+
+export const ProvidersUpdate = createUpdateSchema(providers);
+export type ProvidersUpdate = z.infer<typeof ProvidersUpdate>;
+
+export const ProvidersSelect = createSelectSchema(providers);
+export type ProvidersSelect = z.infer<typeof ProvidersSelect>;
