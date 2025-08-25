@@ -124,14 +124,5 @@ export const files = pgTable("files", {
     .notNull(),
 });
 
-export const api_keys = pgTable("api_keys", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => generateId()),
-  provider: text("provider").notNull(),
-  key: text("key").notNull(),
-  custom_url: text("custom_url"),
-});
-
 // Re-export settings schemas
 export * from "./settings.schema.ts";

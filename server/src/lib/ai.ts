@@ -333,5 +333,7 @@ async function buildFileContent(file: BunFile, metadata: FileMetadata): Promise<
   </file_contents>
 </file>`,
     };
+  } else {
+    throw new Error(`Unsupported file type: ${metadata.mime}`);
   }
 }
