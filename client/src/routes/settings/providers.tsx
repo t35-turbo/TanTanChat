@@ -1,6 +1,6 @@
 import { PageBack } from "@/components/settings/BackButtons";
 import { LocalKey } from "@/components/settings/LocalKey";
-import ProvidersTable, { type ProviderAction } from "@/components/settings/ProvidersTable";
+import ProvidersTable, { providerTypes, type ProviderAction, type ProviderType } from "@/components/settings/ProvidersTable";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
@@ -12,8 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { __client, type RouterOutput } from "@/lib/trpc";
-import { useMutation } from "@tanstack/react-query";
+import { __client, trpc, type RouterOutput } from "@/lib/trpc";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { ChevronDown, Plus } from "lucide-react";
 import { useState } from "react";
@@ -22,21 +22,16 @@ export const Route = createFileRoute("/settings/providers")({
   component: RouteComponent,
 });
 
-type ProviderType = RouterOutput["settings"]["getProvider"]["type"];
-const providerTypes: Record<ProviderType, { id: ProviderType; label: string; defaultBaseURL: string }> = {
-  openai: { id: "openai", label: "OpenAI", defaultBaseURL: "https://api.openai.com/v1" },
-  anthropic: { id: "anthropic", label: "Anthropic", defaultBaseURL: "https://api.anthropic.com/v1" },
-  google: { id: "google", label: "Google", defaultBaseURL: "https://generativelanguage.googleapis.com/v1beta" },
-  mistral: { id: "mistral", label: "Mistral", defaultBaseURL: "https://api.mistral.ai/v1" },
-  deepseek: { id: "deepseek", label: "DeepSeek", defaultBaseURL: "https://api.deepseek.com/v1" },
-  grok: { id: "grok", label: "Grok", defaultBaseURL: "https://api.x.ai/v1" },
-} as const;
-
 function RouteComponent() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const providerAction: ProviderAction = () => {}; // to be a useMutation
 
+  const providers = useQuery(trpc.settings.listProviders.queryOptions());
+
+  console.log("data", providers.data);
+
   return (
-    <Dialog>
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <div className="flex w-full flex-col gap-2 p-4">
         <PageBack />
 
@@ -45,7 +40,7 @@ function RouteComponent() {
 
         <div className="flex">
           <DialogTrigger asChild>
-            <Button className="ml-auto">
+            <Button className="ml-auto" onClick={() => setIsDialogOpen(true)}>
               <Plus />
               Add Provider
             </Button>
@@ -54,12 +49,14 @@ function RouteComponent() {
         <ProvidersTable
           providers={[
             {
+              enabled: true,
               name: "Local OpenRouter",
               id: "openrouter_local",
-              type: "openai",
+              type: "openrouter",
               baseUrl: "https://openrouter.ai/api/v1",
-              modelsCount: 0,
+              modelsCount: "All",
             },
+            ...(providers.isSuccess ? providers.data : []),
           ]}
           action={providerAction}
         />
@@ -90,6 +87,9 @@ function AddProviderDialog() {
         name: target.name.value,
         apiKey: target.apiKey.value,
       });
+    },
+    onSuccess: () => {
+      // navigate to the provider settings
     },
   });
 

@@ -65,41 +65,6 @@ const providers = [
 
 export type Providers = (typeof providers)[number];
 
-export const providerFriendlyNames: Record<Providers, string> = {
-  // Supported providers only
-  google: "Google Generative AI",
-  anthropic: "Anthropic Claude",
-  openai: "OpenAI",
-  openrouter: "OpenRouter",
-  mistral: "Mistral AI",
-  deepseek: "DeepSeek",
-  groq: "Groq",
-
-  // Unsupported providers (commented out)
-  // "amazon-bedrock": "Amazon Bedrock",
-  // cohere: "Cohere",
-  // "google-vertex": "Google Vertex AI",
-  // groq: "Groq",
-  // togetherai: "Together AI",
-  // cerebras: "Cerebras",
-  // fireworks: "Fireworks AI",
-  // replicate: "Replicate",
-  // perplexity: "Perplexity",
-  // xai: "xAI Grok",
-  // vercel: "Vercel AI",
-  // deepinfra: "DeepInfra",
-  // elevenlabs: "ElevenLabs",
-  // assemblyai: "AssemblyAI",
-  // deepgram: "Deepgram",
-  // gladia: "Gladia",
-  // lmnt: "LMNT",
-  // revai: "Rev.ai",
-  // azure: "Azure OpenAI",
-  // fal: "Fal",
-  // luma: "Luma AI",
-  // hume: "Hume AI",
-} as const;
-
 export const ProviderOptions = z.object({
   provider: z.enum(providers),
   baseURL: z.url().optional(),

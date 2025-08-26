@@ -1,8 +1,15 @@
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import z from "zod";
 import { db } from "./db/index.ts";
-import { ProvidersInsert, ProvidersUpdate, UserSettingsUpdate, providers, user_settings } from "./db/schema.ts";
+import {
+  ProvidersInsert,
+  ProvidersUpdate,
+  UserSettingsUpdate,
+  provider_models,
+  providers,
+  user_settings,
+} from "./db/schema.ts";
 import { authProcedure, isAdmin, router } from "./trpc.ts";
 
 const providerProcedure = authProcedure.input(z.object({ id: z.string() })).use(async (opts) => {
@@ -39,6 +46,21 @@ export const settingsRouter = router({
         .insert(providers)
         .values({ createdBy: opts.ctx.user.id, accessId: opts.ctx.user.id, ...opts.input });
     }),
+  listProviders: authProcedure.query(async (opts) => {
+    return await db
+      .select({
+        enabled: providers.enabled,
+        name: providers.name,
+        id: providers.id,
+        type: providers.type,
+        baseUrl: providers.baseUrl,
+        modelsCount: count(provider_models.model_id),
+      })
+      .from(providers)
+      .where(and(eq(providers.createdBy, opts.ctx.user.id), eq(providers.accessId, opts.ctx.user.id)))
+      .leftJoin(provider_models, eq(provider_models.provider_id, providers.id))
+      .groupBy(providers.id);
+  }),
   getProvider: providerProcedure.mutation(async (opts) => {
     return (await db.select().from(providers).where(eq(providers.id, opts.input.id)))[0];
   }),

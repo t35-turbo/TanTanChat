@@ -1,4 +1,4 @@
-import { boolean, json, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, json, pgEnum, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema, createUpdateSchema } from "drizzle-zod";
 import type z from "zod/v4";
 import { generateId } from "../utils/id.ts";
@@ -54,6 +54,14 @@ export const system_settings = pgTable("system_settings", {
   theme: json().$type<Theme>().default({ base: "mocha", color: "sapphire" }).notNull(),
   allow_new_signups: boolean().default(false).notNull(),
   email_provider: email_provider_enum().default("none").notNull(),
+
+  created_at: timestamp("created_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+  updated_at: timestamp("updated_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .$onUpdateFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
 });
 
 export const SystemSettingsSelect = createSelectSchema(system_settings);
@@ -96,17 +104,19 @@ export const provider_type_enum = pgEnum("provider_type", [
   "openai",
   "google",
   "anthropic",
+  "openrouter",
   "mistral",
   "deepseek",
-  "grok",
+  "groq",
 ]);
+export const model_type_enum = pgEnum("model_type", ["text", "image", "stt", "tts"]);
 export const providers = pgTable("providers", {
   // Unique identifier for the API key
   id: text("id")
     .primaryKey()
     .$defaultFn(() => generateId()),
   // Name of the provider
-  name: text("name"),
+  name: text("name").notNull(),
   // Whether the API key is currently enabled
   enabled: boolean("enabled").notNull().default(true),
   // Scope of the API key (global, role, or user)
@@ -120,7 +130,15 @@ export const providers = pgTable("providers", {
   // The actual API key value
   apiKey: text("key").notNull(),
   // Custom base URL for the provider, if applicable
-  baseUrl: text("base_url"),
+  baseUrl: text("base_url").notNull(),
+
+  created_at: timestamp("created_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+  updated_at: timestamp("updated_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .$onUpdateFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
 });
 
 export const ProvidersInsert = createInsertSchema(providers);
@@ -131,3 +149,38 @@ export type ProvidersUpdate = z.infer<typeof ProvidersUpdate>;
 
 export const ProvidersSelect = createSelectSchema(providers);
 export type ProvidersSelect = z.infer<typeof ProvidersSelect>;
+
+export const provider_models = pgTable(
+  "provider_models",
+  {
+    // Composite primary key from provider_id + model_id
+    provider_id: text("provider_id")
+      .notNull()
+      .references(() => providers.id, { onDelete: "cascade" }),
+    model_id: text("model_id").notNull(), // User-provided model identifier
+    model_name: text("model_name").notNull(), // Display name for the model
+    model_type: model_type_enum().notNull(), // Type of model (text, image, stt, tts)
+    enabled: boolean("enabled").notNull().default(true),
+
+    created_at: timestamp("created_at")
+      .$defaultFn(() => /* @__PURE__ */ new Date())
+      .notNull(),
+    updated_at: timestamp("updated_at")
+      .$defaultFn(() => /* @__PURE__ */ new Date())
+      .$onUpdateFn(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    // Composite primary key
+    primaryKey({ columns: [table.provider_id, table.model_id] }),
+  ],
+);
+
+export const ProviderModelsInsert = createInsertSchema(provider_models);
+export type ProviderModelsInsert = z.infer<typeof ProviderModelsInsert>;
+
+export const ProviderModelsUpdate = createUpdateSchema(provider_models);
+export type ProviderModelsUpdate = z.infer<typeof ProviderModelsUpdate>;
+
+export const ProviderModelsSelect = createSelectSchema(provider_models);
+export type ProviderModelsSelect = z.infer<typeof ProviderModelsSelect>;

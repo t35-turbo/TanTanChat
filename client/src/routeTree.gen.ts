@@ -26,6 +26,7 @@ import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminKeysRouteImport } from './routes/admin/keys'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin/users/index'
 import { Route as AdminRolesIndexRouteImport } from './routes/admin/roles/index'
+import { Route as SettingsProvidersProviderIdRouteImport } from './routes/settings/providers.$providerId'
 import { Route as AdminUsersUserIdRouteImport } from './routes/admin/users/$userId'
 import { Route as AdminRolesRoleRouteImport } from './routes/admin/roles/$role'
 
@@ -114,6 +115,12 @@ const AdminRolesIndexRoute = AdminRolesIndexRouteImport.update({
   path: '/roles/',
   getParentRoute: () => AdminRoute,
 } as any)
+const SettingsProvidersProviderIdRoute =
+  SettingsProvidersProviderIdRouteImport.update({
+    id: '/$providerId',
+    path: '/$providerId',
+    getParentRoute: () => SettingsProvidersRoute,
+  } as any)
 const AdminUsersUserIdRoute = AdminUsersUserIdRouteImport.update({
   id: '/users/$userId',
   path: '/users/$userId',
@@ -137,12 +144,13 @@ export interface FileRoutesByFullPath {
   '/admin/keys': typeof AdminKeysRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/chat/$chatId': typeof ChatChatIdRoute
-  '/settings/providers': typeof SettingsProvidersRoute
+  '/settings/providers': typeof SettingsProvidersRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/chat/': typeof ChatIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/admin/roles/$role': typeof AdminRolesRoleRoute
   '/admin/users/$userId': typeof AdminUsersUserIdRoute
+  '/settings/providers/$providerId': typeof SettingsProvidersProviderIdRoute
   '/admin/roles': typeof AdminRolesIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
 }
@@ -155,12 +163,13 @@ export interface FileRoutesByTo {
   '/admin/keys': typeof AdminKeysRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/chat/$chatId': typeof ChatChatIdRoute
-  '/settings/providers': typeof SettingsProvidersRoute
+  '/settings/providers': typeof SettingsProvidersRouteWithChildren
   '/admin': typeof AdminIndexRoute
   '/chat': typeof ChatIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/admin/roles/$role': typeof AdminRolesRoleRoute
   '/admin/users/$userId': typeof AdminUsersUserIdRoute
+  '/settings/providers/$providerId': typeof SettingsProvidersProviderIdRoute
   '/admin/roles': typeof AdminRolesIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
 }
@@ -177,12 +186,13 @@ export interface FileRoutesById {
   '/admin/keys': typeof AdminKeysRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/chat/$chatId': typeof ChatChatIdRoute
-  '/settings/providers': typeof SettingsProvidersRoute
+  '/settings/providers': typeof SettingsProvidersRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/chat/': typeof ChatIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/admin/roles/$role': typeof AdminRolesRoleRoute
   '/admin/users/$userId': typeof AdminUsersUserIdRoute
+  '/settings/providers/$providerId': typeof SettingsProvidersProviderIdRoute
   '/admin/roles/': typeof AdminRolesIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
 }
@@ -206,6 +216,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/admin/roles/$role'
     | '/admin/users/$userId'
+    | '/settings/providers/$providerId'
     | '/admin/roles'
     | '/admin/users'
   fileRoutesByTo: FileRoutesByTo
@@ -224,6 +235,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/admin/roles/$role'
     | '/admin/users/$userId'
+    | '/settings/providers/$providerId'
     | '/admin/roles'
     | '/admin/users'
   id:
@@ -245,6 +257,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/admin/roles/$role'
     | '/admin/users/$userId'
+    | '/settings/providers/$providerId'
     | '/admin/roles/'
     | '/admin/users/'
   fileRoutesById: FileRoutesById
@@ -381,6 +394,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRolesIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/settings/providers/$providerId': {
+      id: '/settings/providers/$providerId'
+      path: '/$providerId'
+      fullPath: '/settings/providers/$providerId'
+      preLoaderRoute: typeof SettingsProvidersProviderIdRouteImport
+      parentRoute: typeof SettingsProvidersRoute
+    }
     '/admin/users/$userId': {
       id: '/admin/users/$userId'
       path: '/users/$userId'
@@ -432,13 +452,24 @@ const ChatRouteChildren: ChatRouteChildren = {
 
 const ChatRouteWithChildren = ChatRoute._addFileChildren(ChatRouteChildren)
 
+interface SettingsProvidersRouteChildren {
+  SettingsProvidersProviderIdRoute: typeof SettingsProvidersProviderIdRoute
+}
+
+const SettingsProvidersRouteChildren: SettingsProvidersRouteChildren = {
+  SettingsProvidersProviderIdRoute: SettingsProvidersProviderIdRoute,
+}
+
+const SettingsProvidersRouteWithChildren =
+  SettingsProvidersRoute._addFileChildren(SettingsProvidersRouteChildren)
+
 interface SettingsRouteChildren {
-  SettingsProvidersRoute: typeof SettingsProvidersRoute
+  SettingsProvidersRoute: typeof SettingsProvidersRouteWithChildren
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
-  SettingsProvidersRoute: SettingsProvidersRoute,
+  SettingsProvidersRoute: SettingsProvidersRouteWithChildren,
   SettingsIndexRoute: SettingsIndexRoute,
 }
 
